@@ -1,17 +1,9 @@
 import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
-    // If in development and on Android emulator
-    if (__DEV__) {
-        if (Platform.OS === 'android') {
-            return 'http://10.0.2.2:8000/api';
-        }
-        if (Platform.OS === 'ios' || Platform.OS === 'web') {
-            return 'http://localhost:8000/api';
-        }
-    }
-    // Fallback or production URL
-    return 'http://localhost:8000/api';
+    // Return the production-like local development URL or the requested store URL
+    // For now, setting it to the requested URL:
+    return 'https://port.namelesss.store/backend/public/api';
 };
 
 const getAuthBaseUrl = () => {
