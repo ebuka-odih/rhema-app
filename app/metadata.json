@@ -1,0 +1,7 @@
+{
+  "name": "WordFlow",
+  "description": "A minimal, elegant devotional app for Bible reading, sermon recording, and fasting tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

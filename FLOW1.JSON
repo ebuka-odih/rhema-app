@@ -1,0 +1,65 @@
+{
+  "app_name": "RHAMA",
+  "tagline": "Reflect. Grow. Flow.",
+  "description": "A minimal, elegant devotional app designed for spiritual growth, combining Bible study, AI-powered sermon recording, fasting tracking, and personal reflection.",
+  "visual_identity": {
+    "style": "Minimalist, high-end, dark-mode centric",
+    "theme_colors": {
+      "background": "#0D0D0D (Deep Black)",
+      "primary_accent": "#E8503A (Coral Red)",
+      "secondary": "#111111 (Off-Black)",
+      "card_surface": "#1A1A1A (Dark Grey)",
+      "text_primary": "#FFFFFF (White)",
+      "text_muted": "#C5C5C5 (Light Grey)",
+      "accent_highlight": "#FFD35A (Warm Gold)"
+    },
+    "typography": {
+      "sans_serif": "SF Pro Display / System Sans (Modern, UI elements)",
+      "serif": "New York / Georgia (Elegant, Scripture and Headings)"
+    },
+    "ui_elements": "Rounded corners (3xl), backdrop blurs, iOS-native navigation patterns, gradient overlays for imagery, and subtle glow effects."
+  },
+  "core_functionalities": {
+    "authentication": {
+      "modes": ["Login", "Signup"],
+      "social_integration": ["Google", "Apple"],
+      "features": "Email/Password validation, persistent session states."
+    },
+    "home_dashboard": {
+      "personalized_greeting": "Dynamic based on time of day.",
+      "verse_of_the_day": "Featured card with image backgrounds and sharing/saving actions.",
+      "quick_actions": ["Start Devotional", "Record/View Sermons"],
+      "discovery": "Suggested devotionals and preview of recent user notes."
+    },
+    "bible_reader": {
+      "navigation": "Book/Chapter selector, sequential navigation buttons.",
+      "customization": "Adjustable font sizes and dark-theme optimized reading surface.",
+      "tools": ["Search", "Highlighting", "Font Control"]
+    },
+    "sermon_recording_ai": {
+      "recorder": "Real-time audio recording with a dynamic frequency visualizer (Canvas API).",
+      "ai_processing": "Uses Gemini 2.5 Flash to transcribe audio and generate bulleted theological summaries from sermon recordings.",
+      "library": "Archive of past sermons with duration, date, and categorized insights."
+    },
+    "fasting_center": {
+      "timer": "Active stopwatch for custom fasts displaying Hours:Minutes:Seconds.",
+      "community_groups": "Group-based fasting with a social feed for scriptures, prayer requests, and milestones.",
+      "social_features": "Likes and sharing for feed items; group discovery and management."
+    },
+    "journey_growth_tracker": {
+      "journaling": "Full-screen editor with categories (Devotion, Prayer, Life Lesson) and activity logging.",
+      "metrics": "Dashboard for daily streaks, prayer minutes, and activity counts.",
+      "visualizations": "Weekly consistency bar graphs for devotional habits.",
+      "timeline": "Chronological activity log across all app features (Sermons, Fasting, Journaling)."
+    }
+  },
+  "technical_stack": {
+    "frontend": "React 19, Tailwind CSS, Lucide Icons",
+    "ai_engine": "@google/genai (Gemini 2.5 Flash for audio intelligence)",
+    "ux_patterns": "Single Page Application (SPA) with state-driven view switching, responsive mobile-first container, and native-feeling bottom navigation."
+  },
+  "navigation_structure": {
+    "primary_tabs": ["Home", "Journey", "Sermons (Primary Action)", "Fasting", "More"],
+    "sub_navigation": "Nested view states for Detail views, Editors, and Trackers within each primary tab."
+  }
+}

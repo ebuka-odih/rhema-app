@@ -1,0 +1,47 @@
+{
+  "name": "wordflow",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@better-auth/expo": "^1.4.14",
+    "@expo/metro-runtime": "^6.1.2",
+    "@expo/vector-icons": "^15.0.3",
+    "@google/genai": "^1.31.0",
+    "autoprefixer": "^10.4.23",
+    "babel-preset-expo": "^54.0.9",
+    "better-auth": "^1.4.14",
+    "expo": "^54.0.31",
+    "expo-av": "^16.0.8",
+    "expo-constants": "^18.0.13",
+    "expo-linking": "^8.0.11",
+    "expo-secure-store": "^15.0.8",
+    "expo-status-bar": "^3.0.9",
+    "expo-web-browser": "^15.0.10",
+    "lucide-react": "^0.555.0",
+    "postcss": "^8.5.6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-web": "^0.21.2",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "~19.1.10",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
