@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   IconHome, IconMic, IconBible, IconMore, IconJourney
@@ -14,6 +14,7 @@ import JourneyScreen from './screens/JourneyScreen';
 import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
+import { useSession } from './services/auth';
 
 type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
 
@@ -21,6 +22,13 @@ const App: React.FC = () => {
   // Navigation State
   const [appState, setAppState] = useState<AppState>('WELCOME');
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
+  const { data: session, isPending } = useSession();
+
+  useEffect(() => {
+    if (!isPending && session) {
+      setAppState('MAIN');
+    }
+  }, [session, isPending]);
 
   const handleAuthenticated = () => {
     setAppState('MAIN');
@@ -101,22 +109,30 @@ const App: React.FC = () => {
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.appContainer}>
-          {appState === 'WELCOME' && (
-            <WelcomeScreen
-              onGetStarted={() => setAppState('AUTH_SIGNUP')}
-              onLogin={() => setAppState('AUTH_LOGIN')}
-            />
-          )}
+          {isPending ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#E8503A" />
+            </View>
+          ) : (
+            <>
+              {appState === 'WELCOME' && (
+                <WelcomeScreen
+                  onGetStarted={() => setAppState('AUTH_SIGNUP')}
+                  onLogin={() => setAppState('AUTH_LOGIN')}
+                />
+              )}
 
-          {(appState === 'AUTH_LOGIN' || appState === 'AUTH_SIGNUP') && (
-            <AuthScreen
-              initialMode={appState === 'AUTH_LOGIN' ? 'login' : 'signup'}
-              onAuthenticated={handleAuthenticated}
-              onBack={() => setAppState('WELCOME')}
-            />
-          )}
+              {(appState === 'AUTH_LOGIN' || appState === 'AUTH_SIGNUP') && (
+                <AuthScreen
+                  initialMode={appState === 'AUTH_LOGIN' ? 'login' : 'signup'}
+                  onAuthenticated={handleAuthenticated}
+                  onBack={() => setAppState('WELCOME')}
+                />
+              )}
 
-          {appState === 'MAIN' && renderMainApp()}
+              {appState === 'MAIN' && renderMainApp()}
+            </>
+          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
