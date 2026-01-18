@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { IconArrowLeft, IconMic, IconTrash, IconCheck } from '../Icons';
 import { AudioVisualizer } from './AudioVisualizer';
 import { TabNavigator } from './TabNavigator';
@@ -61,7 +61,10 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
     }, [duration, isRecording, maxDuration, onStopRecording]);
 
     return (
-        <View style={styles.viewContainer}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.viewContainer}
+        >
             <View style={styles.recordHeader}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <IconArrowLeft size={20} color="#FFFFFF" />
@@ -173,7 +176,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                     </View>
                 )}
             </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 

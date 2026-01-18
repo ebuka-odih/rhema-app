@@ -12,6 +12,7 @@ interface JourneyHomeProps {
   onViewTimeline: () => void;
   onNewReflection: () => void;
   onLogPrayer: () => void;
+  onViewFasting: () => void;
   onSelectEntry: (entry: JournalEntry) => void;
   journalEntries: JournalEntry[];
   activityHistory: ActivityItem[];
@@ -27,6 +28,7 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   onViewTimeline,
   onNewReflection,
   onLogPrayer,
+  onViewFasting,
   onSelectEntry,
   journalEntries,
   activityHistory,
@@ -62,27 +64,27 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
             </View>
             <View>
               <Text style={styles.streakTitle}>Faith Consistency</Text>
-              <Text style={styles.streakSubtitle}>You're doing great!</Text>
+              <Text style={styles.streakSubtitle}>Keep your spirit alive!</Text>
             </View>
           </View>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>Lv. 4</Text>
+            <Text style={styles.streakBadgeText}>Active</Text>
           </View>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statValue}>-</Text>
             <Text style={styles.statLabel}>Day Streak</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>24</Text>
+            <Text style={styles.statValue}>{journalEntries.length}</Text>
             <Text style={styles.statLabel}>Reflections</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>5</Text>
+            <Text style={styles.statValue}>-</Text>
             <Text style={styles.statLabel}>Fasts</Text>
           </View>
         </View>
@@ -98,11 +100,11 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
         <Text style={styles.actionText}>Reflect</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.actionCard} onPress={() => onNavigateGlobal && onNavigateGlobal('Record')}>
+      <TouchableOpacity style={styles.actionCard} onPress={onViewFasting}>
         <View style={[styles.actionIconContainer, { backgroundColor: '#EF4444' }]}>
-          <IconMic size={20} color="#FFFFFF" />
+          <IconClock size={20} color="#FFFFFF" />
         </View>
-        <Text style={styles.actionText}>Record</Text>
+        <Text style={styles.actionText}>Fasting</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.actionCard} onPress={onLogPrayer}>

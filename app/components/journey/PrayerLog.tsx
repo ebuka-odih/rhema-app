@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Switch, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Switch, Platform, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { IconClose, IconClock, IconBell, IconCheck } from '../Icons';
 
@@ -58,112 +58,128 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
     };
 
     return (
-        <View style={styles.prayerLogContainer}>
-            <View style={styles.prayerLogCard}>
-                <View style={styles.prayerLogHeader}>
-                    <Text style={styles.prayerLogTitle}>Prayer Request</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <IconClose size={24} color="#999999" />
-                    </TouchableOpacity>
-                </View>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+        >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.prayerLogContainer}>
+                    <View style={styles.prayerLogCard}>
+                        <View style={styles.prayerLogHeader}>
+                            <Text style={styles.prayerLogTitle}>Prayer Request</Text>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <IconClose size={24} color="#999999" />
+                            </TouchableOpacity>
+                        </View>
 
-                {/* TODO List Style Entry */}
-                <View style={styles.todoEntryContainer}>
-                    <View style={styles.todoCircle}>
-                        {status === 'answered' && <IconCheck size={14} color="#FFFFFF" />}
-                    </View>
-                    <TextInput
-                        style={styles.todoInput}
-                        placeholder="What are you praying for?"
-                        placeholderTextColor="#666666"
-                        value={prayerRequest}
-                        onChangeText={setPrayerRequest}
-                        multiline
-                    />
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.settingsGrid}>
-                    <View style={styles.settingItem}>
-                        <Text style={styles.inputLabel}>RECURRING TIME</Text>
-                        <TouchableOpacity
-                            style={styles.timePickerButton}
-                            onPress={() => setShowTimePicker(true)}
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={styles.scrollContent}
                         >
-                            <IconClock size={16} color="#E8503A" />
-                            <Text style={styles.timeDisplayText}>{prayerTime || '08:00 AM'}</Text>
-                        </TouchableOpacity>
-                        {showTimePicker && (
-                            <View>
-                                <DateTimePicker
-                                    value={getInitialDate()}
-                                    mode="time"
-                                    is24Hour={false}
-                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                    onChange={handleTimeChange}
+                            {/* TODO List Style Entry */}
+                            <View style={styles.todoEntryContainer}>
+                                <View style={styles.todoCircle}>
+                                    {status === 'answered' && <IconCheck size={14} color="#FFFFFF" />}
+                                </View>
+                                <TextInput
+                                    style={styles.todoInput}
+                                    placeholder="What are you praying for?"
+                                    placeholderTextColor="#666666"
+                                    value={prayerRequest}
+                                    onChangeText={setPrayerRequest}
+                                    multiline
                                 />
-                                {Platform.OS === 'ios' && (
-                                    <TouchableOpacity
-                                        style={styles.donePickerButton}
-                                        onPress={() => setShowTimePicker(false)}
-                                    >
-                                        <Text style={styles.donePickerText}>Done</Text>
-                                    </TouchableOpacity>
-                                )}
                             </View>
-                        )}
-                    </View>
 
-                    <View style={styles.settingItem}>
-                        <View style={styles.labelWithBadge}>
-                            <Text style={styles.inputLabel}>REMINDER</Text>
-                            {reminderEnabled && <View style={styles.activeBadge} />}
-                        </View>
-                        <View style={styles.reminderToggleContainer}>
-                            <IconBell size={18} color={reminderEnabled ? '#E8503A' : '#444444'} />
-                            <Switch
-                                value={reminderEnabled}
-                                onValueChange={setReminderEnabled}
-                                trackColor={{ false: '#333', true: 'rgba(232, 80, 58, 0.5)' }}
-                                thumbColor={reminderEnabled ? '#E8503A' : '#999'}
-                                ios_backgroundColor="#333"
-                            />
-                        </View>
+                            <View style={styles.divider} />
+
+                            <View style={styles.settingsGrid}>
+                                <View style={styles.settingItem}>
+                                    <Text style={styles.inputLabel}>RECURRING TIME</Text>
+                                    <TouchableOpacity
+                                        style={styles.timePickerButton}
+                                        onPress={() => setShowTimePicker(true)}
+                                    >
+                                        <IconClock size={16} color="#E8503A" />
+                                        <Text style={styles.timeDisplayText}>{prayerTime || '08:00 AM'}</Text>
+                                    </TouchableOpacity>
+                                    {showTimePicker && (
+                                        <View>
+                                            <DateTimePicker
+                                                value={getInitialDate()}
+                                                mode="time"
+                                                is24Hour={false}
+                                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                                onChange={handleTimeChange}
+                                            />
+                                            {Platform.OS === 'ios' && (
+                                                <TouchableOpacity
+                                                    style={styles.donePickerButton}
+                                                    onPress={() => setShowTimePicker(false)}
+                                                >
+                                                    <Text style={styles.donePickerText}>Done</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={styles.settingItem}>
+                                    <View style={styles.labelWithBadge}>
+                                        <Text style={styles.inputLabel}>REMINDER</Text>
+                                        {reminderEnabled && <View style={styles.activeBadge} />}
+                                    </View>
+                                    <View style={styles.reminderToggleContainer}>
+                                        <IconBell size={18} color={reminderEnabled ? '#E8503A' : '#444444'} />
+                                        <Switch
+                                            value={reminderEnabled}
+                                            onValueChange={setReminderEnabled}
+                                            trackColor={{ false: '#333', true: 'rgba(232, 80, 58, 0.5)' }}
+                                            thumbColor={reminderEnabled ? '#E8503A' : '#999'}
+                                            ios_backgroundColor="#333"
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.statusSection}>
+                                <Text style={styles.inputLabel}>MARK STATUS</Text>
+                                <View style={styles.statusButtons}>
+                                    <TouchableOpacity
+                                        style={[styles.statusButton, status === 'praying' && styles.statusButtonActive]}
+                                        onPress={() => setStatus('praying')}
+                                    >
+                                        <Text style={[styles.statusButtonText, status === 'praying' && styles.statusButtonTextActive]}>Praying</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.statusButton, status === 'answered' && styles.statusButtonActiveAnswered]}
+                                        onPress={() => setStatus('answered')}
+                                    >
+                                        <Text style={[styles.statusButtonText, status === 'answered' && styles.statusButtonTextActiveAnswered]}>Answered</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveLogButton, !prayerRequest && styles.saveLogButtonDisabled]}
+                                onPress={() => onSave(status)}
+                                disabled={!prayerRequest}
+                            >
+                                <Text style={styles.saveLogButtonText}>Set Prayer Reminder</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
                 </View>
-
-                <View style={styles.statusSection}>
-                    <Text style={styles.inputLabel}>MARK STATUS</Text>
-                    <View style={styles.statusButtons}>
-                        <TouchableOpacity
-                            style={[styles.statusButton, status === 'praying' && styles.statusButtonActive]}
-                            onPress={() => setStatus('praying')}
-                        >
-                            <Text style={[styles.statusButtonText, status === 'praying' && styles.statusButtonTextActive]}>Praying</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.statusButton, status === 'answered' && styles.statusButtonActiveAnswered]}
-                            onPress={() => setStatus('answered')}
-                        >
-                            <Text style={[styles.statusButtonText, status === 'answered' && styles.statusButtonTextActiveAnswered]}>Answered</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.saveLogButton, !prayerRequest && styles.saveLogButtonDisabled]}
-                    onPress={() => onSave(status)}
-                    disabled={!prayerRequest}
-                >
-                    <Text style={styles.saveLogButtonText}>Set Prayer Reminder</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
+    keyboardView: {
+        flex: 1,
+    },
     prayerLogContainer: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.9)',
@@ -177,6 +193,7 @@ const styles = StyleSheet.create({
         padding: 24,
         width: '100%',
         maxWidth: 400,
+        maxHeight: '85%',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.08)',
     },
@@ -198,6 +215,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    scrollContent: {
+        paddingBottom: 20,
     },
     todoEntryContainer: {
         flexDirection: 'row',
@@ -339,6 +359,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingVertical: 16,
         alignItems: 'center',
+        marginTop: 10,
     },
     saveLogButtonDisabled: {
         opacity: 0.5,
