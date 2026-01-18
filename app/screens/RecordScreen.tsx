@@ -185,6 +185,8 @@ const RecordScreen: React.FC = () => {
     }
     try {
       const token = await authService.getToken();
+
+      // We send all current state to ensure the DB matches exactly what the user sees
       const response = await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
         method: 'PATCH',
         headers: {
@@ -192,19 +194,34 @@ const RecordScreen: React.FC = () => {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title: sermonTitle }),
+        body: JSON.stringify({
+          title: sermonTitle,
+          transcription: transcription,
+          summary: summary
+        }),
       });
 
       if (response.ok) {
+        // Update local list with the latest data
         setSermons(prev => prev.map(s =>
-          s.id === currentSermonId ? { ...s, title: sermonTitle } : s
+          s.id === currentSermonId ? {
+            ...s,
+            title: sermonTitle,
+            transcription: transcription || s.transcription,
+            summary: summary || s.summary
+          } : s
         ));
       }
 
       setView('LIST');
+
+      // Re-fetch to be absolutely certain we are in sync with the database
+      await fetchSermons();
+
+      // reset state only after we are back at the list
       reset();
-      fetchSermons(); // Re-sync
     } catch (err) {
+      console.error('Final save error:', err);
       setView('LIST');
       reset();
     }

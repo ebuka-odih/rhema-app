@@ -74,7 +74,8 @@ class SermonController extends Controller
                 $summary = $summaryResponse->json('choices.0.message.content');
             }
 
-            // 3. Save to Database
+            Log::info('Saving sermon with summary length: ' . strlen($summary ?? ''));
+            
             $sermon = Sermon::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
@@ -97,14 +98,14 @@ class SermonController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $request->validate([
-            'title' => 'string|max:255',
-            'transcription' => 'string',
-            'summary' => 'string',
+        $validated = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'transcription' => 'sometimes|string',
+            'summary' => 'sometimes|string',
         ]);
 
-        $sermon->update($request->only(['title', 'transcription', 'summary']));
+        $sermon->update($validated);
 
-        return response()->json($sermon);
+        return response()->json($sermon->fresh());
     }
 }

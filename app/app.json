@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Wordflow",
-    "slug": "wordflow",
+    "slug": "rhema",
     "scheme": "wordflow",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -42,6 +42,12 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b9182640-8da5-4379-909a-53ab74c46bcd"
+      }
+    },
+    "owner": "odih"
   }
 }
