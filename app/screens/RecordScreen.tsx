@@ -153,7 +153,8 @@ const RecordScreen: React.FC = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to process sermon');
+        const errorMsg = result.details || result.error || 'Failed to process sermon';
+        throw new Error(errorMsg);
       }
 
       setTranscription(result.transcription);

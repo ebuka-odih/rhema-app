@@ -32,22 +32,30 @@ class SermonController extends Controller
         try {
             $apiKey = config('services.gemini.key');
             if (!$apiKey) {
-                throw new \Exception('Gemini API key not configured');
+                return response()->json(['error' => 'Gemini API key not configured on server'], 500);
             }
 
             // Encode file for Gemini
             $audioData = base64_encode(file_get_contents($file->getPathname()));
             $mimeType = $file->getMimeType();
 
-            // Note: If mimetype is not audio, Gemini might complain. 
-            // Most mobile recordings are audio/m4a or audio/aac.
-            
+            // Normalize mime type for Gemini
+            if (str_contains($mimeType, 'm4a') || str_contains($mimeType, 'x-m4a')) {
+                $mimeType = 'audio/mp4'; // Gemini prefers audio/mp4 for m4a
+            }
+
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
             ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
                 'contents' => [
                     [
                         'parts' => [
+                            [
+                                'inline_data' => [
+                                    'mime_type' => $mimeType,
+                                    'data' => $audioData
+                                ]
+                            ],
                             ['text' => "You are an expert theological assistant. 
                                         1. Transcribe the provided sermon audio accurately.
                                         2. Provide a concise summary of the key theological takeaways in bullet points.
@@ -56,13 +64,7 @@ class SermonController extends Controller
                                         {
                                           \"transcription\": \"Full text here...\",
                                           \"summary\": \"• Point 1\\n• Point 2...\"
-                                        }"],
-                            [
-                                'inline_data' => [
-                                    'mime_type' => $mimeType,
-                                    'data' => $audioData
-                                ]
-                            ]
+                                        }"]
                         ]
                     ]
                 ],
@@ -72,12 +74,20 @@ class SermonController extends Controller
             ]);
 
             if ($response->failed()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                throw new \Exception('Failed to process audio with AI');
+                $errorBody = $response->json();
+                Log::error('Gemini API Error: ', $errorBody ?? []);
+                return response()->json([
+                    'error' => 'Gemini AI processing failed',
+                    'details' => $errorBody['error']['message'] ?? 'Unknown Gemini Error'
+                ], 500);
             }
 
-            $result = $response->json('candidates.0.content.parts.0.text');
-            $data = json_decode($result, true);
+            $resultText = $response->json('candidates.0.content.parts.0.text');
+            $data = json_decode($resultText, true);
+
+            if (!$data) {
+                return response()->json(['error' => 'Failed to parse AI response', 'raw' => $resultText], 500);
+            }
 
             $sermon = Sermon::create([
                 'user_id' => $user->id,
@@ -91,7 +101,7 @@ class SermonController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Sermon Processing Error: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
         }
     }
 }
