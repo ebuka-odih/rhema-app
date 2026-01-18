@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { useAudioRecorder, useAudioRecorderState, AudioModule, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 import {
   IconMic, IconPlay, IconCheck, IconTrash, IconArrowLeft,
   IconSearch, IconCalendar, IconChevronRight, IconDownload
 } from '../components/Icons';
-import { processSermonAudio } from '../services/geminiService';
+
 
 type ViewState = 'LIST' | 'DETAIL' | 'RECORD';
 
@@ -26,50 +26,55 @@ const RecordScreen: React.FC = () => {
 
   // Recorder State
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder, 500);
   const [duration, setDuration] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isNewRecording, setIsNewRecording] = useState(true);
 
   // Mock Data
-  const [sermons, setSermons] = useState<Recording[]>([
-    {
-      id: '1',
-      title: 'The Power of Patience',
-      date: 'Oct 24, 2023',
-      duration: '45:02',
-      summary: '• Patience is a virtue of the spirit.\n• Waiting on the Lord renews strength.\n• Examples from the life of David.',
-      transcription: 'Today we are going to talk about patience. It is often said that patience is a virtue...'
-    },
-    {
-      id: '2',
-      title: 'Walking in Faith',
-      date: 'Oct 17, 2023',
-      duration: '38:15',
-      summary: '• Faith requires action.\n• Trusting God in the unknown.\n• The story of Abraham.',
-      transcription: 'Faith is the substance of things hoped for, the evidence of things not seen...'
-    },
-    {
-      id: '3',
-      title: 'Sunday Service: Grace',
-      date: 'Oct 10, 2023',
-      duration: '52:10',
-      summary: '• Grace is unmerited favor.\n• We are saved by grace through faith.\n• Extending grace to others.',
-      transcription: 'Welcome everyone. Today\'s message is centered around the concept of Grace...'
-    }
-  ]);
+  const [sermons, setSermons] = useState<Recording[]>([]);
 
-  // Timer effect
+  // Fetch sermons from backend
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (recorder.isRecording) {
-      interval = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
+    const fetchSermons = async () => {
+      try {
+        const token = await authService.getToken();
+        const response = await fetch(`${API_BASE_URL}sermons`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const mappedSermons = data.map((s: any) => ({
+            id: s.id.toString(),
+            title: s.title,
+            date: new Date(s.created_at).toLocaleDateString(),
+            duration: '0:00',
+            transcription: s.transcription,
+            summary: s.summary
+          }));
+          setSermons(mappedSermons);
+        }
+      } catch (err) {
+        console.error('Failed to fetch sermons:', err);
+      }
+    };
+
+    fetchSermons();
+  }, []);
+
+  // Update local duration from recorder state
+  useEffect(() => {
+    if (recorderState.isRecording) {
+      setDuration(Math.floor(recorderState.durationMillis / 1000));
     }
-    return () => clearInterval(interval);
-  }, [recorder.isRecording]);
+  }, [recorderState.durationMillis, recorderState.isRecording]);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -81,16 +86,25 @@ const RecordScreen: React.FC = () => {
     try {
       setError(null);
 
+      // Configure audio for recording
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        interruptionMode: 'doNotMix',
+      });
+
       // Request permissions
-      const status = await AudioModule.requestRecordingPermissionsAsync();
+      const status = await requestRecordingPermissionsAsync();
       if (!status.granted) {
         setError('Microphone permission denied');
         return;
       }
 
       // Start recording
+      await recorder.prepareToRecordAsync();
       recorder.record();
       setDuration(0);
+      setIsNewRecording(false);
     } catch (err) {
       console.error('Failed to start recording', err);
       setError('Failed to start recording. Please try again.');
@@ -98,7 +112,7 @@ const RecordScreen: React.FC = () => {
   };
 
   const stopRecording = async () => {
-    if (!recorder.isRecording) return;
+    if (!recorderState.isRecording) return;
 
     try {
       await recorder.stop();
@@ -168,6 +182,7 @@ const RecordScreen: React.FC = () => {
     setTranscription(null);
     setSummary(null);
     setError(null);
+    setIsNewRecording(true);
   };
 
   const handleDelete = () => {
@@ -232,8 +247,7 @@ const RecordScreen: React.FC = () => {
         style={styles.fab}
         onPress={() => { reset(); setView('RECORD'); }}
       >
-        <IconMic size={20} color="#FFFFFF" />
-        <Text style={styles.fabText}>New Sermon</Text>
+        <IconMic size={24} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -303,19 +317,19 @@ const RecordScreen: React.FC = () => {
             <Text style={styles.timerText}>{formatTime(duration)}</Text>
           </View>
 
-          {!recorder.isRecording && !recorder.uri && (
+          {!recorderState.isRecording && isNewRecording && (
             <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
               <IconMic size={32} color="#FFFFFF" />
             </TouchableOpacity>
           )}
 
-          {recorder.isRecording && (
+          {recorderState.isRecording && (
             <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
               <View style={styles.stopIcon} />
             </TouchableOpacity>
           )}
 
-          {!recorder.isRecording && recorder.uri && !transcription && (
+          {!recorderState.isRecording && !isNewRecording && recorder.uri && !transcription && (
             <View style={styles.recordActions}>
               <TouchableOpacity onPress={reset} style={styles.deleteButton}>
                 <IconTrash size={24} color="#999999" />
@@ -470,22 +484,16 @@ const styles = StyleSheet.create({
     bottom: 24,
     right: 24,
     backgroundColor: '#E8503A',
-    borderRadius: 25,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
     shadowColor: '#E8503A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
-  },
-  fabText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   detailHeader: {
     flexDirection: 'row',
