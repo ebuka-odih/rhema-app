@@ -1,0 +1,360 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { IconArrowLeft, IconMic, IconTrash, IconCheck } from '../Icons';
+import { AudioVisualizer } from './AudioVisualizer';
+import { TabNavigator } from './TabNavigator';
+
+interface SermonRecorderProps {
+    isRecording: boolean;
+    duration: number;
+    levels: number[];
+    isNewRecording: boolean;
+    isProcessing: boolean;
+    transcription: string | null;
+    summary: string | null;
+    error: string | null;
+    sermonTitle: string;
+    activeTab: 'SUMMARY' | 'TRANSCRIPTION';
+    formatTime: (secs: number) => string;
+    onStartRecording: () => void;
+    onStopRecording: () => void;
+    onReset: () => void;
+    onProcess: () => void;
+    onSaveAndFinish: () => void;
+    onTitleChange: (title: string) => void;
+    onTabChange: (tab: 'SUMMARY' | 'TRANSCRIPTION') => void;
+    onBack: () => void;
+}
+
+export const SermonRecorder: React.FC<SermonRecorderProps> = ({
+    isRecording,
+    duration,
+    levels,
+    isNewRecording,
+    isProcessing,
+    transcription,
+    summary,
+    error,
+    sermonTitle,
+    activeTab,
+    formatTime,
+    onStartRecording,
+    onStopRecording,
+    onReset,
+    onProcess,
+    onSaveAndFinish,
+    onTitleChange,
+    onTabChange,
+    onBack,
+}) => (
+    <View style={styles.viewContainer}>
+        <View style={styles.recordHeader}>
+            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                <IconArrowLeft size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.recordTitle}>New Recording</Text>
+        </View>
+
+        <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
+            {/* Recording Area */}
+            <View style={styles.recordingCard}>
+                {isRecording && <AudioVisualizer levels={levels} />}
+
+                <View style={styles.timerDisplay}>
+                    <Text style={styles.timerText}>{formatTime(duration)}</Text>
+                </View>
+
+                {!isRecording && isNewRecording && (
+                    <TouchableOpacity style={styles.recordButton} onPress={onStartRecording}>
+                        <IconMic size={32} color="#FFFFFF" />
+                    </TouchableOpacity>
+                )}
+
+                {isRecording && (
+                    <TouchableOpacity style={styles.stopButton} onPress={onStopRecording}>
+                        <View style={styles.stopIcon} />
+                    </TouchableOpacity>
+                )}
+
+                {!isRecording && !isNewRecording && !transcription && (
+                    <View style={styles.recordActions}>
+                        <TouchableOpacity onPress={onReset} style={styles.deleteButton}>
+                            <IconTrash size={24} color="#999999" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={onProcess}
+                            disabled={isProcessing}
+                            style={[styles.processButton, isProcessing && styles.processButtonDisabled]}
+                        >
+                            {isProcessing ? (
+                                <Text style={styles.processButtonText}>Processing...</Text>
+                            ) : (
+                                <>
+                                    <IconCheck size={20} color="#FFFFFF" />
+                                    <Text style={styles.processButtonText}>Analyze Sermon</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            {error && (
+                <View style={styles.errorCard}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
+
+            {/* Results */}
+            {(transcription || summary) && (
+                <View style={styles.resultsContainer}>
+                    <View style={styles.resultsHeader}>
+                        <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
+                        <TouchableOpacity
+                            onPress={onSaveAndFinish}
+                            style={styles.doneButton}
+                        >
+                            <IconCheck size={14} color="#FFFFFF" />
+                            <Text style={styles.doneButtonText}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.titleEditCard}>
+                        <Text style={styles.cardLabel}>SERMON TITLE</Text>
+                        <TextInput
+                            style={styles.titleInput}
+                            value={sermonTitle}
+                            onChangeText={onTitleChange}
+                            placeholder="Enter sermon title..."
+                            placeholderTextColor="#666666"
+                        />
+                    </View>
+
+                    <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
+
+                    {activeTab === 'SUMMARY' ? (
+                        <View style={styles.summaryCard}>
+                            <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
+                            <Text style={styles.summaryText}>{summary}</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.transcriptionCard}>
+                            <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
+                            <Text style={styles.transcriptionText}>{transcription}</Text>
+                        </View>
+                    )}
+                </View>
+            )}
+        </ScrollView>
+    </View>
+);
+
+const styles = StyleSheet.create({
+    viewContainer: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 32,
+        paddingBottom: 0,
+    },
+    recordHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 32,
+        gap: 12,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: -8,
+    },
+    recordTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    recordContent: {
+        flex: 1,
+    },
+    recordContentPadding: {
+        paddingBottom: 120,
+    },
+    recordingCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 300,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 12,
+        marginBottom: 24,
+        overflow: 'hidden',
+    },
+    timerDisplay: {
+        marginBottom: 32,
+        zIndex: 10,
+    },
+    timerText: {
+        fontSize: 56,
+        fontWeight: '300',
+        color: '#FFFFFF',
+        fontVariant: ['tabular-nums'],
+    },
+    recordButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#E8503A',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#E8503A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    stopButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    stopIcon: {
+        width: 32,
+        height: 32,
+        backgroundColor: '#E8503A',
+        borderRadius: 4,
+    },
+    recordActions: {
+        flexDirection: 'row',
+        gap: 24,
+        alignItems: 'center',
+    },
+    deleteButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#222222',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    processButton: {
+        flex: 1,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#E8503A',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 24,
+    },
+    processButtonDisabled: {
+        opacity: 0.6,
+    },
+    processButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    errorCard: {
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 80, 58, 0.2)',
+    },
+    errorText: {
+        color: '#E8503A',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    resultsContainer: {
+        gap: 16,
+    },
+    resultsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    resultsTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    doneButton: {
+        backgroundColor: '#E8503A',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    doneButtonText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    titleEditCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        marginBottom: 16,
+    },
+    cardLabel: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#E8503A',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    titleInput: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        padding: 0,
+        marginTop: 4,
+    },
+    summaryCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        marginBottom: 16,
+    },
+    transcriptionCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    summaryText: {
+        fontSize: 16,
+        lineHeight: 24,
+        color: '#CCCCCC',
+    },
+    transcriptionText: {
+        fontSize: 16,
+        lineHeight: 24,
+        color: '#CCCCCC',
+    },
+});

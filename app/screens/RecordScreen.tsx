@@ -1,36 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform, TextInput } from 'react-native';
-import { useAudioRecorder, useAudioRecorderState, AudioModule, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
+import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
+import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
-import {
-  IconMic, IconPlay, IconCheck, IconTrash, IconArrowLeft,
-  IconSearch, IconCalendar, IconChevronRight, IconDownload
-} from '../components/Icons';
+import { IconMic } from '../components/Icons';
 
+// Types
+import { ViewState, Sermon } from '../types/sermon';
 
-type ViewState = 'LIST' | 'DETAIL' | 'RECORD';
-
-interface Recording {
-  id: string;
-  title: string;
-  date: string;
-  duration: string;
-  transcription?: string;
-  summary?: string;
-}
+// Components
+import { SermonList } from '../components/sermons/SermonList';
+import { SermonDetail } from '../components/sermons/SermonDetail';
+import { SermonRecorder } from '../components/sermons/SermonRecorder';
 
 const RecordScreen: React.FC = () => {
   const [view, setView] = useState<ViewState>('LIST');
-  const [selectedSermon, setSelectedSermon] = useState<Recording | null>(null);
+  const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
 
   // Recorder State
   const recorder = useAudioRecorder({
     ...RecordingPresets.HIGH_QUALITY,
     isMeteringEnabled: true,
   });
-  const recorderState = useAudioRecorderState(recorder, 100);
-  const [levels, setLevels] = useState<number[]>(new Array(30).fill(-60));
+  const recorderState = useAudioRecorderState(recorder, 50);
+  const [levels, setLevels] = useState<number[]>(new Array(40).fill(-60));
   const [duration, setDuration] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
@@ -39,51 +32,57 @@ const RecordScreen: React.FC = () => {
   const [isNewRecording, setIsNewRecording] = useState(true);
   const [sermonTitle, setSermonTitle] = useState('');
   const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'SUMMARY' | 'TRANSCRIPTION'>('SUMMARY');
 
-  // Mock Data
-  const [sermons, setSermons] = useState<Recording[]>([]);
+  const [sermons, setSermons] = useState<Sermon[]>([]);
 
   // Fetch sermons from backend
   useEffect(() => {
-    const fetchSermons = async () => {
-      try {
-        const token = await authService.getToken();
-        const response = await fetch(`${API_BASE_URL}sermons`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const mappedSermons = data.map((s: any) => ({
-            id: s.id.toString(),
-            title: s.title,
-            date: new Date(s.created_at).toLocaleDateString(),
-            duration: '0:00',
-            transcription: s.transcription,
-            summary: s.summary
-          }));
-          setSermons(mappedSermons);
-        }
-      } catch (err) {
-        console.error('Failed to fetch sermons:', err);
-      }
-    };
-
     fetchSermons();
   }, []);
+
+  const fetchSermons = async () => {
+    try {
+      const token = await authService.getToken();
+      const response = await fetch(`${API_BASE_URL}sermons`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const mappedSermons = data.map((s: any) => ({
+          id: s.id.toString(),
+          title: s.title,
+          date: new Date(s.created_at).toLocaleDateString(),
+          duration: '0:00', // Backend doesn't store duration yet
+          transcription: s.transcription,
+          summary: s.summary
+        }));
+        setSermons(mappedSermons);
+      }
+    } catch (err) {
+      console.error('Failed to fetch sermons:', err);
+    }
+  };
 
   // Update local duration and levels from recorder state
   useEffect(() => {
     if (recorderState.isRecording) {
       setDuration(Math.floor(recorderState.durationMillis / 1000));
       if (recorderState.metering !== undefined) {
-        setLevels(prev => [...prev.slice(1), recorderState.metering!]);
+        setLevels(prev => {
+          const newLevel = recorderState.metering!;
+          const next = [...prev];
+          next.shift();
+          next.push(newLevel);
+          return next;
+        });
       }
     } else {
-      setLevels(new Array(30).fill(-60));
+      setLevels(new Array(40).fill(-60));
     }
   }, [recorderState.durationMillis, recorderState.isRecording, recorderState.metering]);
 
@@ -96,22 +95,18 @@ const RecordScreen: React.FC = () => {
   const startRecording = async () => {
     try {
       setError(null);
-
-      // Configure audio for recording
       await setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
         interruptionMode: 'doNotMix',
       });
 
-      // Request permissions
       const status = await requestRecordingPermissionsAsync();
       if (!status.granted) {
         setError('Microphone permission denied');
         return;
       }
 
-      // Start recording
       await recorder.prepareToRecordAsync();
       recorder.record();
       setDuration(0);
@@ -124,7 +119,6 @@ const RecordScreen: React.FC = () => {
 
   const stopRecording = async () => {
     if (!recorderState.isRecording) return;
-
     try {
       await recorder.stop();
     } catch (err) {
@@ -134,15 +128,12 @@ const RecordScreen: React.FC = () => {
 
   const handleProcess = async () => {
     if (!recorder.uri) return;
-
     setIsProcessing(true);
     setError(null);
 
     try {
       const uri = recorder.uri;
       const token = await authService.getToken();
-
-      // Create form data for upload
       const formData = new FormData();
       formData.append('audio', {
         uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
@@ -162,10 +153,8 @@ const RecordScreen: React.FC = () => {
       });
 
       const result = await response.json();
-
       if (!response.ok) {
-        const errorMsg = result.details || result.error || 'Failed to process sermon';
-        throw new Error(errorMsg);
+        throw new Error(result.details || result.error || 'Failed to process sermon');
       }
 
       setTranscription(result.transcription);
@@ -173,8 +162,7 @@ const RecordScreen: React.FC = () => {
       setCurrentSermonId(result.id.toString());
       setSermonTitle(result.title);
 
-      // Auto-save to list
-      const newRecording: Recording = {
+      const newRecording: Sermon = {
         id: result.id.toString(),
         title: result.title,
         date: new Date(result.created_at).toLocaleDateString(),
@@ -182,10 +170,9 @@ const RecordScreen: React.FC = () => {
         transcription: result.transcription,
         summary: result.summary
       };
-      setSermons([newRecording, ...sermons]);
+      setSermons(prev => [newRecording, ...prev]);
     } catch (err: any) {
-      console.error('Processing error:', err);
-      setError(err.message || 'Failed to process audio. Please try again.');
+      setError(err.message || 'Failed to process audio.');
     } finally {
       setIsProcessing(false);
     }
@@ -196,30 +183,28 @@ const RecordScreen: React.FC = () => {
       setView('LIST');
       return;
     }
-
     try {
       const token = await authService.getToken();
-      await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
+      const response = await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: sermonTitle,
-        }),
+        body: JSON.stringify({ title: sermonTitle }),
       });
 
-      // Update local state in sermons list
-      setSermons(prev => prev.map(s =>
-        s.id === currentSermonId ? { ...s, title: sermonTitle } : s
-      ));
+      if (response.ok) {
+        setSermons(prev => prev.map(s =>
+          s.id === currentSermonId ? { ...s, title: sermonTitle } : s
+        ));
+      }
 
       setView('LIST');
       reset();
+      fetchSermons(); // Re-sync
     } catch (err) {
-      console.error('Failed to update title:', err);
       setView('LIST');
       reset();
     }
@@ -233,243 +218,73 @@ const RecordScreen: React.FC = () => {
     setIsNewRecording(true);
     setSermonTitle('');
     setCurrentSermonId(null);
+    setActiveTab('SUMMARY');
   };
 
   const handleDelete = () => {
-    if (selectedSermon) {
-      Alert.alert(
-        'Delete Sermon',
-        'Are you sure you want to delete this sermon?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              setSermons(sermons.filter(s => s.id !== selectedSermon.id));
-              setSelectedSermon(null);
-              setView('LIST');
-            }
-          }
-        ]
-      );
-    }
+    if (!selectedSermon) return;
+    Alert.alert('Delete Sermon', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setSermons(sermons.filter(s => s.id !== selectedSermon.id));
+          setSelectedSermon(null);
+          setView('LIST');
+          // Should also call backend delete here eventually
+        }
+      }
+    ]);
   };
-
-  // --- Views ---
-
-  const renderListView = () => (
-    <View style={styles.viewContainer}>
-      <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>Sermons</Text>
-        <TouchableOpacity style={styles.searchButton}>
-          <IconSearch size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.sermonsList} contentContainerStyle={styles.sermonsListContent}>
-        {sermons.map(sermon => (
-          <TouchableOpacity
-            key={sermon.id}
-            style={styles.sermonCard}
-            onPress={() => { setSelectedSermon(sermon); setView('DETAIL'); }}
-          >
-            <View style={styles.sermonCardContent}>
-              <View style={styles.sermonIcon}>
-                <IconMic size={20} color="#E8503A" />
-              </View>
-              <View style={styles.sermonInfo}>
-                <Text style={styles.sermonTitle}>{sermon.title}</Text>
-                <View style={styles.sermonMeta}>
-                  <IconCalendar size={12} color="#999999" />
-                  <Text style={styles.sermonDate}>{sermon.date}</Text>
-                  <Text style={styles.sermonDot}>•</Text>
-                  <Text style={styles.sermonDuration}>{sermon.duration}</Text>
-                </View>
-              </View>
-              <IconChevronRight size={20} color="#666666" />
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => { reset(); setView('RECORD'); }}
-      >
-        <IconMic size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderDetailView = () => {
-    if (!selectedSermon) return null;
-
-    return (
-      <View style={styles.viewContainer}>
-        <View style={styles.detailHeader}>
-          <TouchableOpacity onPress={() => setView('LIST')} style={styles.backButton}>
-            <IconArrowLeft size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.detailTitle} numberOfLines={1}>{selectedSermon.title}</Text>
-          <View style={styles.detailActions}>
-            <TouchableOpacity onPress={handleDelete} style={styles.detailAction}>
-              <IconTrash size={20} color="#999999" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.detailAction}>
-              <IconDownload size={20} color="#999999" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ScrollView style={styles.detailContent} contentContainerStyle={styles.detailContentPadding}>
-          <View style={styles.playerCard}>
-            <View style={styles.playerInfo}>
-              <Text style={styles.playerDate}>{selectedSermon.date}</Text>
-              <Text style={styles.playerDuration}>{selectedSermon.duration}</Text>
-            </View>
-            <TouchableOpacity style={styles.playButton}>
-              <IconPlay size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
-          </View>
-
-          <View style={styles.summaryCard}>
-            <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
-            <Text style={styles.summaryText}>{selectedSermon.summary || 'No summary available.'}</Text>
-          </View>
-
-          <View style={styles.transcriptionCard}>
-            <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
-            <Text style={styles.transcriptionText}>{selectedSermon.transcription || 'No transcription available.'}</Text>
-          </View>
-        </ScrollView>
-      </View>
-    );
-  };
-
-  const renderRecordView = () => (
-    <View style={styles.viewContainer}>
-      <View style={styles.recordHeader}>
-        <TouchableOpacity onPress={() => { stopRecording(); setView('LIST'); }} style={styles.backButton}>
-          <IconArrowLeft size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.recordTitle}>New Recording</Text>
-      </View>
-
-      <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
-        {/* Recording Area */}
-        <View style={styles.recordingCard}>
-          {recorderState.isRecording && (
-            <View style={styles.visualizerContainer}>
-              {levels.map((level, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.visualizerBar,
-                    {
-                      height: 10 + (Math.max(0, Math.min(1, (level + 60) / 60)) * 100),
-                      opacity: 0.3 + (Math.max(0, Math.min(1, (level + 60) / 60)) * 0.7)
-                    }
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-
-          <View style={styles.timerDisplay}>
-            <Text style={styles.timerText}>{formatTime(duration)}</Text>
-          </View>
-
-          {!recorderState.isRecording && isNewRecording && (
-            <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
-              <IconMic size={32} color="#FFFFFF" />
-            </TouchableOpacity>
-          )}
-
-          {recorderState.isRecording && (
-            <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
-              <View style={styles.stopIcon} />
-            </TouchableOpacity>
-          )}
-
-          {!recorderState.isRecording && !isNewRecording && recorder.uri && !transcription && (
-            <View style={styles.recordActions}>
-              <TouchableOpacity onPress={reset} style={styles.deleteButton}>
-                <IconTrash size={24} color="#999999" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleProcess}
-                disabled={isProcessing}
-                style={[styles.processButton, isProcessing && styles.processButtonDisabled]}
-              >
-                {isProcessing ? (
-                  <Text style={styles.processButtonText}>Processing...</Text>
-                ) : (
-                  <>
-                    <IconCheck size={20} color="#FFFFFF" />
-                    <Text style={styles.processButtonText}>Analyze Sermon</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {error && (
-          <View style={styles.errorCard}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* Results */}
-        {(transcription || summary) && (
-          <View style={styles.resultsContainer}>
-            <View style={styles.resultsHeader}>
-              <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
-              <TouchableOpacity
-                onPress={handleSaveAndFinish}
-                style={styles.doneButton}
-              >
-                <IconCheck size={14} color="#FFFFFF" />
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.titleEditCard}>
-              <Text style={styles.cardLabel}>SERMON TITLE</Text>
-              <TextInput
-                style={styles.titleInput}
-                value={sermonTitle}
-                onChangeText={setSermonTitle}
-                placeholder="Enter sermon title..."
-                placeholderTextColor="#666666"
-              />
-            </View>
-
-            <View style={styles.summaryCard}>
-              <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
-              <Text style={styles.summaryText}>{summary}</Text>
-            </View>
-
-            <View style={styles.transcriptionCard}>
-              <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
-              <Text style={styles.transcriptionText}>{transcription}</Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
-      {view === 'LIST' && renderListView()}
-      {view === 'DETAIL' && renderDetailView()}
-      {view === 'RECORD' && renderRecordView()}
+      {view === 'LIST' && (
+        <View style={{ flex: 1 }}>
+          <SermonList
+            sermons={sermons}
+            onSelectSermon={(sermon) => { setSelectedSermon(sermon); setView('DETAIL'); }}
+          />
+          <TouchableOpacity style={styles.fab} onPress={() => { reset(); setView('RECORD'); }}>
+            <IconMic size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {view === 'DETAIL' && selectedSermon && (
+        <SermonDetail
+          sermon={selectedSermon}
+          activeTab={activeTab}
+          onBack={() => setView('LIST')}
+          onDelete={handleDelete}
+          onTabChange={setActiveTab}
+        />
+      )}
+
+      {view === 'RECORD' && (
+        <SermonRecorder
+          isRecording={recorderState.isRecording}
+          duration={duration}
+          levels={levels}
+          isNewRecording={isNewRecording}
+          isProcessing={isProcessing}
+          transcription={transcription}
+          summary={summary}
+          error={error}
+          sermonTitle={sermonTitle}
+          activeTab={activeTab}
+          formatTime={formatTime}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          onReset={reset}
+          onProcess={handleProcess}
+          onSaveAndFinish={handleSaveAndFinish}
+          onTitleChange={setSermonTitle}
+          onTabChange={setActiveTab}
+          onBack={() => { stopRecording(); setView('LIST'); }}
+        />
+      )}
     </View>
   );
 };
@@ -478,84 +293,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0D0D0D',
-  },
-  viewContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 0,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  listTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  searchButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#222222',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sermonsList: {
-    flex: 1,
-  },
-  sermonsListContent: {
-    gap: 16,
-    paddingBottom: 120,
-  },
-  sermonCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  sermonCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 16,
-  },
-  sermonIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(232, 80, 58, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sermonInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  sermonTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sermonMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sermonDate: {
-    fontSize: 12,
-    color: '#999999',
-  },
-  sermonDot: {
-    fontSize: 12,
-    color: '#999999',
-  },
-  sermonDuration: {
-    fontSize: 12,
-    color: '#999999',
   },
   fab: {
     position: 'absolute',
@@ -572,300 +309,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: -8,
-  },
-  detailTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  detailActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  detailAction: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailContent: {
-    flex: 1,
-  },
-  detailContentPadding: {
-    paddingBottom: 120,
-  },
-  playerCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  playerInfo: {
-    gap: 8,
-  },
-  playerDate: {
-    fontSize: 14,
-    color: '#999999',
-  },
-  playerDuration: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E8503A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#E8503A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#222222',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  progressFill: {
-    width: '33%',
-    height: '100%',
-    backgroundColor: '#E8503A',
-    borderRadius: 4,
-  },
-  summaryCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 24,
-  },
-  transcriptionCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  cardLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFD35A',
-    letterSpacing: 1.5,
-    marginBottom: 12,
-  },
-  summaryText: {
-    fontSize: 14,
-    color: '#CCCCCC',
-    lineHeight: 22,
-  },
-  transcriptionText: {
-    fontSize: 14,
-    color: '#999999',
-    lineHeight: 22,
-  },
-  recordHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 12,
-  },
-  recordTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  recordContent: {
-    flex: 1,
-  },
-  recordContentPadding: {
-    paddingBottom: 120,
-  },
-  recordingCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 300,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 24,
-  },
-  timerDisplay: {
-    marginBottom: 48,
-  },
-  timerText: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontVariant: ['tabular-nums'],
-  },
-  recordButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E8503A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#E8503A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  stopButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  stopIcon: {
-    width: 32,
-    height: 32,
-    backgroundColor: '#E8503A',
-    borderRadius: 4,
-  },
-  visualizerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 120,
-    gap: 3,
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-  },
-  visualizerBar: {
-    width: 4,
-    backgroundColor: '#E8503A',
-    borderRadius: 2,
-  },
-  recordActions: {
-    flexDirection: 'row',
-    gap: 24,
-    alignItems: 'center',
-  },
-  deleteButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#222222',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  processButton: {
-    backgroundColor: '#E8503A',
-    borderRadius: 25,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#E8503A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  processButtonDisabled: {
-    opacity: 0.5,
-  },
-  processButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  errorCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#EF4444',
-    textAlign: 'center',
-  },
-  resultsContainer: {
-    gap: 24,
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  doneButton: {
-    backgroundColor: '#E8503A',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  doneButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  titleEditCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 16,
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    padding: 0,
-    marginTop: 4,
   },
 });
 
