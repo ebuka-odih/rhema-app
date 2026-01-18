@@ -28,77 +28,59 @@ class SermonController extends Controller
         
         // Save locally first
         $path = $file->store('sermons', 'public');
+        $filePath = storage_path('app/public/' . $path);
 
         try {
-            $apiKey = config('services.gemini.key');
-            if (!$apiKey) {
-                return response()->json(['error' => 'Gemini API key not configured on server'], 500);
+            $openaiKey = config('services.openai.key');
+            if (!$openaiKey) {
+                return response()->json(['error' => 'OpenAI API key not configured on server'], 500);
             }
 
-            // Encode file for Gemini
-            $audioData = base64_encode(file_get_contents($file->getPathname()));
-            $mimeType = $file->getMimeType();
+            // 1. Transcription using Whisper
+            $transcriptionResponse = Http::withToken($openaiKey)
+                ->attach('file', file_get_contents($filePath), 'sermon.m4a')
+                ->post('https://api.openai.com/v1/audio/transcriptions', [
+                    'model' => 'whisper-1',
+                ]);
 
-            // Normalize mime type for Gemini
-            if (str_contains($mimeType, 'm4a') || str_contains($mimeType, 'x-m4a')) {
-                $mimeType = 'audio/mp4'; // Gemini prefers audio/mp4 for m4a
+            if ($transcriptionResponse->failed()) {
+                Log::error('Whisper API Error: ' . $transcriptionResponse->body());
+                throw new \Exception('Failed to transcribe audio with Whisper');
             }
 
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite-preview-02-05:generateContent?key={$apiKey}", [
-                'contents' => [
-                    [
-                        'parts' => [
-                            [
-                                'inline_data' => [
-                                    'mime_type' => $mimeType,
-                                    'data' => $audioData
-                                ]
-                            ],
-                            ['text' => "You are an expert theological assistant. 
-                                        1. Transcribe the provided sermon audio accurately.
-                                        2. Provide a concise summary of the key theological takeaways in bullet points.
-                                        
-                                        Output format strictly JSON:
-                                        {
-                                          \"transcription\": \"Full text here...\",
-                                          \"summary\": \"• Point 1\\n• Point 2...\"
-                                        }"]
+            $transcription = $transcriptionResponse->json('text');
+
+            // 2. Summarization using GPT-4o-mini
+            $summaryResponse = Http::withToken($openaiKey)
+                ->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => 'gpt-4o-mini',
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => 'You are an expert theological assistant. Summarize the provided sermon transcription into concise bullet points highlighting the key theological takeaways.'
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => "Sermon Transcription:\n\n" . $transcription
                         ]
-                    ]
-                ]
-            ]);
+                    ],
+                    'temperature' => 0.7
+                ]);
 
-            if ($response->failed()) {
-                $errorBody = $response->json();
-                Log::error('Gemini API Error: ', $errorBody ?? []);
-                return response()->json([
-                    'error' => 'Gemini AI processing failed',
-                    'details' => $errorBody['error']['message'] ?? 'Unknown Gemini Error'
-                ], 500);
-            }
-
-            $resultText = $response->json('candidates.0.content.parts.0.text');
-            
-            // Extract JSON even if AI wraps it in code blocks ```json ... ```
-            if (preg_match('/\{.*\}/s', $resultText, $matches)) {
-                $data = json_decode($matches[0], true);
+            if ($summaryResponse->failed()) {
+                Log::error('OpenAI Chat Error: ' . $summaryResponse->body());
+                $summary = "Summary generation failed.";
             } else {
-                $data = json_decode($resultText, true);
+                $summary = $summaryResponse->json('choices.0.message.content');
             }
 
-            if (!$data) {
-                Log::error('AI Parsing failed. Raw text: ' . $resultText);
-                return response()->json(['error' => 'Failed to parse AI response', 'raw' => $resultText], 500);
-            }
-
+            // 3. Save to Database
             $sermon = Sermon::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'audio_path' => $path,
-                'transcription' => $data['transcription'] ?? 'Transcription failed',
-                'summary' => $data['summary'] ?? 'Summary failed',
+                'transcription' => $transcription,
+                'summary' => $summary,
             ]);
 
             return response()->json($sermon);
