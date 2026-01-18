@@ -46,7 +46,7 @@ class SermonController extends Controller
 
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post("https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -67,9 +67,6 @@ class SermonController extends Controller
                                         }"]
                         ]
                     ]
-                ],
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json',
                 ]
             ]);
 
@@ -83,9 +80,16 @@ class SermonController extends Controller
             }
 
             $resultText = $response->json('candidates.0.content.parts.0.text');
-            $data = json_decode($resultText, true);
+            
+            // Extract JSON even if AI wraps it in code blocks ```json ... ```
+            if (preg_match('/\{.*\}/s', $resultText, $matches)) {
+                $data = json_decode($matches[0], true);
+            } else {
+                $data = json_decode($resultText, true);
+            }
 
             if (!$data) {
+                Log::error('AI Parsing failed. Raw text: ' . $resultText);
                 return response()->json(['error' => 'Failed to parse AI response', 'raw' => $resultText], 500);
             }
 
