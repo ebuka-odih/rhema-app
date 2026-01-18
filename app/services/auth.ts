@@ -122,7 +122,7 @@ export const authService = {
             const response = await fetch(`${API_BASE_URL}user`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json' // Explicitly ask for JSON
+                    'Accept': 'application/json'
                 },
             });
             const text = await response.text();
@@ -143,6 +143,51 @@ export const authService = {
             console.error('Fetch user error:', e);
         }
         return null;
+    },
+
+    async updateUser(data: any) {
+        const token = await this.getToken();
+        try {
+            const response = await fetch(`${API_BASE_URL}user`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (response.ok) {
+                await this.setUser(result.user);
+                return { data: result.user, error: null };
+            }
+            throw new Error(result.message || 'Update failed');
+        } catch (error: any) {
+            return { data: null, error };
+        }
+    },
+
+    async updatePassword(data: any) {
+        const token = await this.getToken();
+        try {
+            const response = await fetch(`${API_BASE_URL}user/password`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (response.ok) {
+                return { data: result, error: null };
+            }
+            throw new Error(result.message || 'Password update failed');
+        } catch (error: any) {
+            return { data: null, error };
+        }
     }
 };
 

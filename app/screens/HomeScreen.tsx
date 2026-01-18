@@ -7,8 +7,10 @@ import { DailyVerse } from '../components/home/DailyVerse';
 import { QuickActions } from '../components/home/QuickActions';
 import { DevotionalList } from '../components/home/DevotionalList';
 import { RecentNotes } from '../components/home/RecentNotes';
-
-import { useSession } from '../services/auth';
+import { RecentPrayers } from '../components/home/RecentPrayers';
+import { useSession, authService } from '../services/auth';
+import { API_BASE_URL } from '../services/apiConfig';
+import { Tab, JournalEntry, Prayer } from '../types';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -30,6 +32,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     version: "NKJV"
   });
 
+  const [notes, setNotes] = React.useState<JournalEntry[]>([]);
+  const [prayers, setPrayers] = React.useState<Prayer[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
   React.useEffect(() => {
     import('../services/bibleService').then(({ bibleService }) => {
       bibleService.getDailyVerse().then(verse => {
@@ -44,10 +50,43 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     });
   }, []);
 
-  const recentNotes = [
-    { id: '1', title: 'Sunday Service: Grace', preview: 'Grace is not just unmerited favor, it is the empowering presence of God...', date: 'Oct 24' },
-    { id: '2', title: 'Morning Devotional', preview: 'Focusing on gratitude today. List of 5 things...', date: 'Oct 23' },
-  ];
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = await authService.getToken();
+
+        // Fetch Notes (Reflections)
+        const notesRes = await fetch(`${API_BASE_URL}reflections`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        });
+        if (notesRes.ok) {
+          const data = await notesRes.json();
+          setNotes(data.slice(0, 3).map((item: any) => ({
+            id: item.id.toString(),
+            title: item.title,
+            content: item.content,
+            date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            category: item.category || 'Note'
+          })));
+        }
+
+        // Fetch Prayers
+        const prayersRes = await fetch(`${API_BASE_URL}prayers`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        });
+        if (prayersRes.ok) {
+          const data = await prayersRes.json();
+          setPrayers(data.slice(0, 3));
+        }
+      } catch (err) {
+        console.error('Home fetchData error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const suggestedDevotionals = [
     { id: '1', title: 'Walking in Faith', plan: '5 Day Plan' },
@@ -78,9 +117,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
       <QuickActions onNavigate={onNavigate} />
 
+      <RecentPrayers
+        prayers={prayers}
+        onViewAll={() => onNavigate(Tab.JOURNEY)}
+      />
+
       <DevotionalList devotionals={suggestedDevotionals} />
 
-      <RecentNotes notes={recentNotes} />
+      <RecentNotes
+        notes={notes.map(n => ({
+          id: n.id,
+          title: n.title,
+          preview: n.content,
+          date: n.date
+        }))}
+        onViewAll={() => onNavigate(Tab.JOURNEY)}
+      />
     </ScrollView>
   );
 };

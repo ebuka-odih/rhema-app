@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { IconFire, IconChevronRight, IconPen, IconMic, IconActivity, IconBell, IconClock } from '../Icons';
-import { JournalEntry, ActivityItem } from '../../types';
+import { IconFire, IconChevronRight, IconPen, IconMic, IconActivity, IconBell, IconClock, IconCheck } from '../Icons';
+import { JournalEntry, Prayer } from '../../types';
 
 const { width } = Dimensions.get('window');
 
@@ -9,32 +9,26 @@ interface JourneyHomeProps {
   onNavigateGlobal?: (tab: string) => void;
   onViewAllReflections: () => void;
   onViewGrowth: () => void;
-  onViewTimeline: () => void;
   onNewReflection: () => void;
   onLogPrayer: () => void;
   onViewFasting: () => void;
   onSelectEntry: (entry: JournalEntry) => void;
+  onTogglePrayerStatus: (id: string, currentStatus: string) => void;
   journalEntries: JournalEntry[];
-  activityHistory: ActivityItem[];
-  prayerRequest?: string;
-  prayerTime?: string;
-  reminderEnabled?: boolean;
+  activePrayers: Prayer[];
 }
 
 export const JourneyHome: React.FC<JourneyHomeProps> = ({
   onNavigateGlobal,
   onViewAllReflections,
   onViewGrowth,
-  onViewTimeline,
   onNewReflection,
   onLogPrayer,
   onViewFasting,
   onSelectEntry,
+  onTogglePrayerStatus,
   journalEntries,
-  activityHistory,
-  prayerRequest,
-  prayerTime,
-  reminderEnabled
+  activePrayers
 }) => (
   <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     {/* Header */}
@@ -115,23 +109,44 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
       </TouchableOpacity>
     </View>
 
-    {/* Active Prayer Reminder Section (Todo Style) */}
-    {reminderEnabled && (
-      <View style={styles.activePrayerTodo}>
-        <View style={styles.todoCircle}>
-          <View style={styles.todoDot} />
+    {/* Active Prayers (Todo Style) */}
+    {activePrayers.length > 0 && (
+      <View style={styles.prayerListContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Prayer List</Text>
+          <TouchableOpacity onPress={onLogPrayer}>
+            <Text style={styles.viewAll}>+ Add New</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.todoContent}>
-          <Text style={styles.todoLabel}>Active Prayer Task</Text>
-          <Text style={styles.todoText} numberOfLines={1}>{prayerRequest || 'Time for daily prayer'}</Text>
-          <View style={styles.todoMeta}>
-            <IconClock size={10} color="#999999" />
-            <Text style={styles.todoTime}>{prayerTime || '08:00 AM'}</Text>
+        {activePrayers.map((prayer) => (
+          <View key={prayer.id} style={styles.activePrayerTodo}>
+            <TouchableOpacity
+              style={[styles.todoCircle, prayer.status === 'answered' && styles.todoCircleChecked]}
+              onPress={() => onTogglePrayerStatus(prayer.id, prayer.status)}
+            >
+              {prayer.status === 'answered' ? (
+                <IconCheck size={12} color="#FFFFFF" />
+              ) : (
+                <View style={styles.todoDot} />
+              )}
+            </TouchableOpacity>
+            <View style={styles.todoContent}>
+              <Text style={[styles.todoText, prayer.status === 'answered' && styles.todoTextDone]} numberOfLines={2}>
+                {prayer.request}
+              </Text>
+              <View style={styles.todoMeta}>
+                <IconClock size={10} color="#999999" />
+                <Text style={styles.todoTime}>{prayer.time}</Text>
+                {prayer.reminder_enabled && (
+                  <View style={styles.reminderDot} />
+                )}
+              </View>
+            </View>
+            <TouchableOpacity style={styles.todoActionButton} onPress={onLogPrayer}>
+              <IconChevronRight size={18} color="#444444" />
+            </TouchableOpacity>
           </View>
-        </View>
-        <TouchableOpacity style={styles.todoActionButton} onPress={onLogPrayer}>
-          <IconChevronRight size={18} color="#444444" />
-        </TouchableOpacity>
+        ))}
       </View>
     )}
 
@@ -167,31 +182,6 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
           ))}
         </View>
       )}
-    </View>
-
-    {/* Recent Activity */}
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Activity Timeline</Text>
-        <TouchableOpacity onPress={onViewTimeline}>
-          <Text style={styles.viewAll}>Details</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.timelineCard}>
-        {activityHistory.slice(0, 3).map((item, idx) => (
-          <View key={idx} style={[styles.timelineItem, idx === 2 && styles.lastTimelineItem]}>
-            <View style={styles.timelineLeft}>
-              <View style={styles.timelineDot} />
-              {idx !== 2 && <View style={styles.timelineLine} />}
-            </View>
-            <View style={styles.timelineContent}>
-              <Text style={styles.timelineTitle}>{item.title}</Text>
-              <Text style={styles.timelineTime}>{item.timestamp}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
     </View>
   </ScrollView>
 );
@@ -412,6 +402,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  prayerListContainer: {
+    marginBottom: 32,
+  },
+  todoCircleChecked: {
+    backgroundColor: '#E8503A',
+  },
+  todoTextDone: {
+    textDecorationLine: 'line-through',
+    color: '#666666',
+  },
+  reminderDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E8503A',
+    marginLeft: 4,
+  },
   section: {
     marginBottom: 32,
   },
@@ -487,52 +494,5 @@ const styles = StyleSheet.create({
     color: '#999999',
     lineHeight: 22,
   },
-  timelineCard: {
-    backgroundColor: '#161616',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    gap: 16,
-    paddingBottom: 24,
-  },
-  lastTimelineItem: {
-    paddingBottom: 0,
-  },
-  timelineLeft: {
-    alignItems: 'center',
-    width: 12,
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E8503A',
-    zIndex: 1,
-  },
-  timelineLine: {
-    position: 'absolute',
-    top: 12,
-    bottom: -12,
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  timelineContent: {
-    flex: 1,
-    paddingTop: -2,
-  },
-  timelineTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  timelineTime: {
-    fontSize: 12,
-    color: '#666666',
-    fontWeight: '500',
-  },
+
 });

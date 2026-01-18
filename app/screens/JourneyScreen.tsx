@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { JournalEntry, ActivityItem, Prayer } from '../types';
+import { JournalEntry, Prayer } from '../types';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 
@@ -9,12 +9,11 @@ import { JourneyHome } from '../components/journey/JourneyHome';
 import { JournalList } from '../components/journey/JournalList';
 import { JournalEditor } from '../components/journey/JournalEditor';
 import { GrowthTracker } from '../components/journey/GrowthTracker';
-import { ActivityTimeline } from '../components/journey/ActivityTimeline';
 import { PrayerLog } from '../components/journey/PrayerLog';
 import { Fasting } from '../components/journey/Fasting';
 import { notificationService } from '../services/notificationService';
 
-type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'timeline' | 'prayer_log' | 'fasting';
+type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'prayer_log' | 'fasting';
 
 interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
@@ -100,12 +99,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
     }
   };
 
-  const activityHistory: ActivityItem[] = [
-    { id: '1', type: 'devotion', title: 'Completed "Morning Grace"', timestamp: '2h ago' },
-    { id: '2', type: 'journal', title: 'Wrote a Reflection', timestamp: '5h ago' },
-    { id: '3', type: 'sermon', title: 'Recorded Sermon', timestamp: 'Yesterday' },
-    { id: '4', type: 'fasting', title: 'Completed Day 3 Fast', timestamp: 'Yesterday' },
-  ];
+
 
   const handleSelectEntry = (entry: JournalEntry) => {
     setSelectedEntry(entry);
@@ -237,13 +231,34 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
         }
         setPrayerRequest('');
         fetchPrayers(); // Refresh the list
-        setCurrentView('home');
       } else {
         Alert.alert('Error', result.message || result.error || 'Failed to save prayer.');
       }
     } catch (error) {
       console.error('Failed to save prayer:', error);
       Alert.alert('Error', 'Network error occurred. Please check your connection.');
+    }
+  };
+
+  const handleTogglePrayerStatus = async (id: string, currentStatus: string) => {
+    try {
+      const token = await authService.getToken();
+      const newStatus = currentStatus === 'praying' ? 'answered' : 'praying';
+      const response = await fetch(`${API_BASE_URL}prayers/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        fetchPrayers();
+      }
+    } catch (err) {
+      console.error('Toggle prayer status error:', err);
     }
   };
 
@@ -254,16 +269,13 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
           onNavigateGlobal={onNavigateGlobal}
           onViewAllReflections={() => setCurrentView('journal_list')}
           onViewGrowth={() => setCurrentView('growth')}
-          onViewTimeline={() => setCurrentView('timeline')}
           onNewReflection={handleNewReflection}
           onLogPrayer={() => setCurrentView('prayer_log')}
           onViewFasting={() => setCurrentView('fasting')}
           onSelectEntry={handleSelectEntry}
+          onTogglePrayerStatus={handleTogglePrayerStatus}
           journalEntries={reflections}
-          activityHistory={activityHistory}
-          prayerRequest={prayerRequest || (prayers.find(p => p.status === 'praying')?.request)}
-          prayerTime={prayerTime || (prayers.find(p => p.status === 'praying')?.time)}
-          reminderEnabled={reminderEnabled || prayers.some(p => p.status === 'praying' && p.reminder_enabled)}
+          activePrayers={prayers}
         />
       )}
 
@@ -293,12 +305,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
         <GrowthTracker onBack={() => setCurrentView('home')} />
       )}
 
-      {currentView === 'timeline' && (
-        <ActivityTimeline
-          onBack={() => setCurrentView('home')}
-          activities={activityHistory}
-        />
-      )}
+
 
       {currentView === 'prayer_log' && (
         <PrayerLog

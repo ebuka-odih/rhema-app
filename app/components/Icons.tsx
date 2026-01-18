@@ -158,3 +158,35 @@ export const IconClose = ({ size = 24, color = '#FFFFFF', ...props }: IconProps)
 export const IconBell = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
   <Ionicons name="notifications-outline" size={size} color={color} />
 );
+
+export const IconUser = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="person-outline" size={size} color={color} />
+);
+
+export const IconSettings = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="settings-outline" size={size} color={color} />
+);
+
+export const IconLogout = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="log-out-outline" size={size} color={color} />
+);
+
+export const IconShield = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+);
+
+export const IconStar = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="star-outline" size={size} color={color} />
+);
+
+export const IconLock = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="lock-closed-outline" size={size} color={color} />
+);
+
+export const IconHelp = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="help-circle-outline" size={size} color={color} />
+);
+
+export const IconMessage = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="mail-outline" size={size} color={color} />
+);

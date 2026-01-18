@@ -166,7 +166,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                 onPress={() => onSave(status)}
                                 disabled={!prayerRequest}
                             >
-                                <Text style={styles.saveLogButtonText}>Set Prayer Reminder</Text>
+                                <Text style={styles.saveLogButtonText}>Add Prayer Request</Text>
                             </TouchableOpacity>
                         </ScrollView>
                     </View>
