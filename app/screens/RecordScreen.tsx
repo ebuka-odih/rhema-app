@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform, TextInput } from 'react-native';
 import { useAudioRecorder, useAudioRecorderState, AudioModule, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
@@ -33,6 +33,8 @@ const RecordScreen: React.FC = () => {
   const [summary, setSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isNewRecording, setIsNewRecording] = useState(true);
+  const [sermonTitle, setSermonTitle] = useState('');
+  const [currentSermonId, setCurrentSermonId] = useState<string | null>(null);
 
   // Mock Data
   const [sermons, setSermons] = useState<Recording[]>([]);
@@ -159,6 +161,8 @@ const RecordScreen: React.FC = () => {
 
       setTranscription(result.transcription);
       setSummary(result.summary);
+      setCurrentSermonId(result.id.toString());
+      setSermonTitle(result.title);
 
       // Auto-save to list
       const newRecording: Recording = {
@@ -178,12 +182,48 @@ const RecordScreen: React.FC = () => {
     }
   };
 
+  const handleSaveAndFinish = async () => {
+    if (!currentSermonId) {
+      setView('LIST');
+      return;
+    }
+
+    try {
+      const token = await authService.getToken();
+      await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: sermonTitle,
+        }),
+      });
+
+      // Update local state in sermons list
+      setSermons(prev => prev.map(s =>
+        s.id === currentSermonId ? { ...s, title: sermonTitle } : s
+      ));
+
+      setView('LIST');
+      reset();
+    } catch (err) {
+      console.error('Failed to update title:', err);
+      setView('LIST');
+      reset();
+    }
+  };
+
   const reset = () => {
     setDuration(0);
     setTranscription(null);
     setSummary(null);
     setError(null);
     setIsNewRecording(true);
+    setSermonTitle('');
+    setCurrentSermonId(null);
   };
 
   const handleDelete = () => {
@@ -363,14 +403,25 @@ const RecordScreen: React.FC = () => {
         {(transcription || summary) && (
           <View style={styles.resultsContainer}>
             <View style={styles.resultsHeader}>
-              <Text style={styles.resultsTitle}>AI Sermon Summary</Text>
+              <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
               <TouchableOpacity
-                onPress={() => setView('LIST')}
+                onPress={handleSaveAndFinish}
                 style={styles.doneButton}
               >
                 <IconCheck size={14} color="#FFFFFF" />
                 <Text style={styles.doneButtonText}>Done</Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.titleEditCard}>
+              <Text style={styles.cardLabel}>SERMON TITLE</Text>
+              <TextInput
+                style={styles.titleInput}
+                value={sermonTitle}
+                onChangeText={setSermonTitle}
+                placeholder="Enter sermon title..."
+                placeholderTextColor="#666666"
+              />
             </View>
 
             <View style={styles.summaryCard}>
@@ -406,7 +457,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
-    paddingBottom: 100,
+    paddingBottom: 0,
   },
   listHeader: {
     flexDirection: 'row',
@@ -432,7 +483,7 @@ const styles = StyleSheet.create({
   },
   sermonsListContent: {
     gap: 16,
-    paddingBottom: 80,
+    paddingBottom: 120,
   },
   sermonCard: {
     backgroundColor: '#1A1A1A',
@@ -529,7 +580,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailContentPadding: {
-    paddingBottom: 24,
+    paddingBottom: 120,
   },
   playerCard: {
     backgroundColor: '#1A1A1A',
@@ -627,7 +678,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recordContentPadding: {
-    paddingBottom: 24,
+    paddingBottom: 120,
   },
   recordingCard: {
     backgroundColor: '#1A1A1A',
@@ -758,6 +809,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  titleEditCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 16,
+  },
+  titleInput: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    padding: 0,
+    marginTop: 4,
   },
 });
 

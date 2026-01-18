@@ -90,4 +90,21 @@ class SermonController extends Controller
             return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
         }
     }
+
+    public function update(Request $request, Sermon $sermon)
+    {
+        if ($sermon->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'title' => 'string|max:255',
+            'transcription' => 'string',
+            'summary' => 'string',
+        ]);
+
+        $sermon->update($request->only(['title', 'transcription', 'summary']));
+
+        return response()->json($sermon);
+    }
 }
