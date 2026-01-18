@@ -10,8 +10,12 @@ import { BookChapterSelector } from '../components/bible/BookChapterSelector';
 import { ReaderView } from '../components/bible/ReaderView';
 import { FloatingControls } from '../components/bible/FloatingControls';
 import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
+import { useSession } from '../services/auth';
 
 const BibleScreen: React.FC = () => {
+  const { data: session } = useSession();
+  const isPro = session?.user?.is_pro || false;
+
   const [fontSize, setFontSize] = useState(18);
   const [chapter, setChapter] = useState(1);
   const [book, setBook] = useState("Genesis");
@@ -189,6 +193,7 @@ const BibleScreen: React.FC = () => {
       <FloatingControls
         onPrev={handlePrevChapter}
         onNext={handleNextChapter}
+        isPro={isPro}
       />
     </View>
   );

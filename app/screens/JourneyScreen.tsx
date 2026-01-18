@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { JournalEntry, ActivityItem } from '../types';
+import { JournalEntry, ActivityItem, Prayer } from '../types';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 
@@ -11,9 +11,10 @@ import { JournalEditor } from '../components/journey/JournalEditor';
 import { GrowthTracker } from '../components/journey/GrowthTracker';
 import { ActivityTimeline } from '../components/journey/ActivityTimeline';
 import { PrayerLog } from '../components/journey/PrayerLog';
+import { Fasting } from '../components/journey/Fasting';
 import { notificationService } from '../services/notificationService';
 
-type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'timeline' | 'prayer_log';
+type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'timeline' | 'prayer_log' | 'fasting';
 
 interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
@@ -29,12 +30,22 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   const [reminderEnabled, setReminderEnabled] = useState(false);
 
   const [reflections, setReflections] = useState<JournalEntry[]>([]);
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch Data
   useEffect(() => {
-    fetchReflections();
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    await Promise.all([
+      fetchReflections(),
+      fetchPrayers()
+    ]);
+    setIsLoading(false);
+  };
 
   const fetchReflections = async () => {
     try {
@@ -58,8 +69,34 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
       }
     } catch (err) {
       console.error('Fetch reflections error:', err);
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const fetchPrayers = async () => {
+    try {
+      const token = await authService.getToken();
+      const response = await fetch(`${API_BASE_URL}prayers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPrayers(data);
+
+        // Update specific prayer state if one is active but local state is empty
+        if (data.length > 0 && !prayerRequest) {
+          const active = data.find((p: Prayer) => p.status === 'praying');
+          if (active) {
+            setPrayerRequest(active.request);
+            setPrayerTime(active.time);
+            setReminderEnabled(active.reminder_enabled);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fetch prayers error:', err);
     }
   };
 
@@ -182,22 +219,31 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
         }),
       });
 
+      const result = await response.json().catch(() => ({}));
+
       if (response.ok) {
         if (reminderEnabled) {
-          const [time, period] = prayerTime.split(' ');
-          let [hour, minute] = time.split(':').map(Number);
-          if (period === 'PM' && hour < 12) hour += 12;
-          if (period === 'AM' && hour === 12) hour = 0;
-          await notificationService.schedulePrayerReminder(hour, minute, prayerRequest);
+          try {
+            const [time, period] = prayerTime.split(' ');
+            let [hour, minute] = time.split(':').map(Number);
+            if (period === 'PM' && hour < 12) hour += 12;
+            if (period === 'AM' && hour === 12) hour = 0;
+
+            // Set notification with vibration and sound
+            await notificationService.schedulePrayerReminder(hour, minute, prayerRequest);
+          } catch (notifErr) {
+            console.error('Failed to schedule notification:', notifErr);
+          }
         }
         setPrayerRequest('');
+        fetchPrayers(); // Refresh the list
         setCurrentView('home');
       } else {
-        Alert.alert('Error', 'Failed to save prayer.');
+        Alert.alert('Error', result.message || result.error || 'Failed to save prayer.');
       }
     } catch (error) {
       console.error('Failed to save prayer:', error);
-      Alert.alert('Error', 'Network error occurred.');
+      Alert.alert('Error', 'Network error occurred. Please check your connection.');
     }
   };
 
@@ -211,12 +257,13 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
           onViewTimeline={() => setCurrentView('timeline')}
           onNewReflection={handleNewReflection}
           onLogPrayer={() => setCurrentView('prayer_log')}
+          onViewFasting={() => setCurrentView('fasting')}
           onSelectEntry={handleSelectEntry}
           journalEntries={reflections}
           activityHistory={activityHistory}
-          prayerRequest={prayerRequest}
-          prayerTime={prayerTime}
-          reminderEnabled={reminderEnabled}
+          prayerRequest={prayerRequest || (prayers.find(p => p.status === 'praying')?.request)}
+          prayerTime={prayerTime || (prayers.find(p => p.status === 'praying')?.time)}
+          reminderEnabled={reminderEnabled || prayers.some(p => p.status === 'praying' && p.reminder_enabled)}
         />
       )}
 
@@ -264,6 +311,10 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
           reminderEnabled={reminderEnabled}
           setReminderEnabled={setReminderEnabled}
         />
+      )}
+
+      {currentView === 'fasting' && (
+        <Fasting onBack={() => setCurrentView('home')} />
       )}
     </View>
   );

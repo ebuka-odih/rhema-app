@@ -6,12 +6,14 @@ interface FloatingControlsProps {
     onPrev: () => void;
     onNext: () => void;
     onPlay?: () => void;
+    isPro?: boolean;
 }
 
 export const FloatingControls: React.FC<FloatingControlsProps> = ({
     onPrev,
     onNext,
-    onPlay
+    onPlay,
+    isPro = false
 }) => (
     <View style={styles.floatingControls}>
         <TouchableOpacity
@@ -21,9 +23,11 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
             <IconChevronLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.playBtn} onPress={onPlay}>
-            <IconPlay size={28} color="#FFFFFF" />
-        </TouchableOpacity>
+        {isPro && (
+            <TouchableOpacity style={styles.playBtn} onPress={onPlay}>
+                <IconPlay size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+        )}
 
         <TouchableOpacity
             onPress={onNext}

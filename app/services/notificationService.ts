@@ -18,11 +18,12 @@ export const notificationService = {
         let token;
 
         if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
+            await Notifications.setNotificationChannelAsync('prayer-reminders', {
+                name: 'Prayer Reminders',
                 importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
+                vibrationPattern: [0, 500, 200, 500],
+                lightColor: '#E8503A',
+                sound: 'default', // Using default system sound
             });
         }
 
@@ -68,18 +69,18 @@ export const notificationService = {
     },
 
     async schedulePrayerReminder(hour: number, minute: number, request: string) {
-        // We might want to keep other scheduled notifications, so don't cancelAll
-        // but for prayer we can use a specific identifier if needed.
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: "Time to Pray 🙏",
                 body: request || "It's time for your scheduled prayer session.",
                 sound: true,
+                vibrate: [0, 500, 200, 500] as any, // Explicitly define vibration pattern
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
                 hour,
                 minute,
+                channelId: 'prayer-reminders',
             },
         });
     },

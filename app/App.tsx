@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconHome, IconMic, IconBible, IconMore, IconJourney
 } from './components/Icons';
@@ -18,11 +18,12 @@ import { useSession } from './services/auth';
 
 type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   // Navigation State
   const [appState, setAppState] = useState<AppState>('WELCOME');
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
   const { data: session, isPending } = useSession();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!isPending && session) {
@@ -54,7 +55,10 @@ const App: React.FC = () => {
         </View>
 
         {/* Bottom Navigation */}
-        <View style={styles.bottomNav}>
+        <View style={[
+          styles.bottomNav,
+          { paddingBottom: Math.max(insets.bottom, 16) }
+        ]}>
           <NavButton
             active={activeTab === Tab.HOME}
             icon={<IconHome size={24} color={activeTab === Tab.HOME ? '#E8503A' : '#666666'} />}
@@ -100,45 +104,46 @@ const App: React.FC = () => {
             onPress={() => setActiveTab(Tab.MORE)}
           />
         </View>
-
-        {/* iOS Home Indicator */}
-        {Platform.OS === 'ios' && (
-          <View style={styles.homeIndicator} />
-        )}
       </View>
     );
   };
 
   return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.appContainer}>
+        {isPending ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#E8503A" />
+          </View>
+        ) : (
+          <>
+            {appState === 'WELCOME' && (
+              <WelcomeScreen
+                onGetStarted={() => setAppState('AUTH_SIGNUP')}
+                onLogin={() => setAppState('AUTH_LOGIN')}
+              />
+            )}
+
+            {(appState === 'AUTH_LOGIN' || appState === 'AUTH_SIGNUP') && (
+              <AuthScreen
+                initialMode={appState === 'AUTH_LOGIN' ? 'login' : 'signup'}
+                onAuthenticated={handleAuthenticated}
+                onBack={() => setAppState('WELCOME')}
+              />
+            )}
+
+            {appState === 'MAIN' && renderMainApp()}
+          </>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.appContainer}>
-          {isPending ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#E8503A" />
-            </View>
-          ) : (
-            <>
-              {appState === 'WELCOME' && (
-                <WelcomeScreen
-                  onGetStarted={() => setAppState('AUTH_SIGNUP')}
-                  onLogin={() => setAppState('AUTH_LOGIN')}
-                />
-              )}
-
-              {(appState === 'AUTH_LOGIN' || appState === 'AUTH_SIGNUP') && (
-                <AuthScreen
-                  initialMode={appState === 'AUTH_LOGIN' ? 'login' : 'signup'}
-                  onAuthenticated={handleAuthenticated}
-                  onBack={() => setAppState('WELCOME')}
-                />
-              )}
-
-              {appState === 'MAIN' && renderMainApp()}
-            </>
-          )}
-        </View>
-      </SafeAreaView>
+      <AppContent />
     </SafeAreaProvider>
   );
 };
@@ -185,7 +190,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   bottomNav: {
-    height: 84,
     backgroundColor: 'rgba(17, 17, 17, 0.95)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
@@ -193,7 +197,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 16,
   },
   navButton: {
     width: 56,
@@ -253,17 +256,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 2,
     letterSpacing: 0.5,
-  },
-  homeIndicator: {
-    position: 'absolute',
-    bottom: 6,
-    left: '50%',
-    marginLeft: -64,
-    width: 128,
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 3,
-    zIndex: 60,
   },
 });
 

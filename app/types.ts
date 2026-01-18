@@ -34,7 +34,16 @@ export interface JournalEntry {
   title: string;
   content: string;
   date: string;
-  category: 'Devotion' | 'Prayer' | 'Fasting' | 'Sermon Reflection' | 'Life Lesson';
+  category: string;
+}
+
+export interface Prayer {
+  id: string;
+  request: string;
+  time: string;
+  reminder_enabled: boolean;
+  status: 'praying' | 'answered';
+  created_at?: string;
 }
 
 export interface ActivityItem {
