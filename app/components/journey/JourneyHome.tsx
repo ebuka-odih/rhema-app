@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { IconFire, IconChevronRight, IconPen, IconMic, IconActivity } from '../Icons';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { IconFire, IconChevronRight, IconPen, IconMic, IconActivity, IconBell, IconClock } from '../Icons';
 import { JournalEntry, ActivityItem } from '../../types';
+
+const { width } = Dimensions.get('window');
 
 interface JourneyHomeProps {
   onNavigateGlobal?: (tab: string) => void;
@@ -13,6 +15,9 @@ interface JourneyHomeProps {
   onSelectEntry: (entry: JournalEntry) => void;
   journalEntries: JournalEntry[];
   activityHistory: ActivityItem[];
+  prayerRequest?: string;
+  prayerTime?: string;
+  reminderEnabled?: boolean;
 }
 
 export const JourneyHome: React.FC<JourneyHomeProps> = ({
@@ -24,79 +29,109 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   onLogPrayer,
   onSelectEntry,
   journalEntries,
-  activityHistory
+  activityHistory,
+  prayerRequest,
+  prayerTime,
+  reminderEnabled
 }) => (
-  <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     {/* Header */}
     <View style={styles.header}>
-      <Text style={styles.headerTitle}>Your Journey</Text>
-      <Text style={styles.headerSubtitle}>Reflect. Grow. Stay Consistent.</Text>
+      <View>
+        <Text style={styles.welcomeText}>Grace & Peace,</Text>
+        <Text style={styles.headerTitle}>Your Journey</Text>
+      </View>
+      <TouchableOpacity style={styles.profileButton} onPress={onViewGrowth}>
+        <View style={styles.profileCircle}>
+          <Text style={styles.profileInitial}>J</Text>
+        </View>
+      </TouchableOpacity>
     </View>
 
     {/* Streak Card */}
     <TouchableOpacity
       style={styles.streakCard}
       onPress={onViewGrowth}
+      activeOpacity={0.9}
     >
-      <View style={styles.streakHeader}>
-        <View style={styles.streakHeaderLeft}>
-          <IconFire size={20} color="#E8503A" />
-          <Text style={styles.streakTitle}>Daily Streak</Text>
+      <View style={styles.streakGradient}>
+        <View style={styles.streakHeader}>
+          <View style={styles.streakHeaderLeft}>
+            <View style={styles.fireIconContainer}>
+              <IconFire size={22} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.streakTitle}>Faith Consistency</Text>
+              <Text style={styles.streakSubtitle}>You're doing great!</Text>
+            </View>
+          </View>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakBadgeText}>Lv. 4</Text>
+          </View>
         </View>
-        <IconChevronRight size={16} color="#999999" />
-      </View>
-      <View style={styles.streakGrid}>
-        <View style={styles.streakBox}>
-          <Text style={styles.streakValue}>12</Text>
-          <Text style={styles.streakLabel}>DAYS</Text>
-        </View>
-        <View style={styles.streakBox}>
-          <Text style={styles.streakValue}>3</Text>
-          <Text style={styles.streakLabel}>FASTS</Text>
-        </View>
-        <View style={styles.streakBox}>
-          <Text style={styles.streakValue}>45m</Text>
-          <Text style={styles.streakLabel}>PRAYED</Text>
-        </View>
-        <View style={styles.streakBox}>
-          <Text style={styles.streakValue}>2</Text>
-          <Text style={styles.streakLabel}>SERMONS</Text>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statLabel}>Day Streak</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>24</Text>
+            <Text style={styles.statLabel}>Reflections</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>5</Text>
+            <Text style={styles.statLabel}>Fasts</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
 
     {/* Quick Actions */}
     <View style={styles.quickActions}>
-      <TouchableOpacity
-        style={styles.actionButton}
-        onPress={onNewReflection}
-      >
-        <View style={[styles.actionIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-          <IconPen size={20} color="#3B82F6" />
+      <TouchableOpacity style={styles.actionCard} onPress={onNewReflection}>
+        <View style={[styles.actionIconContainer, { backgroundColor: '#3B82F6' }]}>
+          <IconPen size={20} color="#FFFFFF" />
         </View>
-        <Text style={styles.actionLabel}>Reflect</Text>
+        <Text style={styles.actionText}>Reflect</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionButton}
-        onPress={() => onNavigateGlobal && onNavigateGlobal('Record')}
-      >
-        <View style={[styles.actionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-          <IconMic size={20} color="#EF4444" />
+      <TouchableOpacity style={styles.actionCard} onPress={() => onNavigateGlobal && onNavigateGlobal('Record')}>
+        <View style={[styles.actionIconContainer, { backgroundColor: '#EF4444' }]}>
+          <IconMic size={20} color="#FFFFFF" />
         </View>
-        <Text style={styles.actionLabel}>Record</Text>
+        <Text style={styles.actionText}>Record</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionButton}
-        onPress={onLogPrayer}
-      >
-        <View style={[styles.actionIcon, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
-          <IconActivity size={20} color="#EAB308" />
+      <TouchableOpacity style={styles.actionCard} onPress={onLogPrayer}>
+        <View style={[styles.actionIconContainer, { backgroundColor: '#F59E0B' }]}>
+          <IconActivity size={20} color="#FFFFFF" />
         </View>
-        <Text style={styles.actionLabel}>Log Prayer</Text>
+        <Text style={styles.actionText}>Pray</Text>
       </TouchableOpacity>
     </View>
+
+    {/* Active Prayer Reminder Section (Todo Style) */}
+    {reminderEnabled && (
+      <View style={styles.activePrayerTodo}>
+        <View style={styles.todoCircle}>
+          <View style={styles.todoDot} />
+        </View>
+        <View style={styles.todoContent}>
+          <Text style={styles.todoLabel}>Active Prayer Task</Text>
+          <Text style={styles.todoText} numberOfLines={1}>{prayerRequest || 'Time for daily prayer'}</Text>
+          <View style={styles.todoMeta}>
+            <IconClock size={10} color="#999999" />
+            <Text style={styles.todoTime}>{prayerTime || '08:00 AM'}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.todoActionButton} onPress={onLogPrayer}>
+          <IconChevronRight size={18} color="#444444" />
+        </TouchableOpacity>
+      </View>
+    )}
 
     {/* Recent Reflections */}
     <View style={styles.section}>
@@ -108,18 +143,16 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
       </View>
 
       {journalEntries.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>You haven't written any reflections yet.</Text>
-          <TouchableOpacity onPress={onNewReflection}>
-            <Text style={styles.emptyLink}>Write your first reflection</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.emptyState} onPress={onNewReflection}>
+          <IconPen size={32} color="rgba(255, 255, 255, 0.1)" />
+          <Text style={styles.emptyText}>Start your first reflection</Text>
+        </TouchableOpacity>
       ) : (
         <View style={styles.entriesList}>
-          {journalEntries.slice(0, 3).map(entry => (
+          {journalEntries.slice(0, 2).map((entry, idx) => (
             <TouchableOpacity
               key={entry.id}
-              style={styles.entryCard}
+              style={[styles.entryCard, { borderLeftColor: idx % 2 === 0 ? '#FFD35A' : '#3B82F6' }]}
               onPress={() => onSelectEntry(entry)}
             >
               <View style={styles.entryHeader}>
@@ -137,16 +170,19 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
     {/* Recent Activity */}
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <Text style={styles.sectionTitle}>Activity Timeline</Text>
         <TouchableOpacity onPress={onViewTimeline}>
-          <Text style={styles.viewAll}>View Timeline</Text>
+          <Text style={styles.viewAll}>Details</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.timeline}>
-        {activityHistory.slice(0, 5).map((item, idx) => (
-          <View key={idx} style={styles.timelineItem}>
-            <View style={styles.timelineDot} />
+      <View style={styles.timelineCard}>
+        {activityHistory.slice(0, 3).map((item, idx) => (
+          <View key={idx} style={[styles.timelineItem, idx === 2 && styles.lastTimelineItem]}>
+            <View style={styles.timelineLeft}>
+              <View style={styles.timelineDot} />
+              {idx !== 2 && <View style={styles.timelineLine} />}
+            </View>
             <View style={styles.timelineContent}>
               <Text style={styles.timelineTitle}>{item.title}</Text>
               <Text style={styles.timelineTime}>{item.timestamp}</Text>
@@ -164,100 +200,215 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0D0D',
   },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 120,
   },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
+  welcomeText: {
     fontSize: 14,
     color: '#999999',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+  profileButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    padding: 2,
+    backgroundColor: 'rgba(232, 80, 58, 0.2)',
+  },
+  profileCircle: {
+    flex: 1,
+    borderRadius: 22,
+    backgroundColor: '#E8503A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInitial: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   streakCard: {
     backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 24,
+    marginBottom: 32,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  streakGradient: {
+    padding: 24,
   },
   streakHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    marginBottom: 24,
   },
   streakHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
+  },
+  fireIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#E8503A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#E8503A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
   streakTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#FFFFFF',
+    marginBottom: 2,
   },
-  streakGrid: {
-    flexDirection: 'row',
-    gap: 8,
+  streakSubtitle: {
+    fontSize: 13,
+    color: '#999999',
+    fontWeight: '500',
   },
-  streakBox: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  streakBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
-    padding: 8,
+  },
+  streakBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  streakValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 4,
   },
-  streakLabel: {
-    fontSize: 10,
-    color: '#999999',
+  statLabel: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '700',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 32,
   },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+  actionCard: {
+    width: (width - 64) / 3,
+    backgroundColor: '#161616',
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  actionIcon: {
+  actionIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  actionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  actionText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  activePrayerTodo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161616',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 32,
+    gap: 16,
+  },
+  todoCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E8503A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  todoDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E8503A',
+  },
+  todoContent: {
+    flex: 1,
+  },
+  todoLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#E8503A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  todoText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  todoMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  todoTime: {
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  todoActionButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   section: {
     marginBottom: 32,
@@ -269,102 +420,117 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   viewAll: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#E8503A',
   },
   emptyState: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    borderWidth: 2,
+    backgroundColor: '#161616',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 24,
-    alignItems: 'center',
+    gap: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#999999',
-    marginBottom: 12,
-  },
-  emptyLink: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#E8503A',
+    color: '#666666',
+    fontWeight: '600',
   },
   entriesList: {
     gap: 12,
   },
   entryCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#161616',
+    borderRadius: 20,
+    padding: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#FFD35A',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   entryCategory: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFD35A',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#999999',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   entryDate: {
     fontSize: 12,
-    color: '#999999',
+    color: '#444444',
+    fontWeight: '600',
   },
   entryTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   entryPreview: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#999999',
-    lineHeight: 18,
+    lineHeight: 22,
   },
-  timeline: {
-    paddingLeft: 16,
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 24,
+  timelineCard: {
+    backgroundColor: '#161616',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   timelineItem: {
-    position: 'relative',
+    flexDirection: 'row',
+    gap: 16,
+    paddingBottom: 24,
+  },
+  lastTimelineItem: {
+    paddingBottom: 0,
+  },
+  timelineLeft: {
+    alignItems: 'center',
+    width: 12,
   },
   timelineDot: {
-    position: 'absolute',
-    left: -21,
-    top: 4,
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#E8503A',
-    borderWidth: 2,
-    borderColor: '#0D0D0D',
+    zIndex: 1,
+  },
+  timelineLine: {
+    position: 'absolute',
+    top: 12,
+    bottom: -12,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   timelineContent: {
-    gap: 4,
+    flex: 1,
+    paddingTop: -2,
   },
   timelineTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
+    marginBottom: 4,
   },
   timelineTime: {
     fontSize: 12,
-    color: '#999999',
+    color: '#666666',
+    fontWeight: '500',
   },
 });

@@ -65,5 +65,26 @@ export const notificationService = {
             },
             trigger: null,
         });
+    },
+
+    async schedulePrayerReminder(hour: number, minute: number, request: string) {
+        // We might want to keep other scheduled notifications, so don't cancelAll
+        // but for prayer we can use a specific identifier if needed.
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "Time to Pray 🙏",
+                body: request || "It's time for your scheduled prayer session.",
+                sound: true,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour,
+                minute,
+            },
+        });
+    },
+
+    async cancelAllReminders() {
+        await Notifications.cancelAllScheduledNotificationsAsync();
     }
 };

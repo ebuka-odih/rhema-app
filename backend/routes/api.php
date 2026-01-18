@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\BibleController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SermonController;
+use App\Http\Controllers\Api\ReflectionController;
+use App\Http\Controllers\Api\PrayerController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -24,6 +26,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sermons', [SermonController::class, 'store']);
     Route::patch('/sermons/{sermon}', [SermonController::class, 'update']);
     Route::delete('/sermons/{sermon}', [SermonController::class, 'destroy']);
+
+    Route::get('/reflections', [ReflectionController::class, 'index']);
+    Route::post('/reflections', [ReflectionController::class, 'store']);
+    Route::patch('/reflections/{reflection}', [ReflectionController::class, 'update']);
+    Route::delete('/reflections/{reflection}', [ReflectionController::class, 'destroy']);
+
+    Route::get('/prayers', [PrayerController::class, 'index']);
+    Route::post('/prayers', [PrayerController::class, 'store']);
+    Route::patch('/prayers/{prayer}', [PrayerController::class, 'update']);
+    Route::delete('/prayers/{prayer}', [PrayerController::class, 'destroy']);
 });
 
 // Bible Routes (Public for now)

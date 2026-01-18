@@ -77,8 +77,12 @@ const App: React.FC = () => {
                 styles.centralButton,
                 activeTab === Tab.RECORD ? styles.centralButtonActive : styles.centralButtonInactive
               ]}
+              activeOpacity={0.8}
             >
-              <IconMic size={28} color={activeTab === Tab.RECORD ? '#FFFFFF' : '#999999'} />
+              <IconMic size={24} color={activeTab === Tab.RECORD ? '#FFFFFF' : '#999999'} />
+              {activeTab === Tab.RECORD && (
+                <Text style={styles.centralButtonLabel}>RECORD</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -236,11 +240,19 @@ const styles = StyleSheet.create({
   },
   centralButtonActive: {
     backgroundColor: '#E8503A',
+    paddingHorizontal: 12,
   },
   centralButtonInactive: {
     backgroundColor: '#1A1A1A',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  centralButtonLabel: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   homeIndicator: {
     position: 'absolute',

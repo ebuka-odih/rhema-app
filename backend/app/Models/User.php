@@ -59,4 +59,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Sermon::class);
     }
+
+    public function reflections()
+    {
+        return $this->hasMany(Reflection::class);
+    }
+
+    public function prayers()
+    {
+        return $this->hasMany(Prayer::class);
+    }
 }

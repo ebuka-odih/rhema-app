@@ -154,3 +154,7 @@ export const IconCalendar = ({ size = 24, color = '#FFFFFF', ...props }: IconPro
 export const IconClose = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
   <Ionicons name="close" size={size} color={color} />
 );
+
+export const IconBell = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="notifications-outline" size={size} color={color} />
+);

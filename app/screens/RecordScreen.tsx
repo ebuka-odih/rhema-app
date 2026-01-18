@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-nativ
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { authService, useSession } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
-import { IconMic } from '../components/Icons';
+import { IconMic, IconPlus } from '../components/Icons';
 
 // Types
 import { ViewState, Sermon } from '../types/sermon';
@@ -42,13 +42,17 @@ const RecordScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'SUMMARY' | 'TRANSCRIPTION'>('SUMMARY');
 
   const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [isLoadingSermons, setIsLoadingSermons] = useState(false);
 
   // Fetch sermons from backend
   useEffect(() => {
-    fetchSermons();
-  }, []);
+    if (view === 'LIST') {
+      fetchSermons();
+    }
+  }, [view]);
 
   const fetchSermons = async () => {
+    setIsLoadingSermons(true);
     try {
       const token = await authService.getToken();
       const response = await fetch(`${API_BASE_URL}sermons`, {
@@ -64,7 +68,7 @@ const RecordScreen: React.FC = () => {
           id: s.id.toString(),
           title: s.title,
           date: new Date(s.created_at).toLocaleDateString(),
-          duration: '0:00', // Backend doesn't store duration yet
+          duration: s.duration_seconds ? formatTime(s.duration_seconds) : '0:00',
           transcription: s.transcription,
           summary: s.summary
         }));
@@ -72,6 +76,8 @@ const RecordScreen: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch sermons:', err);
+    } finally {
+      setIsLoadingSermons(false);
     }
   };
 
@@ -289,6 +295,7 @@ const RecordScreen: React.FC = () => {
         <View style={{ flex: 1 }}>
           <SermonList
             sermons={sermons}
+            isLoading={isLoadingSermons}
             onSelectSermon={(sermon) => { setSelectedSermon(sermon); setView('DETAIL'); }}
           />
           <TouchableOpacity style={styles.fab} onPress={() => {
@@ -300,7 +307,7 @@ const RecordScreen: React.FC = () => {
             reset();
             setView('RECORD');
           }}>
-            <IconMic size={24} color="#FFFFFF" />
+            <IconPlus size={32} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
