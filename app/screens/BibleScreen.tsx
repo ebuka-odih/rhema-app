@@ -174,8 +174,22 @@ const BibleScreen: React.FC = () => {
   const handleHighlight = async (color: string) => {
     if (selectedVerses.length === 0) return;
 
+    // Optimistic Update
+    const newHighlightsToAdd = selectedVerses.map(v => ({
+      version_id: version.id,
+      book,
+      chapter,
+      verse: v,
+      color
+    }));
+
+    setHighlights(prev => {
+      const filtered = prev.filter(h => !selectedVerses.includes(h.verse));
+      return [...filtered, ...newHighlightsToAdd];
+    });
+    setSelectedVerses([]);
+
     try {
-      // Save highlights for all selected verses
       await Promise.all(selectedVerses.map(v =>
         bibleService.saveHighlight({
           version_id: version.id,
@@ -186,26 +200,32 @@ const BibleScreen: React.FC = () => {
         })
       ));
 
-      // Refresh highlights
-      const newHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
-      setHighlights(newHighlights);
-      setSelectedVerses([]);
+      // Secondary fetch to ensure consistency with backend (IDs etc)
+      const freshHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+      setHighlights(freshHighlights);
     } catch (err) {
       console.error('Highlight error:', err);
+      // Revert on error if necessary, or just rely on next fetch
     }
   };
 
   const handleRemoveHighlight = async () => {
     if (selectedVerses.length === 0) return;
 
+    const versesToRemove = [...selectedVerses];
+
+    // Optimistic Update
+    setHighlights(prev => prev.filter(h => !versesToRemove.includes(h.verse)));
+    setSelectedVerses([]);
+
     try {
-      await Promise.all(selectedVerses.map(v =>
+      await Promise.all(versesToRemove.map(v =>
         bibleService.removeHighlight(version.id, book, chapter, v)
       ));
 
-      const newHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
-      setHighlights(newHighlights);
-      setSelectedVerses([]);
+      // Final sync
+      const freshHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+      setHighlights(freshHighlights);
     } catch (err) {
       console.error('Remove highlight error:', err);
     }

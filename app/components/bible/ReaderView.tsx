@@ -52,13 +52,13 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                             onPress={() => onVersePress(num)}
                             style={[
                                 styles.verseContainer,
-                                highlight && { backgroundColor: `${highlight.color}40` }, // 40 is hex for 25% opacity
-                                isSelected && styles.selectedVerse
+                                highlight && { backgroundColor: `${highlight.color}60` }, // 60 is ~37% opacity for better visibility
+                                isSelected && styles.selectedVerse,
+                                // If both highlight and isSelected, mix them or show highlight with selection border
+                                isSelected && highlight && { backgroundColor: `${highlight.color}80` }
                             ]}
                         >
-                            <Text
-                                style={[styles.bibleParagraph, { fontSize: fontSize }]}
-                            >
+                            <Text style={[styles.bibleParagraph, { fontSize: fontSize }]}>
                                 <Text style={styles.verseNumber}>{numStr} </Text>
                                 {content}
                             </Text>
@@ -102,7 +102,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         marginHorizontal: -12,
         borderRadius: 8,
-        marginBottom: 16, // Add margin between verses
     },
     selectedVerse: {
         backgroundColor: 'rgba(232, 80, 58, 0.15)',

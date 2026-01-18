@@ -16,6 +16,11 @@ class BibleHighlight extends Model
         'note',
     ];
 
+    protected $casts = [
+        'chapter' => 'integer',
+        'verse' => 'integer',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
