@@ -15,6 +15,8 @@ interface SermonRecorderProps {
     error: string | null;
     sermonTitle: string;
     activeTab: 'SUMMARY' | 'TRANSCRIPTION';
+    maxDuration: number;
+    isPro: boolean;
     formatTime: (secs: number) => string;
     onStartRecording: () => void;
     onStopRecording: () => void;
@@ -37,6 +39,8 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
     error,
     sermonTitle,
     activeTab,
+    maxDuration,
+    isPro,
     formatTime,
     onStartRecording,
     onStopRecording,
@@ -46,108 +50,132 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
     onTitleChange,
     onTabChange,
     onBack,
-}) => (
-    <View style={styles.viewContainer}>
-        <View style={styles.recordHeader}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                <IconArrowLeft size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.recordTitle}>New Recording</Text>
-        </View>
+}) => {
+    const isOverLimit = duration >= maxDuration;
 
-        <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
-            {/* Recording Area */}
-            <View style={styles.recordingCard}>
-                {isRecording && <AudioVisualizer levels={levels} />}
+    // Auto-stop if over limit
+    React.useEffect(() => {
+        if (isRecording && duration >= maxDuration) {
+            onStopRecording();
+        }
+    }, [duration, isRecording, maxDuration, onStopRecording]);
 
-                <View style={styles.timerDisplay}>
-                    <Text style={styles.timerText}>{formatTime(duration)}</Text>
-                </View>
-
-                {!isRecording && isNewRecording && (
-                    <TouchableOpacity style={styles.recordButton} onPress={onStartRecording}>
-                        <IconMic size={32} color="#FFFFFF" />
-                    </TouchableOpacity>
-                )}
-
-                {isRecording && (
-                    <TouchableOpacity style={styles.stopButton} onPress={onStopRecording}>
-                        <View style={styles.stopIcon} />
-                    </TouchableOpacity>
-                )}
-
-                {!isRecording && !isNewRecording && !transcription && (
-                    <View style={styles.recordActions}>
-                        <TouchableOpacity onPress={onReset} style={styles.deleteButton}>
-                            <IconTrash size={24} color="#999999" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={onProcess}
-                            disabled={isProcessing}
-                            style={[styles.processButton, isProcessing && styles.processButtonDisabled]}
-                        >
-                            {isProcessing ? (
-                                <Text style={styles.processButtonText}>Processing...</Text>
-                            ) : (
-                                <>
-                                    <IconCheck size={20} color="#FFFFFF" />
-                                    <Text style={styles.processButtonText}>Analyze Sermon</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                )}
+    return (
+        <View style={styles.viewContainer}>
+            <View style={styles.recordHeader}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <IconArrowLeft size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+                <Text style={styles.recordTitle}>New Recording</Text>
             </View>
 
-            {error && (
-                <View style={styles.errorCard}>
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
-            )}
+            <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
+                {/* Recording Area */}
+                <View style={styles.recordingCard}>
+                    {isRecording && <AudioVisualizer levels={levels} />}
 
-            {/* Results */}
-            {(transcription || summary) && (
-                <View style={styles.resultsContainer}>
-                    <View style={styles.resultsHeader}>
-                        <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
-                        <TouchableOpacity
-                            onPress={onSaveAndFinish}
-                            style={styles.saveButton}
-                        >
-                            <IconCheck size={14} color="#FFFFFF" />
-                            <Text style={styles.saveButtonText}>Save</Text>
+                    <View style={styles.timerDisplay}>
+                        <Text style={[styles.timerText, isOverLimit && { color: '#E8503A' }]}>
+                            {formatTime(duration)}
+                        </Text>
+                        {isOverLimit && (
+                            <Text style={styles.limitWarning}>
+                                Max {maxDuration / 60}m reached for {isPro ? 'Pro' : 'Free'}
+                            </Text>
+                        )}
+                    </View>
+
+                    {!isRecording && isNewRecording && (
+                        <TouchableOpacity style={styles.recordButton} onPress={onStartRecording}>
+                            <IconMic size={32} color="#FFFFFF" />
                         </TouchableOpacity>
-                    </View>
+                    )}
 
-                    <View style={styles.titleEditCard}>
-                        <Text style={styles.cardLabel}>SERMON TITLE</Text>
-                        <TextInput
-                            style={styles.titleInput}
-                            value={sermonTitle}
-                            onChangeText={onTitleChange}
-                            placeholder="Enter sermon title..."
-                            placeholderTextColor="#666666"
-                        />
-                    </View>
+                    {isRecording && (
+                        <TouchableOpacity style={styles.stopButton} onPress={onStopRecording}>
+                            <View style={styles.stopIcon} />
+                        </TouchableOpacity>
+                    )}
 
-                    <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
-
-                    {activeTab === 'SUMMARY' ? (
-                        <View style={styles.summaryCard}>
-                            <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
-                            <Text style={styles.summaryText}>{summary}</Text>
-                        </View>
-                    ) : (
-                        <View style={styles.transcriptionCard}>
-                            <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
-                            <Text style={styles.transcriptionText}>{transcription}</Text>
+                    {!isRecording && !isNewRecording && !transcription && (
+                        <View style={styles.recordActions}>
+                            <TouchableOpacity onPress={onReset} style={styles.deleteButton}>
+                                <IconTrash size={24} color="#999999" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={onProcess}
+                                disabled={isProcessing}
+                                style={[styles.processButton, isProcessing && styles.processButtonDisabled]}
+                            >
+                                {isProcessing ? (
+                                    <Text style={styles.processButtonText}>Processing...</Text>
+                                ) : (
+                                    <>
+                                        <IconCheck size={20} color="#FFFFFF" />
+                                        <Text style={styles.processButtonText}>Analyze Sermon</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
-            )}
-        </ScrollView>
-    </View>
-);
+
+                {!isPro && isNewRecording && (
+                    <TouchableOpacity style={styles.upgradeCard}>
+                        <Text style={styles.upgradeText}>Free Tier: 10m limit. Upgrade for 50m recordings.</Text>
+                    </TouchableOpacity>
+                )}
+
+                {error && (
+                    <View style={styles.errorCard}>
+                        <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                )}
+
+                {/* Results */}
+                {(transcription || summary) && (
+                    <View style={styles.resultsContainer}>
+                        <View style={styles.resultsHeader}>
+                            <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
+                            <TouchableOpacity
+                                onPress={onSaveAndFinish}
+                                style={styles.saveButton}
+                            >
+                                <IconCheck size={14} color="#FFFFFF" />
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.titleEditCard}>
+                            <Text style={styles.cardLabel}>SERMON TITLE</Text>
+                            <TextInput
+                                style={styles.titleInput}
+                                value={sermonTitle}
+                                onChangeText={onTitleChange}
+                                placeholder="Enter sermon title..."
+                                placeholderTextColor="#666666"
+                            />
+                        </View>
+
+                        <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
+
+                        {activeTab === 'SUMMARY' ? (
+                            <View style={styles.summaryCard}>
+                                <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
+                                <Text style={styles.summaryText}>{summary}</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.transcriptionCard}>
+                                <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
+                                <Text style={styles.transcriptionText}>{transcription}</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+            </ScrollView>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     viewContainer: {
@@ -197,6 +225,7 @@ const styles = StyleSheet.create({
     },
     timerDisplay: {
         marginBottom: 32,
+        alignItems: 'center',
         zIndex: 10,
     },
     timerText: {
@@ -204,6 +233,12 @@ const styles = StyleSheet.create({
         fontWeight: '300',
         color: '#FFFFFF',
         fontVariant: ['tabular-nums'],
+    },
+    limitWarning: {
+        color: '#E8503A',
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 8,
     },
     recordButton: {
         width: 80,
@@ -268,6 +303,20 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    upgradeCard: {
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 80, 58, 0.2)',
+    },
+    upgradeText: {
+        color: '#E8503A',
+        fontSize: 14,
+        textAlign: 'center',
+        fontWeight: '600',
     },
     errorCard: {
         backgroundColor: 'rgba(232, 80, 58, 0.1)',

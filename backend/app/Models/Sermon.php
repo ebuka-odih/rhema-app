@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Sermon extends Model
 {
-    protected $fillable = ['user_id', 'title', 'audio_path', 'transcription', 'summary'];
+    protected $fillable = ['user_id', 'title', 'duration_seconds', 'audio_path', 'transcription', 'summary'];
 
     public function user()
     {

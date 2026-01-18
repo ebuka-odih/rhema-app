@@ -21,9 +21,33 @@ class SermonController extends Controller
         $request->validate([
             'audio' => 'required|file',
             'title' => 'required|string|max:255',
+            'duration_seconds' => 'required|integer',
         ]);
 
         $user = $request->user();
+        
+        // Limits
+        $maxDailyRecordings = $user->is_pro ? 5 : 3;
+        $maxDurationSeconds = $user->is_pro ? 3000 : 600; // 50 mins vs 10 mins
+
+        // 1. Check daily count
+        $todayCount = $user->sermons()->whereDate('created_at', now()->today())->count();
+        if ($todayCount >= $maxDailyRecordings) {
+            return response()->json([
+                'error' => 'Daily limit reached',
+                'details' => "You have reached your limit of {$maxDailyRecordings} recordings per day."
+            ], 403);
+        }
+
+        // 2. Check duration
+        if ($request->duration_seconds > $maxDurationSeconds) {
+            $limitMins = $maxDurationSeconds / 60;
+            return response()->json([
+                'error' => 'Recording too long',
+                'details' => "Your recording exceeds the {$limitMins} minute limit for your account."
+            ], 403);
+        }
+
         $file = $request->file('audio');
         
         // Save locally first
@@ -79,6 +103,7 @@ class SermonController extends Controller
             $sermon = Sermon::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
+                'duration_seconds' => $request->duration_seconds,
                 'audio_path' => $path,
                 'transcription' => $transcription,
                 'summary' => $summary,

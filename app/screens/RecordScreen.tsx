@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
-import { authService } from '../services/auth';
+import { authService, useSession } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 import { IconMic } from '../components/Icons';
 
@@ -14,8 +14,15 @@ import { SermonDetail } from '../components/sermons/SermonDetail';
 import { SermonRecorder } from '../components/sermons/SermonRecorder';
 
 const RecordScreen: React.FC = () => {
+  const { data: session } = useSession();
+  const isPro = session?.user?.is_pro || false;
+
   const [view, setView] = useState<ViewState>('LIST');
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
+
+  // Limits
+  const MAX_DURATION = isPro ? 3000 : 600; // 50 mins vs 10 mins
+  const DAILY_LIMIT = isPro ? 5 : 3;
 
   // Recorder State
   const recorder = useAudioRecorder({
@@ -141,6 +148,7 @@ const RecordScreen: React.FC = () => {
         name: 'sermon.m4a',
       } as any);
       formData.append('title', `Sermon ${new Date().toLocaleDateString()}`);
+      formData.append('duration_seconds', duration.toString());
 
       const response = await fetch(`${API_BASE_URL}sermons`, {
         method: 'POST',
@@ -154,6 +162,9 @@ const RecordScreen: React.FC = () => {
 
       const result = await response.json();
       if (!response.ok) {
+        if (response.status === 403) {
+          Alert.alert(result.error || 'Limit Reached', result.details);
+        }
         throw new Error(result.details || result.error || 'Failed to process sermon');
       }
 
@@ -280,7 +291,15 @@ const RecordScreen: React.FC = () => {
             sermons={sermons}
             onSelectSermon={(sermon) => { setSelectedSermon(sermon); setView('DETAIL'); }}
           />
-          <TouchableOpacity style={styles.fab} onPress={() => { reset(); setView('RECORD'); }}>
+          <TouchableOpacity style={styles.fab} onPress={() => {
+            const todayCount = sermons.filter(s => s.date === new Date().toLocaleDateString()).length;
+            if (todayCount >= DAILY_LIMIT) {
+              Alert.alert('Daily Limit Reached', `You have reached your daily limit of ${DAILY_LIMIT} recordings. Upgrade to Pro for more!`);
+              return;
+            }
+            reset();
+            setView('RECORD');
+          }}>
             <IconMic size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -308,6 +327,8 @@ const RecordScreen: React.FC = () => {
           error={error}
           sermonTitle={sermonTitle}
           activeTab={activeTab}
+          maxDuration={MAX_DURATION}
+          isPro={isPro}
           formatTime={formatTime}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
