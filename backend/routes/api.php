@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sermons', [SermonController::class, 'index']);
     Route::post('/sermons', [SermonController::class, 'store']);
     Route::patch('/sermons/{sermon}', [SermonController::class, 'update']);
+    Route::delete('/sermons/{sermon}', [SermonController::class, 'destroy']);
 });
 
 // Bible Routes (Public for now)

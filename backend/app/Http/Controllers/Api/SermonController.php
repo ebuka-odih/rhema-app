@@ -108,4 +108,20 @@ class SermonController extends Controller
 
         return response()->json($sermon->fresh());
     }
+
+    public function destroy(Request $request, Sermon $sermon)
+    {
+        if ($sermon->user_id != $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Delete audio file if it exists
+        if ($sermon->audio_path) {
+            Storage::disk('public')->delete($sermon->audio_path);
+        }
+
+        $sermon->delete();
+
+        return response()->json(['message' => 'Sermon deleted successfully']);
+    }
 }

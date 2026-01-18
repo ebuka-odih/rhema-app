@@ -239,16 +239,34 @@ const RecordScreen: React.FC = () => {
 
   const handleDelete = () => {
     if (!selectedSermon) return;
-    Alert.alert('Delete Sermon', 'Are you sure?', [
+    Alert.alert('Delete Sermon', 'Are you sure you want to permanently delete this sermon?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          setSermons(sermons.filter(s => s.id !== selectedSermon.id));
-          setSelectedSermon(null);
-          setView('LIST');
-          // Should also call backend delete here eventually
+        onPress: async () => {
+          try {
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}sermons/${selectedSermon.id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+            });
+
+            if (response.ok) {
+              setSermons(prev => prev.filter(s => s.id !== selectedSermon.id));
+              setSelectedSermon(null);
+              setView('LIST');
+              Alert.alert('Deleted', 'Sermon has been removed.');
+            } else {
+              Alert.alert('Error', 'Failed to delete sermon from server.');
+            }
+          } catch (err) {
+            console.error('Delete error:', err);
+            Alert.alert('Error', 'A network error occurred.');
+          }
         }
       }
     ]);
