@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { bibleService, BibleVersion, BibleChapter, BibleBook } from '../services/bibleService';
 
 // Extracted Components
@@ -29,27 +30,66 @@ const BibleScreen: React.FC = () => {
   const [currentBookData, setCurrentBookData] = useState<BibleBook | null>(null);
   const [bibleData, setBibleData] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Fetch Versions and Books on Mount
+  // Persistence Key
+  const BIBLE_STATE_KEY = 'last_read_bible_state';
+
+  // Fetch Versions and Persistence on Mount
   useEffect(() => {
     const init = async () => {
-      const availableVersions = await bibleService.getVersions();
-      setVersions(availableVersions);
-      if (availableVersions.length > 0) {
-        const defaultVersion = availableVersions[0];
-        setVersion(defaultVersion);
-        const availableBooks = await bibleService.getBooks(defaultVersion.id);
-        setBooks(availableBooks);
-        if (availableBooks.length > 0) {
-          setCurrentBookData(availableBooks[0]);
+      try {
+        const availableVersions = await bibleService.getVersions();
+        setVersions(availableVersions);
+
+        // Load persisted state
+        const savedState = await SecureStore.getItemAsync(BIBLE_STATE_KEY);
+        let initialVersion = availableVersions[0];
+        let initialBook = "Genesis";
+        let initialChapter = 1;
+
+        if (savedState) {
+          const parsed = JSON.parse(savedState);
+          const versionExists = availableVersions.find(v => v.id === parsed.versionId);
+          if (versionExists) {
+            initialVersion = versionExists;
+            initialBook = parsed.book;
+            initialChapter = parsed.chapter;
+          }
         }
+
+        setVersion(initialVersion);
+        setBook(initialBook);
+        setChapter(initialChapter);
+
+        const availableBooks = await bibleService.getBooks(initialVersion.id);
+        setBooks(availableBooks);
+        const bookData = availableBooks.find(b => b.name === initialBook) || availableBooks[0];
+        setCurrentBookData(bookData);
+      } catch (e) {
+        console.error('Bible init error:', e);
+      } finally {
+        setIsInitializing(false);
       }
     };
     init();
   }, []);
 
+  // Save state whenever it changes
+  useEffect(() => {
+    if (!isInitializing) {
+      SecureStore.setItemAsync(BIBLE_STATE_KEY, JSON.stringify({
+        versionId: version.id,
+        book,
+        chapter
+      }));
+    }
+  }, [version, book, chapter, isInitializing]);
+
   // Fetch Chapter Content
   useEffect(() => {
+    if (isInitializing) return;
+
     const fetchChapter = async () => {
       setLoading(true);
       const data = await bibleService.getChapter(version.id, book, chapter);
@@ -57,7 +97,7 @@ const BibleScreen: React.FC = () => {
       setLoading(false);
     };
     fetchChapter();
-  }, [version, book, chapter]);
+  }, [version, book, chapter, isInitializing]);
 
   const handleNextChapter = () => {
     if (currentBookData && chapter < currentBookData.chapters) {

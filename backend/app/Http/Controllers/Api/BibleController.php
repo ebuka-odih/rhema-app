@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use App\Models\DailyVerse;
+use Carbon\Carbon;
 
 class BibleController extends Controller
 {
@@ -13,6 +15,59 @@ class BibleController extends Controller
     public function __construct()
     {
         $this->data_path = database_path('data');
+    }
+
+    public function dailyVerse()
+    {
+        $today = Carbon::today()->toDateString();
+        
+        // Check if we already have a verse for today
+        $verse = DailyVerse::where('date', $today)->first();
+        
+        if ($verse) {
+            return response()->json($verse);
+        }
+
+        // Generate a random verse for today if none exists
+        // 1. Get a random version
+        $versions = ['NEW KING JAMES VERSION', 'NEW LIVING TRANSLATION'];
+        $version = $versions[array_rand($versions)];
+        $path = $this->data_path . '/' . $version . '.json';
+
+        if (!File::exists($path)) {
+            // Fallback if file doesn't exist
+            return response()->json([
+                'reference' => 'Psalms 23:1',
+                'text' => 'The Lord is my shepherd; I shall not want.',
+                'version' => 'NKJV',
+                'date' => $today
+            ]);
+        }
+
+        $content = json_decode(File::get($path), true);
+        
+        // 2. Pick a random book
+        $books = array_keys($content);
+        $book = $books[array_rand($books)];
+        
+        // 3. Pick a random chapter
+        $chapters = array_keys($content[$book]);
+        $chapter = $chapters[array_rand($chapters)];
+        
+        // 4. Pick a random verse
+        $verses = array_keys($content[$book][$chapter]);
+        $verseNum = $verses[array_rand($verses)];
+        $verseText = $content[$book][$chapter][$verseNum];
+
+        // 5. Store it so it stays the same for 24h
+        $verse = DailyVerse::create([
+            'date' => $today,
+            'reference' => "{$book} {$chapter}:{$verseNum}",
+            'text' => $verseText,
+            'version' => $this->getShortName($version)
+        ]);
+
+        return response()->json($verse);
     }
 
     public function versions()

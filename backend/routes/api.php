@@ -24,3 +24,4 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/bible/versions', [BibleController::class, 'versions']);
 Route::get('/bible/books', [BibleController::class, 'books']);
 Route::get('/bible/chapter', [BibleController::class, 'chapter']);
+Route::get('/bible/daily-verse', [BibleController::class, 'dailyVerse']);

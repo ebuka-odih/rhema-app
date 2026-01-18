@@ -17,14 +17,6 @@ export const VersionSelector: React.FC<VersionSelectorProps> = ({
     onSelect,
     onClose
 }) => {
-    // Dummy data for testing as requested
-    const testVersions: BibleVersion[] = [
-        ...versions,
-        { id: 'KJV', name: 'King James Version', short_name: 'KJV' },
-        { id: 'ESV', name: 'English Standard Version', short_name: 'ESV' },
-        { id: 'NIV', name: 'New International Version', short_name: 'NIV' },
-    ];
-
     return (
         <Modal
             visible={visible}
@@ -46,7 +38,7 @@ export const VersionSelector: React.FC<VersionSelectorProps> = ({
                     </View>
 
                     <ScrollView contentContainerStyle={styles.listContent}>
-                        {testVersions.map((v) => (
+                        {versions.map((v) => (
                             <TouchableOpacity
                                 key={v.id}
                                 style={[
@@ -83,7 +75,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#1A1A1A',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        height: '60%', // Adjusted height for versions
+        height: '60%',
         paddingTop: 20,
     },
     selectorHeader: {

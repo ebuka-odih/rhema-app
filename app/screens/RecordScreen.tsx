@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
 import {
   IconMic, IconPlay, IconCheck, IconTrash, IconArrowLeft,
   IconSearch, IconCalendar, IconChevronRight, IconDownload
@@ -23,8 +23,7 @@ const RecordScreen: React.FC = () => {
   const [selectedSermon, setSelectedSermon] = useState<Recording | null>(null);
 
   // Recorder State
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [duration, setDuration] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
@@ -62,13 +61,13 @@ const RecordScreen: React.FC = () => {
   // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRecording) {
+    if (recorder.isRecording) {
       interval = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRecording]);
+  }, [recorder.isRecording]);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -81,25 +80,14 @@ const RecordScreen: React.FC = () => {
       setError(null);
 
       // Request permissions
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
         setError('Microphone permission denied');
         return;
       }
 
-      // Configure audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
       // Start recording
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
+      recorder.record();
       setDuration(0);
     } catch (err) {
       console.error('Failed to start recording', err);
@@ -108,27 +96,23 @@ const RecordScreen: React.FC = () => {
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!recorder.isRecording) return;
 
     try {
-      setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      console.log('Recording stopped and stored at', uri);
+      await recorder.stop();
     } catch (err) {
       console.error('Failed to stop recording', err);
     }
   };
 
   const handleProcess = async () => {
-    if (!recording) return;
+    if (!recorder.uri) return;
 
     setIsProcessing(true);
     setError(null);
 
     try {
-      const uri = recording.getURI();
-      if (!uri) throw new Error('No recording URI');
+      const uri = recorder.uri;
 
       // Convert recording to blob for processing
       const response = await fetch(uri);
@@ -157,7 +141,6 @@ const RecordScreen: React.FC = () => {
   };
 
   const reset = () => {
-    setRecording(null);
     setDuration(0);
     setTranscription(null);
     setSummary(null);
@@ -297,19 +280,19 @@ const RecordScreen: React.FC = () => {
             <Text style={styles.timerText}>{formatTime(duration)}</Text>
           </View>
 
-          {!recording && !isRecording && (
+          {!recorder.isRecording && !recorder.uri && (
             <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
               <IconMic size={32} color="#FFFFFF" />
             </TouchableOpacity>
           )}
 
-          {isRecording && (
+          {recorder.isRecording && (
             <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
               <View style={styles.stopIcon} />
             </TouchableOpacity>
           )}
 
-          {recording && !transcription && (
+          {!recorder.isRecording && recorder.uri && !transcription && (
             <View style={styles.recordActions}>
               <TouchableOpacity onPress={reset} style={styles.deleteButton}>
                 <IconTrash size={24} color="#999999" />

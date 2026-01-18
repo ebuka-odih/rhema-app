@@ -2,6 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from './apiConfig';
 
+console.log('API_BASE_URL:', API_BASE_URL);
+
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_DATA_KEY = 'user_data';
 
@@ -30,14 +32,28 @@ export const authService = {
 
     async login(credentials: any) {
         try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
+            const response = await fetch(`${API_BASE_URL}login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify(credentials),
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Login failed');
+            const text = await response.text();
 
+            if (!response.ok) {
+                let message = 'Login failed';
+                try {
+                    const data = JSON.parse(text);
+                    message = data.message || message;
+                } catch (e) {
+                    console.error('Failed to parse error JSON:', text.substring(0, 100));
+                }
+                throw new Error(message);
+            }
+
+            const data = JSON.parse(text);
             await this.setToken(data.access_token);
             await this.setUser(data.user);
             return { data, error: null };
@@ -48,17 +64,31 @@ export const authService = {
 
     async register(userData: any) {
         try {
-            const response = await fetch(`${API_BASE_URL}/register`, {
+            const response = await fetch(`${API_BASE_URL}register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({
                     ...userData,
                     password_confirmation: userData.password // Laravel expects confirmation
                 }),
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'Registration failed');
+            const text = await response.text();
 
+            if (!response.ok) {
+                let message = 'Registration failed';
+                try {
+                    const data = JSON.parse(text);
+                    message = data.message || message;
+                } catch (e) {
+                    console.error('Failed to parse error JSON:', text.substring(0, 100));
+                }
+                throw new Error(message);
+            }
+
+            const data = JSON.parse(text);
             await this.setToken(data.access_token);
             await this.setUser(data.user);
             return { data, error: null };
@@ -89,13 +119,22 @@ export const authService = {
         if (!token) return null;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/user`, {
-                headers: { 'Authorization': `Bearer ${token}` },
+            const response = await fetch(`${API_BASE_URL}user`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json' // Explicitly ask for JSON
+                },
             });
+            const text = await response.text();
+
             if (response.ok) {
-                const user = await response.json();
-                await this.setUser(user);
-                return user;
+                try {
+                    const user = JSON.parse(text);
+                    await this.setUser(user);
+                    return user;
+                } catch (e) {
+                    console.error('fetchMe parse error:', text.substring(0, 100));
+                }
             }
             if (response.status === 401) {
                 await this.clearAuth();

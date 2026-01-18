@@ -8,22 +8,41 @@ import { QuickActions } from '../components/home/QuickActions';
 import { DevotionalList } from '../components/home/DevotionalList';
 import { RecentNotes } from '../components/home/RecentNotes';
 
+import { useSession } from '../services/auth';
+
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
+  const { data: session } = useSession();
+  const userName = session?.user?.name || "User";
+
   const time = new Date();
   const hours = time.getHours();
   let greeting = "Good Morning";
   if (hours >= 12 && hours < 17) greeting = "Good Afternoon";
   if (hours >= 17) greeting = "Good Evening";
 
-  const dailyVerse = {
+  const [dailyVerse, setDailyVerse] = React.useState({
     reference: "Psalms 145:18",
     text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
-    version: "ESV"
-  };
+    version: "NKJV"
+  });
+
+  React.useEffect(() => {
+    import('../services/bibleService').then(({ bibleService }) => {
+      bibleService.getDailyVerse().then(verse => {
+        if (verse) {
+          setDailyVerse({
+            reference: verse.reference,
+            text: verse.text,
+            version: verse.version
+          });
+        }
+      });
+    });
+  }, []);
 
   const recentNotes = [
     { id: '1', title: 'Sunday Service: Grace', preview: 'Grace is not just unmerited favor, it is the empowering presence of God...', date: 'Oct 24' },
@@ -47,6 +66,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       <HomeHeader
         greeting={greeting}
         date={formattedDate}
+        userName={userName}
       />
 
       <DailyVerse
