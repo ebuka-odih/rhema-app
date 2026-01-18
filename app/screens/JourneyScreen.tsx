@@ -243,7 +243,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   const handleTogglePrayerStatus = async (id: string, currentStatus: string) => {
     try {
       const token = await authService.getToken();
-      const newStatus = currentStatus === 'praying' ? 'answered' : 'praying';
+      const newStatus = currentStatus === 'praying' ? 'prayed' : 'praying';
       const response = await fetch(`${API_BASE_URL}prayers/${id}`, {
         method: 'PATCH',
         headers: {

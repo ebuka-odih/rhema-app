@@ -24,7 +24,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
     reminderEnabled,
     setReminderEnabled,
 }) => {
-    const [status, setStatus] = useState<'praying' | 'answered'>('praying');
+    const [status, setStatus] = useState<'praying' | 'prayed'>('praying');
     const [showTimePicker, setShowTimePicker] = useState(false);
 
     // Parse current prayerTime string to Date for picker
@@ -80,7 +80,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                             {/* TODO List Style Entry */}
                             <View style={styles.todoEntryContainer}>
                                 <View style={styles.todoCircle}>
-                                    {status === 'answered' && <IconCheck size={14} color="#FFFFFF" />}
+                                    {status === 'prayed' && <IconCheck size={14} color="#FFFFFF" />}
                                 </View>
                                 <TextInput
                                     style={styles.todoInput}
@@ -153,10 +153,10 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                         <Text style={[styles.statusButtonText, status === 'praying' && styles.statusButtonTextActive]}>Praying</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.statusButton, status === 'answered' && styles.statusButtonActiveAnswered]}
-                                        onPress={() => setStatus('answered')}
+                                        style={[styles.statusButton, status === 'prayed' && styles.statusButtonActiveAnswered]}
+                                        onPress={() => setStatus('prayed')}
                                     >
-                                        <Text style={[styles.statusButtonText, status === 'answered' && styles.statusButtonTextActiveAnswered]}>Answered</Text>
+                                        <Text style={[styles.statusButtonText, status === 'prayed' && styles.statusButtonTextActiveAnswered]}>Prayed</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

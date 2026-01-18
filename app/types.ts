@@ -42,7 +42,7 @@ export interface Prayer {
   request: string;
   time: string;
   reminder_enabled: boolean;
-  status: 'praying' | 'answered';
+  status: 'praying' | 'prayed';
   created_at?: string;
 }
 

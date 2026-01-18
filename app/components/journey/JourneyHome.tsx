@@ -121,17 +121,17 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
         {activePrayers.map((prayer) => (
           <View key={prayer.id} style={styles.activePrayerTodo}>
             <TouchableOpacity
-              style={[styles.todoCircle, prayer.status === 'answered' && styles.todoCircleChecked]}
+              style={[styles.todoCircle, prayer.status === 'prayed' && styles.todoCircleChecked]}
               onPress={() => onTogglePrayerStatus(prayer.id, prayer.status)}
             >
-              {prayer.status === 'answered' ? (
+              {prayer.status === 'prayed' ? (
                 <IconCheck size={12} color="#FFFFFF" />
               ) : (
                 <View style={styles.todoDot} />
               )}
             </TouchableOpacity>
             <View style={styles.todoContent}>
-              <Text style={[styles.todoText, prayer.status === 'answered' && styles.todoTextDone]} numberOfLines={2}>
+              <Text style={[styles.todoText, prayer.status === 'prayed' && styles.todoTextDone]} numberOfLines={2}>
                 {prayer.request}
               </Text>
               <View style={styles.todoMeta}>
