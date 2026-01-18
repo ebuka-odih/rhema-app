@@ -52,4 +52,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Note::class);
     }
+
+    public function sermons()
+    {
+        return $this->hasMany(Sermon::class);
+    }
 }

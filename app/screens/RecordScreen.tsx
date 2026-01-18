@@ -186,7 +186,6 @@ const RecordScreen: React.FC = () => {
     try {
       const token = await authService.getToken();
 
-      // We send all current state to ensure the DB matches exactly what the user sees
       const response = await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
         method: 'PATCH',
         headers: {
@@ -201,29 +200,29 @@ const RecordScreen: React.FC = () => {
         }),
       });
 
-      if (response.ok) {
-        // Update local list with the latest data
-        setSermons(prev => prev.map(s =>
-          s.id === currentSermonId ? {
-            ...s,
-            title: sermonTitle,
-            transcription: transcription || s.transcription,
-            summary: summary || s.summary
-          } : s
-        ));
+      if (!response.ok) {
+        const errorData = await response.json();
+        Alert.alert('Save Failed', errorData.error || 'Could not save sermon changes.');
+        return;
       }
 
+      // Update local list
+      setSermons(prev => prev.map(s =>
+        s.id === currentSermonId ? {
+          ...s,
+          title: sermonTitle,
+          transcription: transcription || s.transcription,
+          summary: summary || s.summary
+        } : s
+      ));
+
       setView('LIST');
-
-      // Re-fetch to be absolutely certain we are in sync with the database
       await fetchSermons();
-
-      // reset state only after we are back at the list
       reset();
+      Alert.alert('Saved', 'Your sermon summary has been saved successfully.');
     } catch (err) {
       console.error('Final save error:', err);
-      setView('LIST');
-      reset();
+      Alert.alert('Error', 'An unexpected error occurred while saving.');
     }
   };
 

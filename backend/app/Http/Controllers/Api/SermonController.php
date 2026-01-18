@@ -94,7 +94,7 @@ class SermonController extends Controller
 
     public function update(Request $request, Sermon $sermon)
     {
-        if ($sermon->user_id !== $request->user()->id) {
+        if ($sermon->user_id != $request->user()->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

@@ -112,10 +112,10 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                         <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
                         <TouchableOpacity
                             onPress={onSaveAndFinish}
-                            style={styles.doneButton}
+                            style={styles.saveButton}
                         >
                             <IconCheck size={14} color="#FFFFFF" />
-                            <Text style={styles.doneButtonText}>Done</Text>
+                            <Text style={styles.saveButtonText}>Save</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -296,16 +296,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#FFFFFF',
     },
-    doneButton: {
+    saveButton: {
         backgroundColor: '#E8503A',
         borderRadius: 8,
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
     },
-    doneButtonText: {
+    saveButtonText: {
         fontSize: 14,
         fontWeight: 'bold',
         color: '#FFFFFF',
