@@ -10,7 +10,9 @@ import { BookChapterSelector } from '../components/bible/BookChapterSelector';
 import { ReaderView } from '../components/bible/ReaderView';
 import { FloatingControls } from '../components/bible/FloatingControls';
 import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
+import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { useSession } from '../services/auth';
+import { BibleHighlight } from '../types';
 
 const BibleScreen: React.FC = () => {
   const { data: session } = useSession();
@@ -35,6 +37,10 @@ const BibleScreen: React.FC = () => {
   const [bibleData, setBibleData] = useState<BibleChapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // Highlighting State
+  const [highlights, setHighlights] = useState<BibleHighlight[]>([]);
+  const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
 
   // Persistence Key
   const BIBLE_STATE_KEY = 'last_read_bible_state';
@@ -90,14 +96,21 @@ const BibleScreen: React.FC = () => {
     }
   }, [version, book, chapter, isInitializing]);
 
-  // Fetch Chapter Content
+  // Fetch Chapter Content & Highlights
   useEffect(() => {
     if (isInitializing) return;
 
     const fetchChapter = async () => {
       setLoading(true);
-      const data = await bibleService.getChapter(version.id, book, chapter);
-      setBibleData(data);
+      setSelectedVerses([]); // Clear selection
+
+      const [chapterData, chapterHighlights] = await Promise.all([
+        bibleService.getChapter(version.id, book, chapter),
+        bibleService.getHighlightsForChapter(version.id, book, chapter)
+      ]);
+
+      setBibleData(chapterData);
+      setHighlights(chapterHighlights || []);
       setLoading(false);
     };
     fetchChapter();
@@ -148,6 +161,56 @@ const BibleScreen: React.FC = () => {
     }
   };
 
+  const handleVersePress = (verseNum: number) => {
+    setSelectedVerses(prev => {
+      if (prev.includes(verseNum)) {
+        return prev.filter(v => v !== verseNum);
+      } else {
+        return [...prev, verseNum].sort((a, b) => a - b);
+      }
+    });
+  };
+
+  const handleHighlight = async (color: string) => {
+    if (selectedVerses.length === 0) return;
+
+    try {
+      // Save highlights for all selected verses
+      await Promise.all(selectedVerses.map(v =>
+        bibleService.saveHighlight({
+          version_id: version.id,
+          book,
+          chapter,
+          verse: v,
+          color
+        })
+      ));
+
+      // Refresh highlights
+      const newHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+      setHighlights(newHighlights);
+      setSelectedVerses([]);
+    } catch (err) {
+      console.error('Highlight error:', err);
+    }
+  };
+
+  const handleRemoveHighlight = async () => {
+    if (selectedVerses.length === 0) return;
+
+    try {
+      await Promise.all(selectedVerses.map(v =>
+        bibleService.removeHighlight(version.id, book, chapter, v)
+      ));
+
+      const newHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+      setHighlights(newHighlights);
+      setSelectedVerses([]);
+    } catch (err) {
+      console.error('Remove highlight error:', err);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <BibleHeader
@@ -188,6 +251,16 @@ const BibleScreen: React.FC = () => {
         chapter={chapter}
         bibleData={bibleData}
         fontSize={fontSize}
+        highlights={highlights}
+        selectedVerses={selectedVerses}
+        onVersePress={handleVersePress}
+      />
+
+      <HighlightMenu
+        visible={selectedVerses.length > 0}
+        onSelectColor={handleHighlight}
+        onRemove={handleRemoveHighlight}
+        onClose={() => setSelectedVerses([])}
       />
 
       <FloatingControls

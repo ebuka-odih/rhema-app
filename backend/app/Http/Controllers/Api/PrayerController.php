@@ -19,7 +19,7 @@ class PrayerController extends Controller
             'request' => 'required|string',
             'time' => 'nullable|string',
             'reminder_enabled' => 'nullable|boolean',
-            'status' => 'nullable|in:praying,prayed',
+            'status' => 'nullable|in:active,done',
         ]);
 
         $prayer = $request->user()->prayers()->create($validated);
@@ -37,7 +37,7 @@ class PrayerController extends Controller
             'request' => 'sometimes|string',
             'time' => 'sometimes|string',
             'reminder_enabled' => 'sometimes|boolean',
-            'status' => 'sometimes|in:praying,prayed',
+            'status' => 'sometimes|in:active,done',
         ]);
 
         $prayer->update($validated);

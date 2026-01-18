@@ -42,8 +42,19 @@ export interface Prayer {
   request: string;
   time: string;
   reminder_enabled: boolean;
-  status: 'praying' | 'prayed';
+  status: 'active' | 'done';
   created_at?: string;
+}
+
+export interface BibleHighlight {
+  id?: string;
+  user_id?: string;
+  version_id: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  color: string;
+  note?: string;
 }
 
 export interface ActivityItem {

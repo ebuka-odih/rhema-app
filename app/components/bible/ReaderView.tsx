@@ -1,6 +1,7 @@
 import React from 'react';
-import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { BibleChapter } from '../../services/bibleService';
+import { BibleHighlight } from '../../types';
 
 interface ReaderViewProps {
     loading: boolean;
@@ -8,6 +9,9 @@ interface ReaderViewProps {
     chapter: number;
     bibleData: BibleChapter | null;
     fontSize: number;
+    highlights: BibleHighlight[];
+    selectedVerses: number[];
+    onVersePress: (verseNum: number) => void;
 }
 
 export const ReaderView: React.FC<ReaderViewProps> = ({
@@ -15,7 +19,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     book,
     chapter,
     bibleData,
-    fontSize
+    fontSize,
+    highlights,
+    selectedVerses,
+    onVersePress
 }) => {
     if (loading) {
         return (
@@ -25,19 +32,39 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
         );
     }
 
+    const getVerseHighlight = (num: number) => {
+        return highlights.find(h => h.verse === num);
+    };
+
     return (
         <ScrollView style={styles.readerScroll} contentContainerStyle={styles.readerContent}>
             <Text style={styles.chapterTitle}>{book} {chapter}</Text>
             <View style={styles.textContainer}>
-                {bibleData && Object.entries(bibleData.verses).map(([num, content]) => (
-                    <Text
-                        key={num}
-                        style={[styles.bibleParagraph, { fontSize: fontSize }]}
-                    >
-                        <Text style={styles.verseNumber}>{num} </Text>
-                        {content}
-                    </Text>
-                ))}
+                {bibleData && Object.entries(bibleData.verses).map(([numStr, content]) => {
+                    const num = parseInt(numStr);
+                    const highlight = getVerseHighlight(num);
+                    const isSelected = selectedVerses.includes(num);
+
+                    return (
+                        <TouchableOpacity
+                            key={numStr}
+                            activeOpacity={0.7}
+                            onPress={() => onVersePress(num)}
+                            style={[
+                                styles.verseContainer,
+                                highlight && { backgroundColor: `${highlight.color}40` }, // 40 is hex for 25% opacity
+                                isSelected && styles.selectedVerse
+                            ]}
+                        >
+                            <Text
+                                style={[styles.bibleParagraph, { fontSize: fontSize }]}
+                            >
+                                <Text style={styles.verseNumber}>{numStr} </Text>
+                                {content}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
         </ScrollView>
     );
@@ -55,7 +82,7 @@ const styles = StyleSheet.create({
     readerContent: {
         paddingHorizontal: 24,
         paddingTop: 40,
-        paddingBottom: 120,
+        paddingBottom: 150,
     },
     chapterTitle: {
         fontSize: 32,
@@ -70,10 +97,21 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         width: '100%',
     },
+    verseContainer: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        marginHorizontal: -12,
+        borderRadius: 8,
+        marginBottom: 16, // Add margin between verses
+    },
+    selectedVerse: {
+        backgroundColor: 'rgba(232, 80, 58, 0.15)',
+        borderLeftWidth: 3,
+        borderLeftColor: '#E8503A',
+    },
     bibleParagraph: {
         color: '#E0E0E0',
         lineHeight: 32,
-        marginBottom: 24,
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
     verseNumber: {

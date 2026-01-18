@@ -72,4 +72,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Prayer::class);
     }
+
+    public function bibleHighlights()
+    {
+        return $this->hasMany(BibleHighlight::class);
+    }
 }

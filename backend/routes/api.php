@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SermonController;
 use App\Http\Controllers\Api\ReflectionController;
 use App\Http\Controllers\Api\PrayerController;
+use App\Http\Controllers\Api\BibleHighlightController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -38,6 +39,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/prayers', [PrayerController::class, 'store']);
     Route::patch('/prayers/{prayer}', [PrayerController::class, 'update']);
     Route::delete('/prayers/{prayer}', [PrayerController::class, 'destroy']);
+    
+    // Bible Highlights
+    Route::get('/bible/highlights', [BibleHighlightController::class, 'index']);
+    Route::get('/bible/highlights/chapter', [BibleHighlightController::class, 'getForChapter']);
+    Route::post('/bible/highlights', [BibleHighlightController::class, 'store']);
+    Route::delete('/bible/highlights/{id}', [BibleHighlightController::class, 'destroy']);
+    Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
 });
 
 // Bible Routes (Public for now)

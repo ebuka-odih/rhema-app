@@ -126,5 +126,69 @@ export const bibleService = {
             console.error('Error fetching Affirmation:', error);
             return null;
         }
+    },
+
+    // Highlights
+    async saveHighlight(highlight: { version_id: string; book: string; chapter: number; verse: number; color: string; note?: string }) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}bible/highlights`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(highlight),
+            });
+            if (!response.ok) throw new Error('Failed to save highlight');
+            return await response.json();
+        } catch (err) {
+            console.error('saveHighlight error:', err);
+            return null;
+        }
+    },
+
+    async removeHighlight(version_id: string, book: string, chapter: number, verse: number) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}bible/highlights/remove`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ version_id, book, chapter, verse }),
+            });
+            if (!response.ok) throw new Error('Failed to remove highlight');
+            return await response.json();
+        } catch (err) {
+            console.error('removeHighlight error:', err);
+            return null;
+        }
+    },
+
+    async getHighlightsForChapter(version_id: string, book: string, chapter: number) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(
+                `${API_BASE_URL}bible/highlights/chapter?version_id=${encodeURIComponent(version_id)}&book=${encodeURIComponent(book)}&chapter=${chapter}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    }
+                }
+            );
+            if (!response.ok) throw new Error('Failed to fetch highlights');
+            return await response.json();
+        } catch (err) {
+            console.error('getHighlightsForChapter error:', err);
+            return [];
+        }
     }
 };

@@ -24,7 +24,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
     reminderEnabled,
     setReminderEnabled,
 }) => {
-    const [status, setStatus] = useState<'praying' | 'prayed'>('praying');
+    const [status, setStatus] = useState<'active' | 'done'>('active');
     const [showTimePicker, setShowTimePicker] = useState(false);
 
     // Parse current prayerTime string to Date for picker
@@ -80,7 +80,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                             {/* TODO List Style Entry */}
                             <View style={styles.todoEntryContainer}>
                                 <View style={styles.todoCircle}>
-                                    {status === 'prayed' && <IconCheck size={14} color="#FFFFFF" />}
+                                    {status === 'done' && <IconCheck size={14} color="#FFFFFF" />}
                                 </View>
                                 <TextInput
                                     style={styles.todoInput}
@@ -147,16 +147,16 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                 <Text style={styles.inputLabel}>MARK STATUS</Text>
                                 <View style={styles.statusButtons}>
                                     <TouchableOpacity
-                                        style={[styles.statusButton, status === 'praying' && styles.statusButtonActive]}
-                                        onPress={() => setStatus('praying')}
+                                        style={[styles.statusButton, status === 'active' && styles.statusButtonActive]}
+                                        onPress={() => setStatus('active')}
                                     >
-                                        <Text style={[styles.statusButtonText, status === 'praying' && styles.statusButtonTextActive]}>Praying</Text>
+                                        <Text style={[styles.statusButtonText, status === 'active' && styles.statusButtonTextActive]}>Active</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={[styles.statusButton, status === 'prayed' && styles.statusButtonActiveAnswered]}
-                                        onPress={() => setStatus('prayed')}
+                                        style={[styles.statusButton, status === 'done' && styles.statusButtonActiveAnswered]}
+                                        onPress={() => setStatus('done')}
                                     >
-                                        <Text style={[styles.statusButtonText, status === 'prayed' && styles.statusButtonTextActiveAnswered]}>Prayed</Text>
+                                        <Text style={[styles.statusButtonText, status === 'done' && styles.statusButtonTextActiveAnswered]}>Done</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -166,7 +166,9 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                 onPress={() => onSave(status)}
                                 disabled={!prayerRequest}
                             >
-                                <Text style={styles.saveLogButtonText}>Add Prayer Request</Text>
+                                <Text style={styles.saveLogButtonText}>
+                                    {status === 'done' ? 'Update Prayer Request' : 'Add Prayer Request'}
+                                </Text>
                             </TouchableOpacity>
                         </ScrollView>
                     </View>

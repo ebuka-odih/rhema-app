@@ -86,7 +86,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
 
         // Update specific prayer state if one is active but local state is empty
         if (data.length > 0 && !prayerRequest) {
-          const active = data.find((p: Prayer) => p.status === 'praying');
+          const active = data.find((p: Prayer) => p.status === 'active');
           if (active) {
             setPrayerRequest(active.request);
             setPrayerTime(active.time);
@@ -243,7 +243,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   const handleTogglePrayerStatus = async (id: string, currentStatus: string) => {
     try {
       const token = await authService.getToken();
-      const newStatus = currentStatus === 'praying' ? 'prayed' : 'praying';
+      const newStatus = currentStatus === 'active' ? 'done' : 'active';
       const response = await fetch(`${API_BASE_URL}prayers/${id}`, {
         method: 'PATCH',
         headers: {
