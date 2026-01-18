@@ -25,8 +25,12 @@ const RecordScreen: React.FC = () => {
   const [selectedSermon, setSelectedSermon] = useState<Recording | null>(null);
 
   // Recorder State
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 500);
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
+  const recorderState = useAudioRecorderState(recorder, 100);
+  const [levels, setLevels] = useState<number[]>(new Array(30).fill(-60));
   const [duration, setDuration] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
@@ -71,12 +75,17 @@ const RecordScreen: React.FC = () => {
     fetchSermons();
   }, []);
 
-  // Update local duration from recorder state
+  // Update local duration and levels from recorder state
   useEffect(() => {
     if (recorderState.isRecording) {
       setDuration(Math.floor(recorderState.durationMillis / 1000));
+      if (recorderState.metering !== undefined) {
+        setLevels(prev => [...prev.slice(1), recorderState.metering!]);
+      }
+    } else {
+      setLevels(new Array(30).fill(-60));
     }
-  }, [recorderState.durationMillis, recorderState.isRecording]);
+  }, [recorderState.durationMillis, recorderState.isRecording, recorderState.metering]);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -354,6 +363,23 @@ const RecordScreen: React.FC = () => {
       <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
         {/* Recording Area */}
         <View style={styles.recordingCard}>
+          {recorderState.isRecording && (
+            <View style={styles.visualizerContainer}>
+              {levels.map((level, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.visualizerBar,
+                    {
+                      height: 10 + (Math.max(0, Math.min(1, (level + 60) / 60)) * 100),
+                      opacity: 0.3 + (Math.max(0, Math.min(1, (level + 60) / 60)) * 0.7)
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+
           <View style={styles.timerDisplay}>
             <Text style={styles.timerText}>{formatTime(duration)}</Text>
           </View>
@@ -734,6 +760,22 @@ const styles = StyleSheet.create({
     height: 32,
     backgroundColor: '#E8503A',
     borderRadius: 4,
+  },
+  visualizerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 120,
+    gap: 3,
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+  },
+  visualizerBar: {
+    width: 4,
+    backgroundColor: '#E8503A',
+    borderRadius: 2,
   },
   recordActions: {
     flexDirection: 'row',
