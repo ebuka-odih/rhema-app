@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, Text } from 'react-native';
 
 // Extracted Components
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -69,6 +69,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         userName={userName}
       />
 
+      <TouchableOpacity
+        style={styles.testNotifyBtn}
+        onPress={() => {
+          import('../services/notificationService').then(({ notificationService }) => {
+            notificationService.sendImmediateNotification(
+              "Daily Affirmation",
+              "I am strong and courageous because the Lord my God is with me. (Joshua 1:9)"
+            );
+          });
+        }}
+      >
+        <Text style={styles.testNotifyText}>🔔 Send Test Notification</Text>
+      </TouchableOpacity>
+
       <DailyVerse
         reference={dailyVerse.reference}
         text={dailyVerse.text}
@@ -92,6 +106,21 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 100,
   },
+  testNotifyBtn: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(232, 80, 58, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(232, 80, 58, 0.3)',
+    alignItems: 'center',
+  },
+  testNotifyText: {
+    color: '#E8503A',
+    fontWeight: 'bold',
+    fontSize: 14,
+  }
 });
 
 export default HomeScreen;

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
+import { authService } from '../services/auth';
+import { API_BASE_URL } from '../services/apiConfig';
 import {
   IconMic, IconPlay, IconCheck, IconTrash, IconArrowLeft,
   IconSearch, IconCalendar, IconChevronRight, IconDownload
@@ -113,28 +115,49 @@ const RecordScreen: React.FC = () => {
 
     try {
       const uri = recorder.uri;
+      const token = await authService.getToken();
 
-      // Convert recording to blob for processing
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('audio', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        type: 'audio/m4a',
+        name: 'sermon.m4a',
+      } as any);
+      formData.append('title', `Sermon ${new Date().toLocaleDateString()}`);
 
-      const result = await processSermonAudio(blob);
+      const response = await fetch(`${API_BASE_URL}sermons`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to process sermon');
+      }
+
       setTranscription(result.transcription);
       setSummary(result.summary);
 
       // Auto-save to list
       const newRecording: Recording = {
-        id: Date.now().toString(),
-        title: `New Sermon ${new Date().toLocaleDateString()}`,
-        date: new Date().toLocaleDateString(),
+        id: result.id.toString(),
+        title: result.title,
+        date: new Date(result.created_at).toLocaleDateString(),
         duration: formatTime(duration),
         transcription: result.transcription,
         summary: result.summary
       };
       setSermons([newRecording, ...sermons]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Processing error:', err);
-      setError('Failed to process audio. Please check your API Key.');
+      setError(err.message || 'Failed to process audio. Please try again.');
     } finally {
       setIsProcessing(false);
     }

@@ -70,6 +70,47 @@ class BibleController extends Controller
         return response()->json($verse);
     }
 
+    public function dailyAffirmation()
+    {
+        $today = Carbon::today()->toDateString();
+        
+        // This is a placeholder. You could also store affirmations in a table
+        // or generate them using AI on the fly.
+        $affirmations = [
+            [
+                'affirmation' => 'I am strong and courageous because the Lord my God is with me.',
+                'scripture' => 'Joshua 1:9',
+                'text' => 'Have I not commanded you? Be strong and of good courage; do not be afraid, nor be dismayed, for the LORD your God is with you wherever you go.'
+            ],
+            [
+                'affirmation' => 'I have peace that surpasses all understanding.',
+                'scripture' => 'Philippians 4:7',
+                'text' => 'and the peace of God, which surpasses all understanding, will guard your hearts and minds through Christ Jesus.'
+            ],
+            [
+                'affirmation' => 'I can do all things through Christ who strengthens me.',
+                'scripture' => 'Philippians 4:13',
+                'text' => 'I can do all things through Christ who strengthens me.'
+            ],
+            [
+                'affirmation' => 'I am a new creation in Christ; the old is gone, the new has come.',
+                'scripture' => '2 Corinthians 5:17',
+                'text' => 'Therefore, if anyone is in Christ, he is a new creation; old things have passed away; behold, all things have become new.'
+            ],
+            [
+                'affirmation' => 'God has not given me a spirit of fear, but of power, love, and a sound mind.',
+                'scripture' => '2 Timothy 1:7',
+                'text' => 'For God has not given us a spirit of fear, but of power and of love and of a sound mind.'
+            ]
+        ];
+
+        // Pick one based on the day (consistent for 24h)
+        $dayOfYear = Carbon::parse($today)->dayOfYear;
+        $index = $dayOfYear % count($affirmations);
+        
+        return response()->json($affirmations[$index]);
+    }
+
     public function versions()
     {
         $files = File::files($this->data_path);

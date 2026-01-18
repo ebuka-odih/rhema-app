@@ -15,6 +15,8 @@ import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import { useSession } from './services/auth';
+import { notificationService } from './services/notificationService';
+import { bibleService } from './services/bibleService';
 
 type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
 
@@ -23,6 +25,22 @@ const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>('WELCOME');
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
     const { data: session, isPending } = useSession();
+
+    useEffect(() => {
+        const setupNotifications = async () => {
+            await notificationService.registerForPushNotificationsAsync();
+            const affirmation = await bibleService.getAffirmation();
+            if (affirmation) {
+                // Schedule for 8:00 AM every day
+                await notificationService.scheduleDailyAffirmation(
+                    8, 0,
+                    affirmation.scripture,
+                    affirmation.affirmation
+                );
+            }
+        };
+        setupNotifications();
+    }, []);
 
     useEffect(() => {
         if (!isPending && session) {

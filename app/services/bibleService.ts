@@ -112,5 +112,19 @@ export const bibleService = {
             console.error('Error fetching Daily Verse:', error);
             return null;
         }
+    },
+
+    async getAffirmation() {
+        try {
+            const response = await fetch(`${API_BASE_URL}bible/affirmation`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error('Failed to fetch affirmation');
+            return JSON.parse(text);
+        } catch (error) {
+            console.error('Error fetching Affirmation:', error);
+            return null;
+        }
     }
 };
