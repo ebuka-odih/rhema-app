@@ -102,8 +102,13 @@ export const bibleService = {
 
     async getDailyVerse() {
         try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
             const response = await fetch(`${API_BASE_URL}bible/daily-verse`, {
-                headers: { 'Accept': 'application/json' }
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
             });
             const text = await response.text();
             if (!response.ok) throw new Error('Failed to fetch daily verse');
@@ -116,8 +121,13 @@ export const bibleService = {
 
     async getAffirmation() {
         try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
             const response = await fetch(`${API_BASE_URL}bible/affirmation`, {
-                headers: { 'Accept': 'application/json' }
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
             });
             const text = await response.text();
             if (!response.ok) throw new Error('Failed to fetch affirmation');

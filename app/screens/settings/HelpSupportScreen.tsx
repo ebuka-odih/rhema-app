@@ -30,7 +30,7 @@ const HelpSupportScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.searchSection}>
                     <Text style={styles.heroText}>How can we help you today?</Text>
                     <View style={styles.searchBar}>

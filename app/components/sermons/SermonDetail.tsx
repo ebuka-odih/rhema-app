@@ -35,7 +35,7 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
             </View>
         </View>
 
-        <ScrollView style={styles.detailContent} contentContainerStyle={styles.detailContentPadding}>
+        <ScrollView style={styles.detailContent} contentContainerStyle={styles.detailContentPadding} showsVerticalScrollIndicator={false}>
             <View style={styles.playerCard}>
                 <View style={styles.playerInfo}>
                     <Text style={styles.playerDate}>{sermon.date}</Text>

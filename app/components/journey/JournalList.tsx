@@ -24,7 +24,7 @@ export const JournalList: React.FC<JournalListProps> = ({
             <Text style={styles.viewTitle}>Reflections</Text>
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.entriesList}>
                 {entries.map(entry => (
                     <TouchableOpacity

@@ -74,7 +74,7 @@ const PersonalInfoScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 {/* Avatar Section */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarWrapper}>

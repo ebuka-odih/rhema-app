@@ -56,6 +56,7 @@ export const authService = {
             const data = JSON.parse(text);
             await this.setToken(data.access_token);
             await this.setUser(data.user);
+            notifyListeners({ user: data.user });
             return { data, error: null };
         } catch (error: any) {
             return { data: null, error };
@@ -91,6 +92,7 @@ export const authService = {
             const data = JSON.parse(text);
             await this.setToken(data.access_token);
             await this.setUser(data.user);
+            notifyListeners({ user: data.user });
             return { data, error: null };
         } catch (error: any) {
             return { data: null, error };
@@ -111,6 +113,7 @@ export const authService = {
             console.error('Logout error:', e);
         } finally {
             await this.clearAuth();
+            notifyListeners(null);
         }
     },
 
@@ -138,6 +141,7 @@ export const authService = {
             }
             if (response.status === 401) {
                 await this.clearAuth();
+                notifyListeners(null);
             }
         } catch (e) {
             console.error('Fetch user error:', e);
@@ -191,24 +195,43 @@ export const authService = {
     }
 };
 
+// Simple pub/sub for session changes
+const listeners = new Set<(session: any) => void>();
+const notifyListeners = (session: any) => listeners.forEach(l => l(session));
+
 // Hook to mimic better-auth useSession
 export const useSession = () => {
     const [data, setData] = useState<any>(null);
     const [isPending, setIsPending] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
+
         const checkSession = async () => {
             const user = await authService.getUser();
+            if (isMounted) {
+                setData(user ? { user } : null);
+                setIsPending(false);
+            }
+
             if (user) {
-                setData({ user });
-                // Optionally refresh user from server
                 authService.fetchMe().then(refreshedUser => {
-                    if (refreshedUser) setData({ user: refreshedUser });
+                    if (isMounted && refreshedUser) setData({ user: refreshedUser });
                 });
             }
-            setIsPending(false);
         };
+
+        const handleUpdate = (session: any) => {
+            if (isMounted) setData(session);
+        };
+
+        listeners.add(handleUpdate);
         checkSession();
+
+        return () => {
+            isMounted = false;
+            listeners.delete(handleUpdate);
+        };
     }, []);
 
     return { data, isPending };

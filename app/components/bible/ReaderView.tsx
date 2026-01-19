@@ -38,7 +38,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     };
 
     return (
-        <ScrollView style={styles.readerScroll} contentContainerStyle={styles.readerContent}>
+        <ScrollView style={styles.readerScroll} contentContainerStyle={styles.readerContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.chapterTitle}>{book} {chapter}</Text>
             <View style={styles.textContainer}>
                 {bibleData && Object.entries(bibleData.verses).map(([numStr, content]) => {

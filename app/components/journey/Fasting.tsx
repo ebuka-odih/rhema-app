@@ -106,7 +106,7 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     // --- Render Views ---
 
     const renderGroupInfoContent = (group: FastingGroup) => (
-        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.infoContent}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.infoContent} showsVerticalScrollIndicator={false}>
             <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>About this Group</Text>
                 <Text style={styles.infoText}>{group.description}</Text>
@@ -151,7 +151,7 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     );
 
     const renderFeedContent = () => (
-        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
             {/* Post Input Placeholder */}
             <TouchableOpacity style={styles.postInput}>
                 <View style={styles.avatarMini} />
@@ -261,7 +261,7 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     );
 
     const renderMainScreen = () => (
-        <ScrollView style={styles.container} contentContainerStyle={styles.mainContent}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.mainContent} showsVerticalScrollIndicator={false}>
             <View style={styles.mainHeader}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <IconChevronLeft size={24} color="#FFFFFF" />

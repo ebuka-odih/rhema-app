@@ -44,8 +44,12 @@ const AppContent: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!isPending && session) {
-            setAppState('MAIN');
+        if (!isPending) {
+            if (session) {
+                setAppState('MAIN');
+            } else if (appState === 'MAIN') {
+                setAppState('WELCOME');
+            }
         }
     }, [session, isPending]);
 

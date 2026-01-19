@@ -46,7 +46,7 @@ const PrivacyScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <Text style={styles.sectionHeader}>Data Visibility</Text>
                 <View style={styles.card}>
                     <View style={styles.item}>

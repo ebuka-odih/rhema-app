@@ -76,9 +76,10 @@ export const BookChapterSelector: React.FC<BookChapterSelectorProps> = ({
                                 </TouchableOpacity>
                             )}
                             contentContainerStyle={styles.listContent}
+                            showsVerticalScrollIndicator={false}
                         />
                     ) : (
-                        <ScrollView contentContainerStyle={styles.chapterGrid}>
+                        <ScrollView contentContainerStyle={styles.chapterGrid} showsVerticalScrollIndicator={false}>
                             {selectedBook && Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((num) => (
                                 <TouchableOpacity
                                     key={num}

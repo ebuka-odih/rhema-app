@@ -15,7 +15,7 @@ export const GrowthTracker: React.FC<GrowthTrackerProps> = ({ onBack }) => (
             <Text style={styles.viewTitle}>Growth Tracker</Text>
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Metric Cards */}
             <View style={styles.metricsGrid}>
                 <View style={styles.metricCard}>

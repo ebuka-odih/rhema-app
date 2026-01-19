@@ -46,11 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bible/highlights', [BibleHighlightController::class, 'store']);
     Route::delete('/bible/highlights/{id}', [BibleHighlightController::class, 'destroy']);
     Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
+    Route::get('/bible/daily-verse', [BibleController::class, 'dailyVerse']);
+    Route::get('/bible/affirmation', [BibleController::class, 'dailyAffirmation']);
 });
 
-// Bible Routes (Public for now)
+// Bible Routes (Public)
 Route::get('/bible/versions', [BibleController::class, 'versions']);
 Route::get('/bible/books', [BibleController::class, 'books']);
 Route::get('/bible/chapter', [BibleController::class, 'chapter']);
-Route::get('/bible/daily-verse', [BibleController::class, 'dailyVerse']);
-Route::get('/bible/affirmation', [BibleController::class, 'dailyAffirmation']);

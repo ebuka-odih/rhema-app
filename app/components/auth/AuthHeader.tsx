@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconArrowLeft } from '../Icons';
+import { Logo } from '../Logo';
 
 interface AuthHeaderProps {
     onBack: () => void;
@@ -11,6 +12,9 @@ export const AuthHeader: React.FC<AuthHeaderProps> = ({ onBack }) => (
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <IconArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
+        <View style={styles.logoContainer}>
+            <Logo size={40} />
+        </View>
     </View>
 );
 
@@ -19,6 +23,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    logoContainer: {
+        width: 40,
+        height: 40,
     },
     backButton: {
         width: 40,

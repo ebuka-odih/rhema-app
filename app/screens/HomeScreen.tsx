@@ -29,7 +29,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const [dailyVerse, setDailyVerse] = React.useState({
     reference: "Psalms 145:18",
     text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
-    version: "NKJV"
+    version: "NKJV",
+    affirmation: "",
+    theme: ""
   });
 
   const [notes, setNotes] = React.useState<JournalEntry[]>([]);
@@ -43,7 +45,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           setDailyVerse({
             reference: verse.reference,
             text: verse.text,
-            version: verse.version
+            version: verse.version,
+            affirmation: verse.affirmation,
+            theme: verse.theme
           });
         }
       });
@@ -101,7 +105,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <HomeHeader
         greeting={greeting}
         date={formattedDate}
@@ -113,6 +117,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         reference={dailyVerse.reference}
         text={dailyVerse.text}
         version={dailyVerse.version}
+        affirmation={dailyVerse.affirmation}
+        theme={dailyVerse.theme}
       />
 
       <QuickActions onNavigate={onNavigate} />

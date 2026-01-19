@@ -37,7 +37,7 @@ export const VersionSelector: React.FC<VersionSelectorProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView contentContainerStyle={styles.listContent}>
+                    <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
                         {versions.map((v) => (
                             <TouchableOpacity
                                 key={v.id}

@@ -13,11 +13,16 @@ return new class extends Migration
     {
         Schema::create('daily_verses', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->date('date')->unique(); // One verse per day
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
+            $table->date('date');
             $table->string('reference');
             $table->text('text');
+            $table->text('affirmation')->nullable();
+            $table->string('theme')->nullable();
             $table->string('version')->default('NKJV');
             $table->timestamps();
+
+            $table->unique(['date', 'user_id']);
         });
     }
 

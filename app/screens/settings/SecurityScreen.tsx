@@ -45,7 +45,7 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <Text style={styles.sectionHeader}>Password</Text>
                 <View style={styles.card}>
                     <TouchableOpacity style={styles.item} onPress={() => setModalVisible(true)}>

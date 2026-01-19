@@ -18,8 +18,17 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Demo User',
+            'email' => 'demo@wordflow.com',
+            'password' => 'Password123!',
+            'is_pro' => true,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Apple Reviewer',
+            'email' => 'reviewer@wordflow.com',
+            'password' => 'Rhema2026!',
+            'is_pro' => true,
         ]);
     }
 }

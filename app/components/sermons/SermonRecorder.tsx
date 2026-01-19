@@ -72,7 +72,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                 <Text style={styles.recordTitle}>New Recording</Text>
             </View>
 
-            <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding}>
+            <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding} showsVerticalScrollIndicator={false}>
                 {/* Recording Area */}
                 <View style={styles.recordingCard}>
                     {isRecording && <AudioVisualizer levels={levels} />}
@@ -123,11 +123,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                     )}
                 </View>
 
-                {!isPro && isNewRecording && (
-                    <TouchableOpacity style={styles.upgradeCard}>
-                        <Text style={styles.upgradeText}>Free Tier: 10m limit. Upgrade for 50m recordings.</Text>
-                    </TouchableOpacity>
-                )}
+
 
                 {error && (
                     <View style={styles.errorCard}>
@@ -307,20 +303,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    upgradeCard: {
-        backgroundColor: 'rgba(232, 80, 58, 0.1)',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(232, 80, 58, 0.2)',
-    },
-    upgradeText: {
-        color: '#E8503A',
-        fontSize: 14,
-        textAlign: 'center',
-        fontWeight: '600',
-    },
+
     errorCard: {
         backgroundColor: 'rgba(232, 80, 58, 0.1)',
         borderRadius: 16,

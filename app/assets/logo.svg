@@ -1,0 +1,40 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient Background -->
+  <defs>
+    <linearGradient id="bg_grad" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF6B5A"/>
+      <stop offset="1" stop-color="#E8503A"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="20"/>
+      <feOffset dx="0" dy="10" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded Square Body -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg_grad)"/>
+  
+  <!-- Stylized Book / Flow Icon -->
+  <g filter="url(#shadow)">
+    <!-- Left Page -->
+    <path d="M512 750C512 750 380 750 300 780V330C380 300 512 300 512 300V750Z" fill="white" />
+    <!-- Right Page -->
+    <path d="M512 750C512 750 644 750 724 780V330C644 300 512 300 512 300V750Z" fill="white" fill-opacity="0.9"/>
+    <!-- Spine / Center Line -->
+    <path d="M512 300V750" stroke="#E8503A" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Flow Detail (Wave inside pages) -->
+    <path d="M340 450C380 430 430 430 470 450M554 450C594 430 644 430 684 450" stroke="#E8503A" stroke-width="12" stroke-linecap="round" stroke-opacity="0.3"/>
+    <path d="M340 550C380 530 430 530 470 550M554 550C594 530 644 530 684 550" stroke="#E8503A" stroke-width="12" stroke-linecap="round" stroke-opacity="0.2"/>
+  </g>
+
+  <!-- Golden Spark / High-end feel -->
+  <path d="M512 220L525 250L555 263L525 276L512 306L499 276L469 263L499 250L512 220Z" fill="#FFD35A"/>
+</svg>

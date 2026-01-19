@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { IconArrowRight, IconBible } from '../components/Icons';
+import { IconArrowRight } from '../components/Icons';
+import { Logo } from '../components/Logo';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
@@ -25,7 +26,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) 
 
         <View style={styles.textContainer}>
           <View style={styles.iconContainer}>
-            <IconBible size={32} color="#E8503A" />
+            <Logo size={64} />
           </View>
 
           <Text style={styles.title}>
@@ -105,15 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'rgba(232, 80, 58, 0.2)',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(232, 80, 58, 0.1)',
   },
   title: {
     fontSize: 48,
