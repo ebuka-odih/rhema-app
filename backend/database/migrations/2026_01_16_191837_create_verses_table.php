@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('verses', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->text('text');
             $table->string('reference');
             $table->string('version')->default('ESV');

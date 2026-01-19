@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { BibleChapter } from '../../services/bibleService';
 import { BibleHighlight } from '../../types';
+import { isJesusSpeaking } from '../../services/redLetterService';
 
 interface ReaderViewProps {
     loading: boolean;
@@ -44,6 +45,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     const num = parseInt(numStr);
                     const highlight = getVerseHighlight(num);
                     const isSelected = selectedVerses.includes(num);
+                    const jesusSpeaks = isJesusSpeaking(book, chapter, num);
 
                     return (
                         <TouchableOpacity
@@ -52,15 +54,18 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                             onPress={() => onVersePress(num)}
                             style={[
                                 styles.verseContainer,
-                                highlight && { backgroundColor: `${highlight.color}60` }, // 60 is ~37% opacity for better visibility
+                                highlight && { backgroundColor: `${highlight.color}60` },
                                 isSelected && styles.selectedVerse,
-                                // If both highlight and isSelected, mix them or show highlight with selection border
                                 isSelected && highlight && { backgroundColor: `${highlight.color}80` }
                             ]}
                         >
                             <Text style={[styles.bibleParagraph, { fontSize: fontSize }]}>
-                                <Text style={styles.verseNumber}>{numStr} </Text>
-                                {content}
+                                <Text style={[styles.verseNumber, !jesusSpeaks && styles.brandVerseNumber]}>
+                                    {numStr}{' '}
+                                </Text>
+                                <Text style={jesusSpeaks ? styles.jesusWords : null}>
+                                    {content}
+                                </Text>
                             </Text>
                         </TouchableOpacity>
                     );
@@ -113,9 +118,15 @@ const styles = StyleSheet.create({
         lineHeight: 32,
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
+    jesusWords: {
+        color: '#FF4D4D', // Semi-red for Jesus' words
+    },
     verseNumber: {
         fontSize: 14,
-        color: '#E8503A',
+        color: '#FFFFFF',
         fontWeight: 'bold',
+    },
+    brandVerseNumber: {
+        color: '#E8503A',
     },
 });

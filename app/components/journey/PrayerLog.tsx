@@ -77,11 +77,8 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                             keyboardShouldPersistTaps="handled"
                             contentContainerStyle={styles.scrollContent}
                         >
-                            {/* TODO List Style Entry */}
+                            {/* Clean Text Entry */}
                             <View style={styles.todoEntryContainer}>
-                                <View style={styles.todoCircle}>
-                                    {status === 'done' && <IconCheck size={14} color="#FFFFFF" />}
-                                </View>
                                 <TextInput
                                     style={styles.todoInput}
                                     placeholder="What are you praying for?"

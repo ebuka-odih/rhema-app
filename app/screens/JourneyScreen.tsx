@@ -27,6 +27,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   const [prayerRequest, setPrayerRequest] = useState('');
   const [prayerTime, setPrayerTime] = useState('08:00 AM');
   const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [selectedPrayer, setSelectedPrayer] = useState<Prayer | null>(null);
 
   const [reflections, setReflections] = useState<JournalEntry[]>([]);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
@@ -115,6 +116,22 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
     setCurrentView('journal_editor');
   };
 
+  const handleEditPrayer = (prayer: Prayer) => {
+    setSelectedPrayer(prayer);
+    setPrayerRequest(prayer.request);
+    setPrayerTime(prayer.time);
+    setReminderEnabled(prayer.reminder_enabled);
+    setCurrentView('prayer_log');
+  };
+
+  const handleNewPrayer = () => {
+    setSelectedPrayer(null);
+    setPrayerRequest('');
+    setPrayerTime('08:00 AM');
+    setReminderEnabled(false);
+    setCurrentView('prayer_log');
+  };
+
   const handleSaveReflection = async (category: string) => {
     if (!journalTitle || !journalContent) {
       Alert.alert('Missing Info', 'Please provide a title and content.');
@@ -198,8 +215,13 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
 
     try {
       const token = await authService.getToken();
-      const response = await fetch(`${API_BASE_URL}prayers`, {
-        method: 'POST',
+      const isUpdate = !!selectedPrayer;
+      const url = isUpdate
+        ? `${API_BASE_URL}prayers/${selectedPrayer.id}`
+        : `${API_BASE_URL}prayers`;
+
+      const response = await fetch(url, {
+        method: isUpdate ? 'PATCH' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -229,8 +251,31 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
             console.error('Failed to schedule notification:', notifErr);
           }
         }
-        setPrayerRequest('');
+
         fetchPrayers(); // Refresh the list
+
+        Alert.alert(
+          isUpdate ? 'Prayer Updated' : 'Prayer Created',
+          isUpdate ? 'Your prayer request has been updated.' : 'Your prayer request has been logged successfully.',
+          [
+            {
+              text: 'Done',
+              onPress: () => {
+                setPrayerRequest('');
+                setSelectedPrayer(null);
+                setCurrentView('home');
+              }
+            },
+            ...(!isUpdate ? [{
+              text: 'Add Another',
+              style: 'cancel' as const,
+              onPress: () => {
+                setPrayerRequest('');
+                setSelectedPrayer(null);
+              }
+            }] : [])
+          ]
+        );
       } else {
         Alert.alert('Error', result.message || result.error || 'Failed to save prayer.');
       }
@@ -262,6 +307,43 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
     }
   };
 
+  const handleRemovePrayer = async (id: string | number) => {
+    Alert.alert('Delete Prayer Request', 'Are you sure you want to delete this prayer request?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          // Optimistic update
+          const originalPrayers = [...prayers];
+          setPrayers(prev => prev.filter(p => p.id.toString() !== id.toString()));
+
+          try {
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}prayers/${id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+            });
+
+            if (!response.ok) {
+              // Rollback if failure
+              setPrayers(originalPrayers);
+              Alert.alert('Error', 'Failed to delete prayer request. Please try again.');
+            }
+          } catch (err) {
+            console.error('Delete prayer error:', err);
+            // Rollback if failure
+            setPrayers(originalPrayers);
+            Alert.alert('Error', 'Network error occurred. Please check your connection.');
+          }
+        }
+      }
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       {currentView === 'home' && (
@@ -270,10 +352,12 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
           onViewAllReflections={() => setCurrentView('journal_list')}
           onViewGrowth={() => setCurrentView('growth')}
           onNewReflection={handleNewReflection}
-          onLogPrayer={() => setCurrentView('prayer_log')}
+          onLogPrayer={handleNewPrayer}
+          onEditPrayer={handleEditPrayer}
           onViewFasting={() => setCurrentView('fasting')}
           onSelectEntry={handleSelectEntry}
           onTogglePrayerStatus={handleTogglePrayerStatus}
+          onRemovePrayer={handleRemovePrayer}
           journalEntries={reflections}
           activePrayers={prayers}
         />

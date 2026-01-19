@@ -19,11 +19,13 @@ export const notificationService = {
 
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('prayer-reminders', {
-                name: 'Prayer Reminders',
+                name: 'Urgent Prayer Reminders',
                 importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 500, 200, 500],
+                vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 2000],
                 lightColor: '#E8503A',
                 sound: 'default', // Using default system sound
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+                bypassDnd: true, // Try to bypass Do Not Disturb for urgent prayers
             });
         }
 
@@ -69,12 +71,16 @@ export const notificationService = {
     },
 
     async schedulePrayerReminder(hour: number, minute: number, request: string) {
+        // Schedule the primary alarm
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Time to Pray 🙏",
-                body: request || "It's time for your scheduled prayer session.",
+                title: "🚨 Prayer Session Beginning",
+                body: request || "It's time for your scheduled prayer session. Your soul awaits.",
                 sound: true,
-                vibrate: [0, 500, 200, 500] as any, // Explicitly define vibration pattern
+                priority: Notifications.AndroidNotificationPriority.MAX,
+                vibrate: [0, 1000, 500, 1000, 500, 1000, 500, 3000, 500, 3000] as any,
+                autoDismiss: false,
+                sticky: true,
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Prayer extends Model
 {
+    use HasUuids;
     protected $fillable = ['user_id', 'request', 'time', 'reminder_enabled', 'status'];
 
     protected $casts = [

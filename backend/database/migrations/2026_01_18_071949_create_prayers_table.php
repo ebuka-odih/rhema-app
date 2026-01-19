@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('prayers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
             $table->text('request');
             $table->string('time')->nullable(); // Store as "HH:MM AM/PM" or similar
             $table->boolean('reminder_enabled')->default(false);

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('daily_verses', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->date('date')->unique(); // One verse per day
             $table->string('reference');
             $table->text('text');
