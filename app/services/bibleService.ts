@@ -32,6 +32,20 @@ const booksCache: Record<string, BibleBook[]> = {};
 const chapterCache: Record<string, BibleChapter> = {};
 
 export const bibleService = {
+    // Synchronous checks for memory cache
+    getChapterSync(version: string, book: string, chapter: number): BibleChapter | null {
+        const key = CACHE_KEYS.CHAPTER(version, book, chapter);
+        return chapterCache[key] || null;
+    },
+
+    getVersionsSync(): BibleVersion[] | null {
+        return versionsCache;
+    },
+
+    getBooksSync(version: string): BibleBook[] | null {
+        return booksCache[version] || null;
+    },
+
     async getVersions(): Promise<BibleVersion[]> {
         if (versionsCache) return versionsCache;
 
@@ -143,13 +157,17 @@ export const bibleService = {
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
-            const response = await fetch(`${API_BASE_URL}bible/daily-verse`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : ''
-                }
-            });
-            if (!response.ok) throw new Error('Failed to fetch daily verse');
+            const headers: Record<string, string> = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const response = await fetch(`${API_BASE_URL}bible/daily-verse`, { headers });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`Daily Verse fetch failed. Status: ${response.status}, Body: ${text.substring(0, 100)}`);
+                throw new Error('Failed to fetch daily verse');
+            }
+
             const data = await response.json();
             await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
             return data;
@@ -165,13 +183,17 @@ export const bibleService = {
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
-            const response = await fetch(`${API_BASE_URL}bible/affirmation`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : ''
-                }
-            });
-            if (!response.ok) throw new Error('Failed to fetch affirmation');
+            const headers: Record<string, string> = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const response = await fetch(`${API_BASE_URL}bible/affirmation`, { headers });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`Affirmation fetch failed. Status: ${response.status}, Body: ${text.substring(0, 100)}`);
+                throw new Error('Failed to fetch affirmation');
+            }
+
             const data = await response.json();
             await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
             return data;
@@ -246,4 +268,3 @@ export const bibleService = {
         }
     }
 };
-

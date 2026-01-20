@@ -49,18 +49,22 @@ const BibleScreen: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const availableVersions = await bibleService.getVersions();
-        setVersions(availableVersions);
+        // 1. Get versions (Sync if possible)
+        let availableVersions = bibleService.getVersionsSync();
+        if (!availableVersions) {
+          availableVersions = await bibleService.getVersions();
+        }
+        setVersions(availableVersions || []);
 
-        // Load persisted state
+        // 2. Load persisted state
         const savedState = await SecureStore.getItemAsync(BIBLE_STATE_KEY);
-        let initialVersion = availableVersions[0];
+        let initialVersion = availableVersions?.[0] || { id: 'NKJV', name: 'NKJV', short_name: 'NKJV' };
         let initialBook = "Genesis";
         let initialChapter = 1;
 
         if (savedState) {
           const parsed = JSON.parse(savedState);
-          const versionExists = availableVersions.find(v => v.id === parsed.versionId);
+          const versionExists = availableVersions?.find(v => v.id === parsed.versionId);
           if (versionExists) {
             initialVersion = versionExists;
             initialBook = parsed.book;
@@ -72,10 +76,33 @@ const BibleScreen: React.FC = () => {
         setBook(initialBook);
         setChapter(initialChapter);
 
-        const availableBooks = await bibleService.getBooks(initialVersion.id);
-        setBooks(availableBooks);
-        const bookData = availableBooks.find(b => b.name === initialBook) || availableBooks[0];
-        setCurrentBookData(bookData);
+        // 3. Try to get everything else Sync first for instant render
+        const syncBooks = bibleService.getBooksSync(initialVersion.id);
+        const syncChapter = bibleService.getChapterSync(initialVersion.id, initialBook, initialChapter);
+
+        if (syncBooks && syncChapter) {
+          setBooks(syncBooks);
+          const bookData = syncBooks.find(b => b.name === initialBook) || syncBooks[0];
+          setCurrentBookData(bookData);
+          setBibleData(syncChapter);
+          setLoading(false);
+          // Still fetch fresh highlights in background
+          bibleService.getHighlightsForChapter(initialVersion.id, initialBook, initialChapter).then(setHighlights);
+        } else {
+          // Fallback to Async fetch
+          const [availableBooks, initialData, initialHighlights] = await Promise.all([
+            bibleService.getBooks(initialVersion.id),
+            bibleService.getChapter(initialVersion.id, initialBook, initialChapter),
+            bibleService.getHighlightsForChapter(initialVersion.id, initialBook, initialChapter)
+          ]);
+
+          setBooks(availableBooks);
+          const bookData = availableBooks.find(b => b.name === initialBook) || availableBooks[0];
+          setCurrentBookData(bookData);
+          setBibleData(initialData);
+          setHighlights(initialHighlights || []);
+          setLoading(false);
+        }
       } catch (e) {
         console.error('Bible init error:', e);
       } finally {
@@ -101,25 +128,38 @@ const BibleScreen: React.FC = () => {
     if (isInitializing) return;
 
     const fetchChapter = async () => {
-      setLoading(true);
+      // Avoid redundant fetches if we already have the right data
+      if (bibleData &&
+        bibleData.version === version.id &&
+        bibleData.book === book &&
+        bibleData.chapter === chapter.toString()) {
+        return;
+      }
+
+      const cached = bibleService.getChapterSync(version.id, book, chapter);
+      if (cached) {
+        setBibleData(cached);
+        setLoading(false);
+        // We still fetch highlights in background, but content is instant
+        const chapterHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+        setHighlights(chapterHighlights || []);
+      } else {
+        setLoading(true);
+        const [chapterData, chapterHighlights] = await Promise.all([
+          bibleService.getChapter(version.id, book, chapter),
+          bibleService.getHighlightsForChapter(version.id, book, chapter)
+        ]);
+        setBibleData(chapterData);
+        setHighlights(chapterHighlights || []);
+        setLoading(false);
+      }
       setSelectedVerses([]); // Clear selection
 
-      const [chapterData, chapterHighlights] = await Promise.all([
-        bibleService.getChapter(version.id, book, chapter),
-        bibleService.getHighlightsForChapter(version.id, book, chapter)
-      ]);
-
-      setBibleData(chapterData);
-      setHighlights(chapterHighlights || []);
-      setLoading(false);
-
       // Prefetch Next Chapter for seamless offline/fast reading
-      if (chapterData && currentBookData) {
+      if (currentBookData) {
         if (chapter < currentBookData.chapters) {
-          // Next chapter in same book
           bibleService.getChapter(version.id, book, chapter + 1);
         } else {
-          // First chapter of next book
           const currentIndex = books.findIndex(b => b.name === book);
           if (currentIndex < books.length - 1) {
             bibleService.getChapter(version.id, books[currentIndex + 1].name, 1);

@@ -25,7 +25,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     selectedVerses,
     onVersePress
 }) => {
-    if (loading) {
+    if (loading && !bibleData) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#E8503A" />

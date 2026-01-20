@@ -253,88 +253,95 @@ class BibleController extends Controller
 
     public function dailyVerse(Request $request)
     {
-        $user = auth('sanctum')->user();
-        $userId = $user ? $user->id : null;
-        $today = Carbon::today()->toDateString();
-        
-        // Check if we already have a verse for today for this user
-        $verse = DailyVerse::where('date', $today)
-            ->where('user_id', $userId)
-            ->first();
-        
-        if ($verse) {
-            return response()->json($verse);
-        }
-
-        // --- "I SEE YOU" LOGIC ---
-        $suggestedTheme = null;
-        if ($user) {
-            // Analyze recent prayers and reflections
-            $recentText = "";
+        try {
+            $user = auth('sanctum')->user();
+            $userId = $user ? $user->id : null;
+            $today = Carbon::today()->toDateString();
             
-            $prayers = \App\Models\Prayer::where('user_id', $userId)
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->pluck('request')
-                ->join(' ');
+            // Check if we already have a verse for today for this user
+            $verse = DailyVerse::where('date', $today)
+                ->where('user_id', $userId)
+                ->first();
+            
+            if ($verse) {
+                return response()->json($verse);
+            }
+
+            // --- "I SEE YOU" LOGIC ---
+            $suggestedTheme = null;
+            if ($user && $userId) {
+                // Analyze recent prayers and reflections
+                $prayers = \App\Models\Prayer::where('user_id', $userId)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->pluck('request')
+                    ->join(' ');
+                    
+                $reflections = \App\Models\Reflection::where('user_id', $userId)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(3)
+                    ->get()
+                    ->map(fn($r) => $r->title . ' ' . $r->content)
+                    ->join(' ');
+
+                $combinedText = strtolower($prayers . ' ' . $reflections);
                 
-            $reflections = \App\Models\Reflection::where('user_id', $userId)
-                ->orderBy('created_at', 'desc')
-                ->limit(3)
-                ->get()
-                ->map(fn($r) => $r->title . ' ' . $r->content)
-                ->join(' ');
+                // Map keywords to themes
+                $themeKeywords = [
+                    'Peace' => ['anxiety', 'worried', 'stress', 'fear', 'scared', 'trouble', 'peace', 'calm', 'rest'],
+                    'Strength' => ['weak', 'tired', 'weary', 'battle', 'struggle', 'hard', 'difficult', 'overcome', 'strength'],
+                    'Guidance' => ['direction', 'choice', 'decision', 'confused', 'way', 'path', 'lead', 'guide', 'future', 'what to do'],
+                    'Provision' => ['money', 'finance', 'job', 'need', 'lack', 'bill', 'rent', 'business', 'provide', 'supply'],
+                    'Healing' => ['sick', 'pain', 'disease', 'illness', 'body', 'health', 'hospital', 'doctor', 'heal', 'stripe'],
+                    'Faith' => ['believe', 'trust', 'doubt', 'faith', 'promise', 'hope'],
+                    'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected']
+                ];
 
-            $combinedText = strtolower($prayers . ' ' . $reflections);
-            
-            // Map keywords to themes
-            $themeKeywords = [
-                'Peace' => ['anxiety', 'worried', 'stress', 'fear', 'scared', 'trouble', 'peace', 'calm', 'rest'],
-                'Strength' => ['weak', 'tired', 'weary', 'battle', 'struggle', 'hard', 'difficult', 'overcome', 'strength'],
-                'Guidance' => ['direction', 'choice', 'decision', 'confused', 'way', 'path', 'lead', 'guide', 'future', 'what to do'],
-                'Provision' => ['money', 'finance', 'job', 'need', 'lack', 'bill', 'rent', 'business', 'provide', 'supply'],
-                'Healing' => ['sick', 'pain', 'disease', 'illness', 'body', 'health', 'hospital', 'doctor', 'heal', 'stripe'],
-                'Faith' => ['believe', 'trust', 'doubt', 'faith', 'promise', 'hope'],
-                'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected']
-            ];
-
-            foreach ($themeKeywords as $theme => $keywords) {
-                foreach ($keywords as $keyword) {
-                    if (str_contains($combinedText, $keyword)) {
-                        $suggestedTheme = $theme;
-                        break 2;
+                foreach ($themeKeywords as $theme => $keywords) {
+                    foreach ($keywords as $keyword) {
+                        if (str_contains($combinedText, $keyword)) {
+                            $suggestedTheme = $theme;
+                            break 2;
+                        }
                     }
                 }
             }
+
+            // Filter curated entries by theme if found
+            $possibleEntries = $suggestedTheme 
+                ? array_filter($this->curatedEntries, fn($e) => $e['theme'] === $suggestedTheme)
+                : $this->curatedEntries;
+
+            // If no entries for that theme, fallback to all
+            if (empty($possibleEntries)) {
+                $possibleEntries = $this->curatedEntries;
+            }
+
+            // Pick one based on day of year + user id for consistency
+            $userSeed = $userId ? (int)abs(crc32((string)$userId)) : 0;
+            $dayOfYear = (int)Carbon::today()->dayOfYear;
+            $seed = $dayOfYear + $userSeed;
+            
+            $entriesCount = count($possibleEntries);
+            $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
+            $entry = array_values($possibleEntries)[$index];
+
+            // Store it so it stays the same for 24h for this user
+            $verse = DailyVerse::create([
+                'user_id' => $userId,
+                'date' => $today,
+                'reference' => $entry['reference'],
+                'text' => $entry['text'],
+                'version' => $entry['version'] ?? 'NKJV',
+                'affirmation' => $entry['affirmation'],
+                'theme' => $entry['theme']
+            ]);
+
+            return response()->json($verse);
+        } catch (\Exception $e) {
+            \Log::error("Error in dailyVerse: " . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        // Filter curated entries by theme if found
-        $possibleEntries = $suggestedTheme 
-            ? array_filter($this->curatedEntries, fn($e) => $e['theme'] === $suggestedTheme)
-            : $this->curatedEntries;
-
-        // If no entries for that theme (shouldn't happen with our list), fallback to all
-        if (empty($possibleEntries)) {
-            $possibleEntries = $this->curatedEntries;
-        }
-
-        // Pick one based on day of year + user id for consistency
-        $seed = Carbon::today()->dayOfYear + ($userId ?? 0);
-        $index = $seed % count($possibleEntries);
-        $entry = array_values($possibleEntries)[$index];
-
-        // Store it so it stays the same for 24h for this user
-        $verse = DailyVerse::create([
-            'user_id' => $userId,
-            'date' => $today,
-            'reference' => $entry['reference'],
-            'text' => $entry['text'],
-            'version' => $entry['version'],
-            'affirmation' => $entry['affirmation'],
-            'theme' => $entry['theme']
-        ]);
-
-        return response()->json($verse);
     }
 
     public function dailyAffirmation(Request $request)

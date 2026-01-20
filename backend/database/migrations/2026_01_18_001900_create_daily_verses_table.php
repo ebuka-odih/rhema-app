@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('daily_verses', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignUuid('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->date('date');
             $table->string('reference');
             $table->text('text');
