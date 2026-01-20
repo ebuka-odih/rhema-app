@@ -33,6 +33,15 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
         );
     }
 
+    if (!loading && !bibleData) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>This chapter is not available offline.</Text>
+                <Text style={styles.errorSubtext}>Please connect to the internet to download it.</Text>
+            </View>
+        );
+    }
+
     const getVerseHighlight = (num: number) => {
         return highlights.find(h => h.verse === num);
     };
@@ -80,6 +89,24 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+    },
+    errorText: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    errorSubtext: {
+        color: '#999999',
+        fontSize: 16,
+        textAlign: 'center',
     },
     readerScroll: {
         flex: 1,

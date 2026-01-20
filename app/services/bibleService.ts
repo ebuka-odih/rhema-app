@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from './apiConfig';
 
 export interface BibleBook {
@@ -18,82 +19,119 @@ export interface BibleChapter {
     verses: Record<string, string>;
 }
 
-// In-memory cache for faster subsequent loads
+// Cache keys
+const CACHE_KEYS = {
+    VERSIONS: 'bible_versions_cache',
+    BOOKS: (version: string) => `bible_books_cache_${version}`,
+    CHAPTER: (version: string, book: string, chapter: number) => `bible_chapter_cache_${version}_${book}_${chapter}`,
+};
+
+// In-memory cache for ultra-fast access
 let versionsCache: BibleVersion[] | null = null;
 const booksCache: Record<string, BibleBook[]> = {};
+const chapterCache: Record<string, BibleChapter> = {};
 
 export const bibleService = {
     async getVersions(): Promise<BibleVersion[]> {
         if (versionsCache) return versionsCache;
+
+        // Try persistent storage
+        try {
+            const stored = await AsyncStorage.getItem(CACHE_KEYS.VERSIONS);
+            if (stored) {
+                versionsCache = JSON.parse(stored);
+                // Background fetch to update cache
+                this.refreshVersions();
+                return versionsCache || [];
+            }
+        } catch (e) {
+            console.error('Error reading versions from storage:', e);
+        }
+
+        return this.refreshVersions();
+    },
+
+    async refreshVersions(): Promise<BibleVersion[]> {
         try {
             const response = await fetch(`${API_BASE_URL}bible/versions`, {
                 headers: { 'Accept': 'application/json' }
             });
-            const text = await response.text();
+            if (!response.ok) throw new Error('Failed to fetch versions');
 
-            if (!response.ok) {
-                console.error(`Failed to fetch versions. Status: ${response.status}, Body: ${text.substring(0, 100)}`);
-                throw new Error('Failed to fetch versions');
-            }
-
-            try {
-                versionsCache = JSON.parse(text);
-                return versionsCache || [];
-            } catch (e) {
-                console.error('getVersions JSON parse error:', text.substring(0, 100));
-                return [];
-            }
+            const data = await response.json();
+            versionsCache = data;
+            await AsyncStorage.setItem(CACHE_KEYS.VERSIONS, JSON.stringify(data));
+            return data;
         } catch (error) {
-            console.error('Error fetching Bible versions:', error);
-            return [];
+            console.error('Error refreshing Bible versions:', error);
+            return versionsCache || [];
         }
     },
 
     async getBooks(version: string): Promise<BibleBook[]> {
         if (booksCache[version]) return booksCache[version];
+
+        // Try persistent storage
+        try {
+            const stored = await AsyncStorage.getItem(CACHE_KEYS.BOOKS(version));
+            if (stored) {
+                booksCache[version] = JSON.parse(stored);
+                // Background update
+                this.refreshBooks(version);
+                return booksCache[version];
+            }
+        } catch (e) {
+            console.error('Error reading books from storage:', e);
+        }
+
+        return this.refreshBooks(version);
+    },
+
+    async refreshBooks(version: string): Promise<BibleBook[]> {
         try {
             const response = await fetch(`${API_BASE_URL}bible/books?version=${encodeURIComponent(version)}`, {
                 headers: { 'Accept': 'application/json' }
             });
-            const text = await response.text();
+            if (!response.ok) throw new Error('Failed to fetch books');
 
-            if (!response.ok) {
-                console.error(`Failed to fetch books. Status: ${response.status}, Body: ${text.substring(0, 100)}`);
-                throw new Error('Failed to fetch books');
-            }
-
-            try {
-                booksCache[version] = JSON.parse(text);
-                return booksCache[version];
-            } catch (e) {
-                console.error('getBooks JSON parse error:', text.substring(0, 100));
-                return [];
-            }
+            const data = await response.json();
+            booksCache[version] = data;
+            await AsyncStorage.setItem(CACHE_KEYS.BOOKS(version), JSON.stringify(data));
+            return data;
         } catch (error) {
-            console.error('Error fetching Bible books:', error);
-            return [];
+            console.error('Error refreshing Bible books:', error);
+            return booksCache[version] || [];
         }
     },
 
     async getChapter(version: string, book: string, chapter: number): Promise<BibleChapter | null> {
+        const key = CACHE_KEYS.CHAPTER(version, book, chapter);
+        if (chapterCache[key]) return chapterCache[key];
+
+        // Try persistent storage
+        try {
+            const stored = await AsyncStorage.getItem(key);
+            if (stored) {
+                const data = JSON.parse(stored);
+                chapterCache[key] = data;
+                return data;
+            }
+        } catch (e) {
+            console.error('Error reading chapter from storage:', e);
+        }
+
+        // Fetch from network if not in cache
         try {
             const response = await fetch(
                 `${API_BASE_URL}bible/chapter?version=${encodeURIComponent(version)}&book=${encodeURIComponent(book)}&chapter=${chapter}`,
                 { headers: { 'Accept': 'application/json' } }
             );
-            const text = await response.text();
+            if (!response.ok) throw new Error('Failed to fetch chapter');
 
-            if (!response.ok) {
-                console.error(`Failed to fetch chapter. Status: ${response.status}, Body: ${text.substring(0, 100)}`);
-                throw new Error('Failed to fetch chapter');
-            }
-
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('getChapter JSON parse error:', text.substring(0, 100));
-                return null;
-            }
+            const data = await response.json();
+            chapterCache[key] = data;
+            await AsyncStorage.setItem(key, JSON.stringify(data));
+            return data;
         } catch (error) {
             console.error('Error fetching Bible chapter:', error);
             return null;
@@ -101,6 +139,7 @@ export const bibleService = {
     },
 
     async getDailyVerse() {
+        const cacheKey = 'bible_daily_verse_cache';
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
@@ -110,16 +149,19 @@ export const bibleService = {
                     'Authorization': token ? `Bearer ${token}` : ''
                 }
             });
-            const text = await response.text();
             if (!response.ok) throw new Error('Failed to fetch daily verse');
-            return JSON.parse(text);
+            const data = await response.json();
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+            return data;
         } catch (error) {
             console.error('Error fetching Daily Verse:', error);
-            return null;
+            const cached = await AsyncStorage.getItem(cacheKey);
+            return cached ? JSON.parse(cached) : null;
         }
     },
 
     async getAffirmation() {
+        const cacheKey = 'bible_affirmation_cache';
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
@@ -129,12 +171,14 @@ export const bibleService = {
                     'Authorization': token ? `Bearer ${token}` : ''
                 }
             });
-            const text = await response.text();
             if (!response.ok) throw new Error('Failed to fetch affirmation');
-            return JSON.parse(text);
+            const data = await response.json();
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+            return data;
         } catch (error) {
             console.error('Error fetching Affirmation:', error);
-            return null;
+            const cached = await AsyncStorage.getItem(cacheKey);
+            return cached ? JSON.parse(cached) : null;
         }
     },
 
@@ -202,3 +246,4 @@ export const bibleService = {
         }
     }
 };
+

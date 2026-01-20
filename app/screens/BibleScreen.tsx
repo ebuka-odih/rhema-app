@@ -112,6 +112,20 @@ const BibleScreen: React.FC = () => {
       setBibleData(chapterData);
       setHighlights(chapterHighlights || []);
       setLoading(false);
+
+      // Prefetch Next Chapter for seamless offline/fast reading
+      if (chapterData && currentBookData) {
+        if (chapter < currentBookData.chapters) {
+          // Next chapter in same book
+          bibleService.getChapter(version.id, book, chapter + 1);
+        } else {
+          // First chapter of next book
+          const currentIndex = books.findIndex(b => b.name === book);
+          if (currentIndex < books.length - 1) {
+            bibleService.getChapter(version.id, books[currentIndex + 1].name, 1);
+          }
+        }
+      }
     };
     fetchChapter();
   }, [version, book, chapter, isInitializing]);
