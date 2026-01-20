@@ -27,11 +27,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   if (hours >= 17) greeting = "Good Evening";
 
   const [dailyVerse, setDailyVerse] = React.useState({
+    id: "",
     reference: "Psalms 145:18",
     text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
     version: "NKJV",
     affirmation: "",
-    theme: ""
+    theme: "",
+    likes: 0,
+    shares: 0,
+    downloads: 0,
+    userLiked: false
   });
 
   const [notes, setNotes] = React.useState<JournalEntry[]>([]);
@@ -43,11 +48,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       bibleService.getDailyVerse().then(verse => {
         if (verse) {
           setDailyVerse({
+            id: verse.id,
             reference: verse.reference,
             text: verse.text,
             version: verse.version,
             affirmation: verse.affirmation,
-            theme: verse.theme
+            theme: verse.theme,
+            likes: verse.likes_count || 0,
+            shares: verse.shares_count || 0,
+            downloads: verse.downloads_count || 0,
+            userLiked: verse.user_liked || false
           });
         }
       });
@@ -114,11 +124,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
 
       <DailyVerse
+        id={dailyVerse.id}
         reference={dailyVerse.reference}
         text={dailyVerse.text}
         version={dailyVerse.version}
         affirmation={dailyVerse.affirmation}
         theme={dailyVerse.theme}
+        initialLikes={dailyVerse.likes}
+        initialShares={dailyVerse.shares}
+        initialDownloads={dailyVerse.downloads}
+        initialUserLiked={dailyVerse.userLiked}
       />
 
       <QuickActions onNavigate={onNavigate} />
@@ -149,7 +164,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0D0D',
   },
   content: {
-    paddingBottom: 100,
+    paddingTop: 0,
+    paddingBottom: 80,
   },
 });
 

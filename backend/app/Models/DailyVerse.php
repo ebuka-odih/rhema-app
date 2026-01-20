@@ -8,10 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 class DailyVerse extends Model
 {
     use HasUuids;
-    protected $fillable = ['user_id', 'date', 'reference', 'text', 'version', 'affirmation', 'theme'];
+    protected $fillable = [
+        'user_id', 'date', 'reference', 'text', 'version', 
+        'affirmation', 'theme', 'likes_count', 'shares_count', 'downloads_count'
+    ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function interactions()
+    {
+        return $this->hasMany(DailyVerseInteraction::class);
     }
 }

@@ -17,17 +17,17 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ greeting, date, userName
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 24,
+    paddingTop: 32, // Reduced from 48
+    paddingBottom: 12, // Reduced from 24
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 22, // Reduced from 28
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2, // Reduced from 4
   },
   date: {
-    fontSize: 14,
+    fontSize: 12, // Reduced from 14
     color: '#999999',
   },
 });

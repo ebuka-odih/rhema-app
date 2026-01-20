@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bible/highlights', [BibleHighlightController::class, 'store']);
     Route::delete('/bible/highlights/{id}', [BibleHighlightController::class, 'destroy']);
     Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
+    Route::post('/bible/daily-verse/interact', [BibleController::class, 'interact']);
 });
 
 // Bible Routes (Public or Optionally Authenticated)

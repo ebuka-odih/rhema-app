@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use App\Models\DailyVerse;
+use App\Models\DailyVerseInteraction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BibleController extends Controller
 {
@@ -264,6 +266,11 @@ class BibleController extends Controller
                 ->first();
             
             if ($verse) {
+                if ($userId) {
+                    $verse->user_liked = $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists();
+                } else {
+                    $verse->user_liked = false;
+                }
                 return response()->json($verse);
             }
 
@@ -337,10 +344,77 @@ class BibleController extends Controller
                 'theme' => $entry['theme']
             ]);
 
+            $verse->user_liked = false;
             return response()->json($verse);
         } catch (\Exception $e) {
             \Log::error("Error in dailyVerse: " . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function interact(Request $request)
+    {
+        $request->validate([
+            'daily_verse_id' => 'required|uuid|exists:daily_verses,id',
+            'type' => 'required|in:like,share,download'
+        ]);
+
+        $user = auth('sanctum')->user();
+        $userId = $user ? $user->id : null;
+        
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $type = $request->type;
+        $verseId = $request->daily_verse_id;
+
+        try {
+            return DB::transaction(function () use ($userId, $verseId, $type) {
+                $interaction = DailyVerseInteraction::where('user_id', $userId)
+                    ->where('daily_verse_id', $verseId)
+                    ->where('type', $type)
+                    ->first();
+
+                $verse = DailyVerse::findOrFail($verseId);
+
+                if ($type === 'like') {
+                    if ($interaction) {
+                        $interaction->delete();
+                        $verse->decrement('likes_count');
+                        $liked = false;
+                    } else {
+                        DailyVerseInteraction::create([
+                            'user_id' => $userId,
+                            'daily_verse_id' => $verseId,
+                            'type' => 'like'
+                        ]);
+                        $verse->increment('likes_count');
+                        $liked = true;
+                    }
+                    return response()->json([
+                        'likes_count' => $verse->likes_count,
+                        'user_liked' => $liked
+                    ]);
+                } else {
+                    // For share/download, we just record it and increment
+                    DailyVerseInteraction::create([
+                        'user_id' => $userId,
+                        'daily_verse_id' => $verseId,
+                        'type' => $type
+                    ]);
+                    
+                    $column = $type . 's_count'; // shares_count or downloads_count
+                    $verse->increment($column);
+                    
+                    return response()->json([
+                        $column => $verse->$column
+                    ]);
+                }
+            });
+        } catch (\Exception $e) {
+            \Log::error("Interaction error: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to process interaction'], 500);
         }
     }
 
