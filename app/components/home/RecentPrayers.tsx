@@ -17,7 +17,7 @@ interface RecentPrayersProps {
 export const RecentPrayers: React.FC<RecentPrayersProps> = ({ prayers, onViewAll }) => (
     <View style={styles.section}>
         <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Prayers</Text>
+            <Text style={styles.sectionTitle}>Prayer Reminders</Text>
             <TouchableOpacity onPress={onViewAll}>
                 <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
@@ -26,7 +26,7 @@ export const RecentPrayers: React.FC<RecentPrayersProps> = ({ prayers, onViewAll
         <View style={styles.list}>
             {prayers.length === 0 ? (
                 <View style={styles.emptyCard}>
-                    <Text style={styles.emptyText}>No recent prayer requests</Text>
+                    <Text style={styles.emptyText}>No recent prayer reminders</Text>
                 </View>
             ) : (
                 prayers.slice(0, 3).map((prayer) => (

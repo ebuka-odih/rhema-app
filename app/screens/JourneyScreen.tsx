@@ -238,7 +238,9 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
       const result = await response.json().catch(() => ({}));
 
       if (response.ok) {
-        if (reminderEnabled) {
+        const prayerId = isUpdate ? selectedPrayer.id : result.id;
+
+        if (reminderEnabled && status === 'active') {
           try {
             const [time, period] = prayerTime.split(' ');
             let [hour, minute] = time.split(':').map(Number);
@@ -246,17 +248,20 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
             if (period === 'AM' && hour === 12) hour = 0;
 
             // Set notification with vibration and sound
-            await notificationService.schedulePrayerReminder(hour, minute, prayerRequest);
+            await notificationService.schedulePrayerReminder(prayerId, hour, minute, prayerRequest);
           } catch (notifErr) {
             console.error('Failed to schedule notification:', notifErr);
           }
+        } else {
+          // Cancel if disabled or marked as done
+          await notificationService.cancelPrayerReminder(prayerId);
         }
 
         fetchPrayers(); // Refresh the list
 
         Alert.alert(
-          isUpdate ? 'Prayer Updated' : 'Prayer Created',
-          isUpdate ? 'Your prayer request has been updated.' : 'Your prayer request has been logged successfully.',
+          isUpdate ? 'Prayer Reminder Updated' : 'Prayer Reminder Created',
+          isUpdate ? 'Your prayer reminder has been updated.' : 'Your prayer reminder has been logged successfully.',
           [
             {
               text: 'Done',
@@ -277,7 +282,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
           ]
         );
       } else {
-        Alert.alert('Error', result.message || result.error || 'Failed to save prayer.');
+        Alert.alert('Error', result.message || result.error || 'Failed to save prayer reminder.');
       }
     } catch (error) {
       console.error('Failed to save prayer:', error);
@@ -300,6 +305,23 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
       });
 
       if (response.ok) {
+        // Manage notifications on toggle
+        const updatedPrayer = prayers.find(p => p.id === id);
+        if (updatedPrayer) {
+          if (newStatus === 'done') {
+            await notificationService.cancelPrayerReminder(id);
+          } else if (newStatus === 'active' && updatedPrayer.reminder_enabled) {
+            try {
+              const [time, period] = updatedPrayer.time.split(' ');
+              let [hour, minute] = time.split(':').map(Number);
+              if (period === 'PM' && hour < 12) hour += 12;
+              if (period === 'AM' && hour === 12) hour = 0;
+              await notificationService.schedulePrayerReminder(id, hour, minute, updatedPrayer.request);
+            } catch (e) {
+              console.error('Toggle notification error:', e);
+            }
+          }
+        }
         fetchPrayers();
       }
     } catch (err) {
@@ -308,7 +330,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   };
 
   const handleRemovePrayer = async (id: string | number) => {
-    Alert.alert('Delete Prayer Request', 'Are you sure you want to delete this prayer request?', [
+    Alert.alert('Delete Prayer Reminder', 'Are you sure you want to delete this prayer reminder?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -328,10 +350,12 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
               },
             });
 
-            if (!response.ok) {
-              // Rollback if failure
+            if (response.ok) {
+              await notificationService.cancelPrayerReminder(id);
+              fetchPrayers();
+            } else {
               setPrayers(originalPrayers);
-              Alert.alert('Error', 'Failed to delete prayer request. Please try again.');
+              Alert.alert('Error', 'Failed to delete prayer reminder. Please try again.');
             }
           } catch (err) {
             console.error('Delete prayer error:', err);

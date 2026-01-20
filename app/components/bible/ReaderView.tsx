@@ -25,6 +25,14 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     selectedVerses,
     onVersePress
 }) => {
+    const scrollRef = React.useRef<ScrollView>(null);
+
+    React.useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ y: 0, animated: false });
+        }
+    }, [book, chapter]);
+
     if (loading && !bibleData) {
         return (
             <View style={styles.loadingContainer}>
@@ -47,7 +55,12 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     };
 
     return (
-        <ScrollView style={styles.readerScroll} contentContainerStyle={styles.readerContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+            ref={scrollRef}
+            style={styles.readerScroll}
+            contentContainerStyle={styles.readerContent}
+            showsVerticalScrollIndicator={false}
+        >
             <Text style={styles.chapterTitle}>{book} {chapter}</Text>
             <View style={styles.textContainer}>
                 {bibleData && Object.entries(bibleData.verses).map(([numStr, content]) => {

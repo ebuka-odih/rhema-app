@@ -333,6 +333,20 @@ class BibleController extends Controller
             $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
             $entry = array_values($possibleEntries)[$index];
 
+            // Define themed background keywords
+            $themeImages = [
+                'Peace' => 'nature,calm,sunset,ocean',
+                'Strength' => 'mountain,mountain-peak,climb,path',
+                'Guidance' => 'light,stars,forest,path',
+                'Provision' => 'wheat,harvest,sunrise,field',
+                'Healing' => 'water,flower,soft-light,garden',
+                'Faith' => 'prayer,hands,cross,clouds',
+                'Love' => 'family,kids,heart,warmth'
+            ];
+
+            $keywords = $themeImages[$entry['theme']] ?? 'landscape,abstract,spiritual';
+            $bgImage = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
+
             // Store it so it stays the same for 24h for this user
             $verse = DailyVerse::create([
                 'user_id' => $userId,
@@ -341,7 +355,8 @@ class BibleController extends Controller
                 'text' => $entry['text'],
                 'version' => $entry['version'] ?? 'NKJV',
                 'affirmation' => $entry['affirmation'],
-                'theme' => $entry['theme']
+                'theme' => $entry['theme'],
+                'background_image' => $bgImage
             ]);
 
             $verse->user_liked = false;

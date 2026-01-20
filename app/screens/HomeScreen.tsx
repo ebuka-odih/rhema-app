@@ -33,6 +33,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     version: "NKJV",
     affirmation: "",
     theme: "",
+    backgroundImage: "",
     likes: 0,
     shares: 0,
     downloads: 0,
@@ -54,6 +55,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
             version: verse.version,
             affirmation: verse.affirmation,
             theme: verse.theme,
+            backgroundImage: verse.background_image,
             likes: verse.likes_count || 0,
             shares: verse.shares_count || 0,
             downloads: verse.downloads_count || 0,
@@ -130,6 +132,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         version={dailyVerse.version}
         affirmation={dailyVerse.affirmation}
         theme={dailyVerse.theme}
+        backgroundImage={dailyVerse.backgroundImage}
         initialLikes={dailyVerse.likes}
         initialShares={dailyVerse.shares}
         initialDownloads={dailyVerse.downloads}

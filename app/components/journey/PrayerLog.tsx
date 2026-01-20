@@ -66,7 +66,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                 <View style={styles.prayerLogContainer}>
                     <View style={styles.prayerLogCard}>
                         <View style={styles.prayerLogHeader}>
-                            <Text style={styles.prayerLogTitle}>Prayer Request</Text>
+                            <Text style={styles.prayerLogTitle}>Prayer Reminder</Text>
                             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                                 <IconClose size={24} color="#999999" />
                             </TouchableOpacity>
@@ -164,7 +164,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                 disabled={!prayerRequest}
                             >
                                 <Text style={styles.saveLogButtonText}>
-                                    {status === 'done' ? 'Update Prayer Request' : 'Add Prayer Request'}
+                                    {status === 'done' ? 'Update Prayer Reminder' : 'Add Prayer Reminder'}
                                 </Text>
                             </TouchableOpacity>
                         </ScrollView>

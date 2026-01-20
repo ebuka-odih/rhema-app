@@ -70,9 +70,10 @@ export const notificationService = {
         });
     },
 
-    async schedulePrayerReminder(hour: number, minute: number, request: string) {
-        // Schedule the primary alarm
+    async schedulePrayerReminder(id: string | number, hour: number, minute: number, request: string) {
+        // Schedule the primary alarm with a consistent ID for this specific prayer
         await Notifications.scheduleNotificationAsync({
+            identifier: `prayer-${id}`,
             content: {
                 title: "🚨 Prayer Session Beginning",
                 body: request || "It's time for your scheduled prayer session. Your soul awaits.",
@@ -89,6 +90,10 @@ export const notificationService = {
                 channelId: 'prayer-reminders',
             },
         });
+    },
+
+    async cancelPrayerReminder(id: string | number) {
+        await Notifications.cancelScheduledNotificationAsync(`prayer-${id}`);
     },
 
     async cancelAllReminders() {

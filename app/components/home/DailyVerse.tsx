@@ -14,6 +14,7 @@ interface DailyVerseProps {
     version: string;
     affirmation?: string;
     theme?: string;
+    backgroundImage?: string;
     initialLikes?: number;
     initialShares?: number;
     initialDownloads?: number;
@@ -21,7 +22,7 @@ interface DailyVerseProps {
 }
 
 export const DailyVerse: React.FC<DailyVerseProps> = ({
-    id, reference, text, version, affirmation, theme,
+    id, reference, text, version, affirmation, theme, backgroundImage,
     initialLikes = 0, initialShares = 0, initialDownloads = 0, initialUserLiked = false
 }) => {
     const viewRef = useRef<View>(null);
@@ -32,6 +33,16 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
         userLiked: initialUserLiked
     });
     const [isInteracting, setIsInteracting] = useState(false);
+
+    // Sync metrics with props when they change (e.g. after Homescreen fetch)
+    React.useEffect(() => {
+        setMetrics({
+            likes: initialLikes,
+            shares: initialShares,
+            downloads: initialDownloads,
+            userLiked: initialUserLiked
+        });
+    }, [id, initialLikes, initialShares, initialDownloads, initialUserLiked]);
 
     const handleInteract = async (type: 'like' | 'share' | 'download') => {
         if (isInteracting) return;
@@ -110,55 +121,61 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
     };
 
     return (
-        <View style={styles.verseCard} ref={viewRef} collapsable={false}>
-            <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=800&h=1100&fit=crop' }}
-                style={styles.verseBackground}
-            />
-            <View style={styles.verseOverlay} />
+        <View style={styles.verseCard}>
+            {/* Wrapper for content to be captured (excluding buttons) */}
+            <View ref={viewRef} collapsable={false} style={styles.captureContainer}>
+                <Image
+                    source={{ uri: backgroundImage || `https://source.unsplash.com/featured/800x1100?nature,spiritual,${theme || 'landscape'}` }}
+                    style={styles.verseBackground}
+                />
+                <View style={styles.verseOverlay} />
 
-            <View style={styles.handleContainer}>
-                <View style={styles.handle} />
-            </View>
+                <View style={styles.handleContainer}>
+                    <View style={styles.handle} />
+                </View>
 
-            <View style={styles.topSection}>
-                <View style={styles.badgeContainer}>
-                    <Text style={styles.verseLabel}>VERSE OF THE DAY</Text>
-                    {theme && (
-                        <View style={styles.themeBadge}>
-                            <Text style={styles.themeText}>{theme.toUpperCase()}</Text>
+                <View style={styles.topSection}>
+                    <View style={styles.badgeContainer}>
+                        <Text style={styles.verseLabel}>VERSE OF THE DAY</Text>
+                        {theme && (
+                            <View style={styles.themeBadge}>
+                                <Text style={styles.themeText}>{theme.toUpperCase()}</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                <View style={styles.verseContent}>
+                    <View style={styles.mainTextContainer}>
+                        <Text style={styles.verticalQuote}>"</Text>
+                        <Text style={styles.verseText}>{text}</Text>
+                        <Text style={styles.verticalQuote}>"</Text>
+                    </View>
+
+                    <Text style={styles.verseReference}>{reference} • {version}</Text>
+
+                    {affirmation && (
+                        <View style={styles.affirmationCard}>
+                            <Text style={styles.affirmationTitle}>DAILY AFFIRMATION</Text>
+                            <Text style={styles.affirmationText}>{affirmation}</Text>
                         </View>
                     )}
                 </View>
             </View>
 
-            <View style={styles.verseContent}>
-                <View style={styles.mainTextContainer}>
-                    <Text style={styles.verticalQuote}>"</Text>
-                    <Text style={styles.verseText}>{text}</Text>
-                    <Text style={styles.verticalQuote}>"</Text>
-                </View>
-
-                <Text style={styles.verseReference}>{reference} • {version}</Text>
-
-                {affirmation && (
-                    <View style={styles.affirmationCard}>
-                        <Text style={styles.affirmationTitle}>DAILY AFFIRMATION</Text>
-                        <Text style={styles.affirmationText}>{affirmation}</Text>
-                    </View>
-                )}
-
+            {/* Actions are OUTSIDE the captureRef but inside the card container */}
+            <View style={styles.footerActions}>
                 <View style={styles.actionsContainer}>
                     <View style={styles.actionItem}>
                         <TouchableOpacity
                             style={[styles.actionCircle, metrics.userLiked && styles.likedCircle]}
                             onPress={() => handleInteract('like')}
                             activeOpacity={0.7}
-                            disabled={isInteracting}
+                            disabled={!id || isInteracting}
                         >
                             <IconHeart
                                 size={20}
-                                color={metrics.userLiked ? "#FFD35A" : "#FFFFFF"}
+                                color={id ? (metrics.userLiked ? "#FFD35A" : "#FFFFFF") : "#444"}
                                 strokeWidth={metrics.userLiked ? 0 : 2.5}
                                 fill={metrics.userLiked ? "#FFD35A" : "transparent"}
                             />
@@ -171,9 +188,9 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
                             style={styles.actionCircle}
                             onPress={() => handleInteract('share')}
                             activeOpacity={0.7}
-                            disabled={isInteracting}
+                            disabled={!id || isInteracting}
                         >
-                            <IconShare size={20} color="#FFFFFF" strokeWidth={2.5} />
+                            <IconShare size={20} color={id ? "#FFFFFF" : "#444"} strokeWidth={2.5} />
                         </TouchableOpacity>
                         <Text style={styles.actionCount}>{metrics.shares}</Text>
                     </View>
@@ -183,9 +200,9 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
                             style={styles.actionCircle}
                             onPress={() => handleInteract('download')}
                             activeOpacity={0.7}
-                            disabled={isInteracting}
+                            disabled={!id || isInteracting}
                         >
-                            <IconDownload size={20} color="#FFFFFF" strokeWidth={2.5} />
+                            <IconDownload size={20} color={id ? "#FFFFFF" : "#444"} strokeWidth={2.5} />
                         </TouchableOpacity>
                         <Text style={styles.actionCount}>{metrics.downloads}</Text>
                     </View>
@@ -208,6 +225,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.35,
         shadowRadius: 10,
     },
+    captureContainer: {
+        width: '100%',
+        backgroundColor: '#1A1A1A',
+    },
     verseBackground: {
         position: 'absolute',
         width: '100%',
@@ -217,7 +238,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: '100%',
         height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     handleContainer: {
         alignItems: 'center',
@@ -264,7 +285,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingTop: 8,
-        paddingBottom: 16,
+        paddingBottom: 20,
     },
     mainTextContainer: {
         alignItems: 'center',
@@ -302,7 +323,7 @@ const styles = StyleSheet.create({
         width: '100%',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.06)',
-        marginBottom: 16,
+        marginBottom: 4,
     },
     affirmationTitle: {
         fontSize: 9,
@@ -318,6 +339,11 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         textAlign: 'center',
         fontWeight: '500',
+    },
+    footerActions: {
+        paddingBottom: 16,
+        paddingTop: 8,
+        backgroundColor: 'rgba(0,0,0,0.2)', // Visual separation for buttons
     },
     actionsContainer: {
         flexDirection: 'row',

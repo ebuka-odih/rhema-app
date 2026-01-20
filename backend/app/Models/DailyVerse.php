@@ -10,7 +10,7 @@ class DailyVerse extends Model
     use HasUuids;
     protected $fillable = [
         'user_id', 'date', 'reference', 'text', 'version', 
-        'affirmation', 'theme', 'likes_count', 'shares_count', 'downloads_count'
+        'affirmation', 'theme', 'background_image', 'likes_count', 'shares_count', 'downloads_count'
     ];
 
     public function user()
