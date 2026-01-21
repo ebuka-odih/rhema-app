@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 interface BibleReferenceHandlerProps {
     text: string;
@@ -8,36 +8,69 @@ interface BibleReferenceHandlerProps {
 
 export const BibleReferenceHandler: React.FC<BibleReferenceHandlerProps> = ({ text, onReferencePress }) => {
     // Regex to match Bible references
-    // Examples: John 3:16, 1 Corinthians 13:4-8, Matthew 24:14
     const referenceRegex = /\b(?:[123]\s)?[A-Z][a-z]+\.?\s\d+:\d+(?:-\d+)?\b/g;
 
-    const parts = text.split(referenceRegex);
-    const matches = text.match(referenceRegex) || [];
+    // Helper to parse markdown-like bolding **text**
+    const renderContent = (content: string) => {
+        // Split by references first
+        const parts = content.split(referenceRegex);
+        const matches = content.match(referenceRegex) || [];
+
+        const elements: React.ReactNode[] = [];
+
+        parts.forEach((part, i) => {
+            // Handle bolding within the part
+            const boldParts = part.split(/(\*\*.*?\*\*)/g);
+            boldParts.forEach((bp, j) => {
+                if (bp.startsWith('**') && bp.endsWith('**')) {
+                    elements.push(
+                        <Text key={`bp-${i}-${j}`} style={styles.boldText}>
+                            {bp.slice(2, -2)}
+                        </Text>
+                    );
+                } else {
+                    elements.push(bp);
+                }
+            });
+
+            // Add the reference if it exists
+            if (matches[i]) {
+                elements.push(
+                    <Text
+                        key={`ref-${i}`}
+                        style={styles.referenceText}
+                        onPress={() => onReferencePress(matches[i])}
+                    >
+                        {matches[i]}
+                    </Text>
+                );
+            }
+        });
+
+        return elements;
+    };
 
     return (
-        <Text style={styles.textContainer}>
-            {parts.map((part, i) => (
-                <React.Fragment key={i}>
-                    {part}
-                    {matches[i] && (
-                        <Text
-                            style={styles.referenceText}
-                            onPress={() => onReferencePress(matches[i])}
-                        >
-                            {matches[i]}
-                        </Text>
-                    )}
-                </React.Fragment>
-            ))}
-        </Text>
+        <View style={styles.container}>
+            <Text style={styles.textContainer}>
+                {renderContent(text)}
+            </Text>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    container: {
+        width: '100%',
+    },
     textContainer: {
         fontSize: 16,
-        lineHeight: 24,
+        lineHeight: 26, // Increased line height for better readability
         color: '#CCCCCC',
+    },
+    boldText: {
+        fontWeight: 'bold',
+        color: '#FFFFFF', // Brighter white for headers
     },
     referenceText: {
         color: '#E8503A',

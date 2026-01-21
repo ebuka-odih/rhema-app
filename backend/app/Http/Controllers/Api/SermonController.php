@@ -88,9 +88,12 @@ Format rules:
 1. Use bullet points (e.g., - **Header**: Explanation).
 2. Each point must have a bolded header.
 3. Use DOUBLE line breaks between each bullet point for readability.
-4. Be concise but maintain the core message.
+4. Be thorough but concise—capture every distinct key point made by the speaker.
 5. Avoid adding external theological context or fillers not mentioned by the speaker.
-6. For short recordings, provide 1-2 points. For longer sermons, provide 3-5 points.'
+6. Proportional Detail: 
+   - For very short recordings (< 2 mins): 2-3 points.
+   - For medium recordings (2-10 mins): 5-8 points.
+   - For long sermons (> 10 mins): 8-12 points.'
                         ],
                         [
                             'role' => 'user',

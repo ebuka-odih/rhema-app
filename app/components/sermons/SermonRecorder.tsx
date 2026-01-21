@@ -190,7 +190,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
 
                         {activeTab === 'SUMMARY' ? (
                             <View style={styles.summaryCard}>
-                                <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
+                                <Text style={styles.cardLabel}>SUMMARY & KEY TAKEAWAYS</Text>
                                 <BibleReferenceHandler
                                     text={summary || ''}
                                     onReferencePress={handleReferencePress}
@@ -198,7 +198,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                             </View>
                         ) : (
                             <View style={styles.transcriptionCard}>
-                                <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
+                                <Text style={styles.cardLabel}>SERMON TRANSCRIPT</Text>
                                 <BibleReferenceHandler
                                     text={transcription || ''}
                                     onReferencePress={handleReferencePress}
