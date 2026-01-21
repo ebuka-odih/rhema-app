@@ -14,7 +14,7 @@ interface JournalEditorProps {
     title: string;
     setTitle: (t: string) => void;
     content: string;
-    setContent: (c: string) => void;
+    setContent: React.Dispatch<React.SetStateAction<string>>;
     onDelete?: () => void;
 }
 
@@ -38,8 +38,10 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
     const selectionRef = useRef({ start: 0, end: 0 });
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const [showFormatMenu, setShowFormatMenu] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
+    const [isEditing, setIsEditing] = useState(!selectedEntry);
     const [isTranscribing, setIsTranscribing] = useState(false);
+    const [isListeningContinuous, setIsListeningContinuous] = useState(false);
+    const chunkTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Audio Recorder
     const recorder = useAudioRecorder({
@@ -109,48 +111,157 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
         }
     };
 
+    const recognitionRef = useRef<any>(null);
+
     const toggleVoiceTyping = async () => {
-        if (recorderState.isRecording) {
-            try {
-                await recorder.stop();
-                handleTranscription();
-            } catch (err) {
-                console.error('Failed to stop recording', err);
+        // 1. Try Native Web Speech API first (Works directly, no AI service needed)
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            if (isListeningContinuous) {
+                stopNativeRecognition();
+            } else {
+                startNativeRecognition(SpeechRecognition);
             }
+            return;
+        }
+
+        // 2. Fallback to Continuous Chunking (if native is not supported)
+        if (isListeningContinuous) {
+            stopContinuousListening();
         } else {
-            try {
-                const { granted } = await requestRecordingPermissionsAsync();
-                if (!granted) {
-                    Alert.alert('Permission Required', 'Microphone permission is needed for voice typing.');
-                    return;
-                }
-
-                await setAudioModeAsync({
-                    allowsRecording: true,
-                    playsInSilentMode: true,
-                    interruptionMode: 'doNotMix',
-                });
-
-                await recorder.prepareToRecordAsync();
-                recorder.record();
-            } catch (err) {
-                console.error('Failed to start recording', err);
-                Alert.alert('Error', 'Could not start recording. Please check microphone permissions.');
-            }
+            startContinuousListening();
         }
     };
 
-    const handleTranscription = async () => {
-        if (!recorder.uri) return;
-        setIsTranscribing(true);
+    const startNativeRecognition = (SpeechRecognition: any) => {
+        setIsListeningContinuous(true);
+        setIsEditing(true);
 
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event: any) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    const text = event.results[i][0].transcript;
+                    setContent(prev => {
+                        const spacer = prev && !prev.endsWith(' ') ? ' ' : '';
+                        return prev + spacer + text;
+                    });
+                }
+            }
+        };
+
+        recognition.onend = () => {
+            if (isListeningContinuous) recognition.start(); // Keep listening
+        };
+
+        recognition.onerror = (err: any) => {
+            console.error('Speech recognition error', err);
+            setIsListeningContinuous(false);
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+    };
+
+    const stopNativeRecognition = () => {
+        setIsListeningContinuous(false);
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+        }
+    };
+
+    const startContinuousListening = async () => {
+        try {
+            const { granted } = await requestRecordingPermissionsAsync();
+            if (!granted) {
+                Alert.alert('Permission Required', 'Microphone permission is needed for voice typing.');
+                return;
+            }
+
+            await setAudioModeAsync({
+                allowsRecording: true,
+                playsInSilentMode: true,
+                interruptionMode: 'doNotMix',
+            });
+
+            setIsListeningContinuous(true);
+            setIsEditing(true); // Switch to edit mode so user sees text appear
+
+            await startNextChunk();
+        } catch (err) {
+            console.error('Failed to start listening', err);
+            Alert.alert('Error', 'Could not start recording.');
+        }
+    };
+
+    const startNextChunk = async () => {
+        try {
+            await recorder.prepareToRecordAsync();
+            recorder.record();
+
+            // Record for 4 seconds, then process and start next
+            chunkTimerRef.current = setTimeout(async () => {
+                if (isListeningContinuous) {
+                    await processChunkAndContinue();
+                }
+            }, 4000);
+        } catch (err) {
+            console.error('Next chunk error', err);
+        }
+    };
+
+    const processChunkAndContinue = async () => {
+        try {
+            const uri = recorder.uri;
+            await recorder.stop();
+
+            // Immediately start next chunk recording to minimize gaps
+            if (isListeningContinuous) {
+                startNextChunk();
+            }
+
+            if (uri) {
+                performTranscription(uri);
+            }
+        } catch (err) {
+            console.error('Process chunk error', err);
+        }
+    };
+
+    const stopContinuousListening = async () => {
+        setIsListeningContinuous(false);
+        if (chunkTimerRef.current) {
+            clearTimeout(chunkTimerRef.current);
+            chunkTimerRef.current = null;
+        }
+
+        try {
+            const uri = recorder.uri;
+            await recorder.stop();
+            if (uri) {
+                performTranscription(uri);
+            }
+        } catch (err) {
+            console.error('Stop listening error', err);
+        }
+    };
+
+    const performTranscription = async (uri: string) => {
+        setIsTranscribing(true);
         try {
             const token = await authService.getToken();
             const formData = new FormData();
             formData.append('audio', {
-                uri: Platform.OS === 'ios' ? recorder.uri.replace('file://', '') : recorder.uri,
+                uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
                 type: 'audio/m4a',
-                name: 'transcription.m4a',
+                name: 'chunk.m4a',
             } as any);
 
             const response = await fetch(`${API_BASE_URL}transcribe`, {
@@ -165,17 +276,15 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
             const result = await response.json();
             if (response.ok && result.text) {
                 const newText = result.text.trim();
-                const updatedContent = content
-                    ? content.endsWith(' ') ? content + newText : content + ' ' + newText
-                    : newText;
-                setContent(updatedContent);
-            } else {
-                console.warn('Transcription failed', result);
-                Alert.alert('Transcription Error', result.error || 'Failed to transcribe audio. Please try again.');
+                if (newText) {
+                    setContent(prev => {
+                        const spacer = prev && !prev.endsWith(' ') ? ' ' : '';
+                        return prev + spacer + newText;
+                    });
+                }
             }
         } catch (err) {
-            console.error('Transcription system error', err);
-            Alert.alert('System Error', 'Could not connect to the transcription server.');
+            console.error('Transcription chunk error', err);
         } finally {
             setIsTranscribing(false);
         }
@@ -286,31 +395,34 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                             </TouchableOpacity>
                         </View>
 
+                        <View style={{ flex: 1 }} />
+
+                        <View style={styles.verticalDivider} />
+
                         <TouchableOpacity
-                            style={[styles.toolBtn, recorderState.isRecording && styles.micBtnActive]}
+                            style={[styles.micBtn, isListeningContinuous && styles.micBtnActive]}
                             onPress={toggleVoiceTyping}
                         >
-                            <IconMic size={18} color={recorderState.isRecording ? '#FF4444' : '#FFFFFF'} />
+                            <IconMic size={22} color={isListeningContinuous ? '#FF4444' : '#FFFFFF'} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Editor Section */}
                 <View style={styles.editorSection}>
+                    {isListeningContinuous && (
+                        <View style={styles.statusIndicator}>
+                            <View style={styles.recordingPulse} />
+                            <Text style={styles.statusText}>Continuous Listening Mode...</Text>
+                        </View>
+                    )}
                     {isTranscribing && (
                         <View style={styles.statusIndicator}>
                             <ActivityIndicator size="small" color="#E8503A" />
-                            <Text style={styles.statusText}>Converting voice to text...</Text>
+                            <Text style={styles.statusText}>Transcribing...</Text>
                         </View>
                     )}
-                    {recorderState.isRecording && (
-                        <View style={styles.statusIndicator}>
-                            <View style={styles.recordingPulse} />
-                            <Text style={styles.statusText}>Listening...</Text>
-                        </View>
-                    )}
-
-                    {!isEditing ? (
+                    {!isEditing && !isListeningContinuous ? (
                         <TouchableOpacity
                             activeOpacity={0.7}
                             onPress={() => setIsEditing(true)}
@@ -511,8 +623,25 @@ const styles = StyleSheet.create({
     toolBtnActive: {
         backgroundColor: 'rgba(232, 80, 58, 0.15)',
     },
+    micBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#161616',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+    },
     micBtnActive: {
-        backgroundColor: 'rgba(255, 68, 68, 0.2)',
+        backgroundColor: 'rgba(255, 68, 68, 0.15)',
+        borderColor: 'rgba(255, 68, 68, 0.3)',
+    },
+    verticalDivider: {
+        width: 1,
+        height: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        marginHorizontal: 8,
     },
     categoryChip: {
         paddingHorizontal: 14,
@@ -564,6 +693,12 @@ const styles = StyleSheet.create({
         color: '#E0E0E0',
         lineHeight: 32,
         minHeight: 500,
+    },
+    placeholderText: {
+        fontSize: 19,
+        color: 'rgba(255, 255, 255, 0.1)',
+        lineHeight: 32,
+        fontStyle: 'italic',
     },
     modalOverlay: {
         flex: 1,
