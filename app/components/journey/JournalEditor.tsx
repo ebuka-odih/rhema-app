@@ -34,8 +34,11 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
     onDelete,
 }) => {
     const [activeCategory, setActiveCategory] = useState<Category>((selectedEntry?.category as Category) || 'Devotion');
+    const editorRef = useRef<TextInput>(null);
+    const selectionRef = useRef({ start: 0, end: 0 });
     const [selection, setSelection] = useState({ start: 0, end: 0 });
     const [showFormatMenu, setShowFormatMenu] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
 
     // Audio Recorder
@@ -46,12 +49,13 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
     const recorderState = useAudioRecorderState(recorder, 100);
 
     const applyFormat = (type: FormatType) => {
-        const { start, end } = selection;
-        const selectedText = content.substring(start, end);
-        let newContent = content;
+        const { start, end } = selectionRef.current;
+
+        // If nothing is selected, we apply to current line or word
+        const isLineFormat = ['title', 'heading', 'subheading', 'bullet', 'dashed', 'numbered', 'quote', 'body'].includes(type);
+
         let prefix = '';
         let suffix = '';
-
         switch (type) {
             case 'bold': prefix = '**'; suffix = '**'; break;
             case 'italic': prefix = '_'; suffix = '_'; break;
@@ -68,15 +72,20 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
             case 'body': prefix = ''; suffix = ''; break;
         }
 
-        if (['title', 'heading', 'subheading', 'bullet', 'dashed', 'numbered', 'quote', 'body'].includes(type)) {
+        let newContent = content;
+        if (isLineFormat) {
             const lines = content.split('\n');
-            let currentSelectionPos = 0;
+            let currentPos = 0;
             const newLines = lines.map(line => {
-                const lineStart = currentSelectionPos;
-                const lineEnd = currentSelectionPos + line.length;
-                currentSelectionPos += line.length + 1;
+                const lineStart = currentPos;
+                const lineEnd = currentPos + line.length;
+                currentPos += line.length + 1;
 
-                if (start >= lineStart && start <= lineEnd) {
+                // Check if this line is part of the selection
+                const isSelected = (start === end && start >= lineStart && start <= lineEnd) ||
+                    (start < lineEnd && end > lineStart);
+
+                if (isSelected) {
                     const cleanLine = line.replace(/^(#+ |• |- |\d+\. |> )/, '');
                     return type === 'body' ? cleanLine : prefix + cleanLine;
                 }
@@ -84,10 +93,17 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
             });
             newContent = newLines.join('\n');
         } else {
+            const selectedText = content.substring(start, end);
             newContent = content.substring(0, start) + prefix + selectedText + suffix + content.substring(end);
         }
 
         setContent(newContent);
+
+        // Focus back to input
+        setTimeout(() => {
+            editorRef.current?.focus();
+        }, 100);
+
         if (!['bold', 'italic', 'underline', 'strike'].includes(type)) {
             setShowFormatMenu(false);
         }
@@ -155,12 +171,20 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                 setContent(updatedContent);
             } else {
                 console.warn('Transcription failed', result);
+                Alert.alert('Transcription Error', result.error || 'Failed to transcribe audio. Please try again.');
             }
         } catch (err) {
             console.error('Transcription system error', err);
+            Alert.alert('System Error', 'Could not connect to the transcription server.');
         } finally {
             setIsTranscribing(false);
         }
+    };
+
+    const handleSelectionChange = (e: any) => {
+        const newSelection = e.nativeEvent.selection;
+        selectionRef.current = newSelection;
+        setSelection(newSelection);
     };
 
     return (
@@ -285,18 +309,43 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                             <Text style={styles.statusText}>Listening...</Text>
                         </View>
                     )}
-                    <TextInput
-                        style={styles.contentInput}
-                        placeholder="Start typing your reflection..."
-                        placeholderTextColor="rgba(255, 255, 255, 0.1)"
-                        value={content}
-                        onChangeText={setContent}
-                        onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-                        multiline
-                        textAlignVertical="top"
-                        selectionColor="#E8503A"
-                        autoFocus={!selectedEntry}
-                    />
+
+                    {!isEditing ? (
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => setIsEditing(true)}
+                            style={styles.previewContainer}
+                        >
+                            {content ? content.split('\n').map((line, i) => {
+                                if (line.startsWith('# ')) return <Text key={i} style={styles.previewTitle}>{line.substring(2)}</Text>;
+                                if (line.startsWith('## ')) return <Text key={i} style={styles.previewHeading}>{line.substring(3)}</Text>;
+                                if (line.startsWith('### ')) return <Text key={i} style={styles.previewSubheading}>{line.substring(4)}</Text>;
+                                if (line.startsWith('• ')) return <Text key={i} style={styles.previewListItem}>• {line.substring(2)}</Text>;
+                                if (line.startsWith('> ')) return <View key={i} style={styles.previewQuote}><Text style={styles.previewQuoteText}>{line.substring(2)}</Text></View>;
+                                return <Text key={i} style={styles.previewBody}>{line || ' '}</Text>;
+                            }) : (
+                                <Text style={styles.placeholderText}>Start typing your reflection...</Text>
+                            )}
+                        </TouchableOpacity>
+                    ) : (
+                        <TextInput
+                            ref={editorRef}
+                            style={styles.contentInput}
+                            placeholder="Start typing your reflection..."
+                            placeholderTextColor="rgba(255, 255, 255, 0.1)"
+                            value={content}
+                            onChangeText={setContent}
+                            onSelectionChange={handleSelectionChange}
+                            onBlur={() => setIsEditing(false)}
+                            multiline
+                            textAlignVertical="top"
+                            selectionColor="#E8503A"
+                            autoFocus={true}
+                            blurOnSubmit={false}
+                            autoCapitalize="sentences"
+                            autoCorrect={true}
+                        />
+                    )}
                 </View>
             </ScrollView>
 
@@ -386,6 +435,19 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    previewToggle: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        marginRight: 12,
+    },
+    previewToggleText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#E8503A',
+        textTransform: 'uppercase',
     },
     scrollView: {
         flex: 1,
@@ -542,4 +604,55 @@ const styles = StyleSheet.create({
     menuItemSubheading: { fontSize: 18, fontWeight: '700', color: '#FFF' },
     menuItemBody: { fontSize: 18, color: '#FFF' },
     menuItemText: { fontSize: 18, color: '#FFF' },
+    previewContainer: {
+        flex: 1,
+    },
+    previewTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginBottom: 16,
+    },
+    previewHeading: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 12,
+        marginTop: 16,
+    },
+    previewSubheading: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 10,
+        marginTop: 14,
+    },
+    previewBody: {
+        fontSize: 18,
+        lineHeight: 28,
+        color: '#E0E0E0',
+        marginBottom: 12,
+    },
+    previewListItem: {
+        fontSize: 18,
+        lineHeight: 28,
+        color: '#E0E0E0',
+        marginBottom: 8,
+        paddingLeft: 10,
+    },
+    previewQuote: {
+        borderLeftWidth: 4,
+        borderLeftColor: '#E8503A',
+        paddingLeft: 16,
+        marginVertical: 16,
+        backgroundColor: 'rgba(232, 80, 58, 0.05)',
+        paddingVertical: 12,
+        borderRadius: 4,
+    },
+    previewQuoteText: {
+        fontSize: 18,
+        fontStyle: 'italic',
+        lineHeight: 28,
+        color: '#E0E0E0',
+    },
 });
