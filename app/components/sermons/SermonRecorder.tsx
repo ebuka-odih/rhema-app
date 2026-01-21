@@ -160,7 +160,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                                     onPress={onReset}
                                     style={styles.resultsDeleteButton}
                                 >
-                                    <IconTrash size={18} color="#999999" />
+                                    <IconTrash size={20} color="#E8503A" />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={onSaveAndFinish}
@@ -182,7 +182,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                                     placeholder="Enter sermon title..."
                                     placeholderTextColor="#666666"
                                 />
-                                <IconEdit size={18} color="#666666" />
+                                <IconEdit size={20} color="#E8503A" />
                             </View>
                         </View>
 
@@ -373,6 +373,8 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#FFFFFF',
+        flex: 1,
+        marginRight: 12,
     },
     saveButton: {
         backgroundColor: '#E8503A',
@@ -426,9 +428,9 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 12,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(232, 80, 58, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },

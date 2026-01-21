@@ -84,16 +84,18 @@ class SermonController extends Controller
                             'role' => 'system',
                             'content' => 'You are a helpful assistant. Provided is a sermon transcription. Create a clear, structured summary using key takeaways. 
 
+CRITICAL PRIORITY: Identify and include EVERY Bible scripture reference mentioned (e.g., Hebrews 11, John 3:16). Ensure these references are integrated into the relevant takeaway points.
+
 Format rules:
 1. Use bullet points (e.g., - **Header**: Explanation).
 2. Each point must have a bolded header.
-3. Use DOUBLE line breaks between each bullet point for readability.
-4. Be thorough but concise—capture every distinct key point made by the speaker.
-5. Avoid adding external theological context or fillers not mentioned by the speaker.
+3. Use SINGLE line breaks between each bullet point for readability.
+4. For every teaching point, explicitly mention the supporting Bible verse(s) the speaker used.
+5. Be thorough but capture every distinct key point—do not omit scripture.
 6. Proportional Detail: 
-   - For very short recordings (< 2 mins): 2-3 points.
-   - For medium recordings (2-10 mins): 5-8 points.
-   - For long sermons (> 10 mins): 8-12 points.'
+   - For very short recordings (< 2 mins): 2-3 points with scriptures.
+   - For medium recordings (2-10 mins): 5-8 points with scriptures.
+   - For long sermons (> 10 mins): 8-12 points with scriptures.'
                         ],
                         [
                             'role' => 'user',
