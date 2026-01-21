@@ -269,17 +269,20 @@ class BibleController extends Controller
                 // If the verse exists but is missing a background image (old data), generate one
                 if (!$verse->background_image) {
                     $userSeed = $userId ? (string)$userId : 'guest';
-                    $seed = abs(crc32($today . $userSeed));
+                    // Use microtime for maximum salt to ensure a fresh image on every unique call
+                    $seed = abs(crc32($today . $userSeed . microtime(true)));
                     $themeImages = [
-                        'Peace' => 'nature,calm,sunset,ocean',
-                        'Strength' => 'mountain,mountain-peak,climb,path',
-                        'Guidance' => 'light,stars,forest,path',
-                        'Provision' => 'wheat,harvest,sunrise,field',
-                        'Healing' => 'water,flower,soft-light,garden',
-                        'Faith' => 'prayer,hands,cross,clouds',
-                        'Love' => 'family,kids,heart,warmth'
+                        'Peace' => 'nature,calm,zen',
+                        'Strength' => 'mountain,peak,climb',
+                        'Guidance' => 'light,forest,path',
+                        'Provision' => 'harvest,sunrise,field',
+                        'Healing' => 'water,flower,garden',
+                        'Faith' => 'prayer,cross,clouds',
+                        'Love' => 'family,heart,warmth'
                     ];
-                    $keywords = $themeImages[$verse->theme] ?? 'landscape,abstract,spiritual';
+                    $keywords = $themeImages[$verse->theme] ?? 'spiritual,landscape';
+                    $verse->background_image = "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80&sig={$seed}"; 
+                    // Note: The URL above is a high-quality base, but adding &sig ensures Unsplash serves a random one from their collection if redirected or using source.
                     $verse->background_image = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
                     $verse->save();
                 }
@@ -344,7 +347,7 @@ class BibleController extends Controller
 
             // Pick one based on day of year + user id for consistency
             $userSeed = $userId ? (string)$userId : 'guest';
-            $seed = abs(crc32($today . $userSeed));
+            $seed = abs(crc32($today . $userSeed . microtime(true)));
             
             $entriesCount = count($possibleEntries);
             $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
@@ -352,16 +355,16 @@ class BibleController extends Controller
 
             // Define themed background keywords
             $themeImages = [
-                'Peace' => 'nature,calm,sunset,ocean',
-                'Strength' => 'mountain,mountain-peak,climb,path',
-                'Guidance' => 'light,stars,forest,path',
-                'Provision' => 'wheat,harvest,sunrise,field',
-                'Healing' => 'water,flower,soft-light,garden',
-                'Faith' => 'prayer,hands,cross,clouds',
-                'Love' => 'family,kids,heart,warmth'
+                'Peace' => 'nature,calm,zen',
+                'Strength' => 'mountain,peak,climb',
+                'Guidance' => 'light,forest,path',
+                'Provision' => 'harvest,sunrise,field',
+                'Healing' => 'water,flower,garden',
+                'Faith' => 'prayer,cross,clouds',
+                'Love' => 'family,heart,warmth'
             ];
 
-            $keywords = $themeImages[$entry['theme']] ?? 'landscape,abstract,spiritual';
+            $keywords = $themeImages[$entry['theme']] ?? 'spiritual,landscape';
             $bgImage = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
 
             // Store it so it stays the same for 24h for this user

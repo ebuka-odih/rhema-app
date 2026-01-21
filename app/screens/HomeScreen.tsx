@@ -18,7 +18,7 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const { data: session } = useSession();
-  const userName = session?.user?.name || "User";
+  const firstName = session?.user?.name ? session.user.name.trim().split(' ')[0] : "User";
 
   const time = new Date();
   const hours = time.getHours();
@@ -121,7 +121,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       <HomeHeader
         greeting={greeting}
         date={formattedDate}
-        userName={userName}
+        userName={firstName}
       />
 
 
