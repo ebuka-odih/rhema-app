@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
 import { API_BASE_URL } from './apiConfig';
 
 const DB_NAME = 'wordflow_bible.db';
@@ -33,11 +32,22 @@ export const offlineBibleService = {
 
     async isBibleDownloaded(version: string): Promise<boolean> {
         const db = await this.getDb();
-        const first = await db.getFirstAsync<{ count: number }>(
-            'SELECT COUNT(*) as count FROM verses WHERE version = ? LIMIT 1',
-            [version]
-        );
-        return (first?.count || 0) > 0;
+        try {
+            // Check if table exists first
+            const tableCheck = await db.getFirstAsync<{ name: string }>(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='verses'"
+            );
+            if (!tableCheck) return false;
+
+            const first = await db.getFirstAsync<{ count: number }>(
+                'SELECT COUNT(*) as count FROM verses WHERE version = ? LIMIT 1',
+                [version]
+            );
+            return (first?.count || 0) > 0;
+        } catch (e) {
+            console.error('isBibleDownloaded error:', e);
+            return false;
+        }
     },
 
     async downloadAndInstall(version: string, onProgress: (steps: SetupStep[]) => void) {
@@ -117,33 +127,43 @@ export const offlineBibleService = {
     },
 
     async getChapter(version: string, book: string, chapter: number) {
-        const db = await this.getDb();
-        const rows = await db.getAllAsync<{ verse: number; text: string }>(
-            'SELECT verse, text FROM verses WHERE version = ? AND book = ? AND chapter = ? ORDER BY verse ASC',
-            [version, book, chapter]
-        );
+        try {
+            const db = await this.getDb();
+            const rows = await db.getAllAsync<{ verse: number; text: string }>(
+                'SELECT verse, text FROM verses WHERE version = ? AND book = ? AND chapter = ? ORDER BY verse ASC',
+                [version, book, chapter]
+            );
 
-        if (rows.length === 0) return null;
+            if (rows.length === 0) return null;
 
-        const verses: Record<string, string> = {};
-        rows.forEach(row => {
-            verses[row.verse.toString()] = row.text;
-        });
+            const verses: Record<string, string> = {};
+            rows.forEach(row => {
+                verses[row.verse.toString()] = row.text;
+            });
 
-        return {
-            version,
-            book,
-            chapter: chapter.toString(),
-            verses
-        };
+            return {
+                version,
+                book,
+                chapter: chapter.toString(),
+                verses
+            };
+        } catch (e) {
+            console.error('getChapter offline failed:', e);
+            return null;
+        }
     },
 
     async getBooks(version: string) {
-        const db = await this.getDb();
-        const rows = await db.getAllAsync<{ book: string; chapters: number }>(
-            'SELECT book, MAX(chapter) as chapters FROM verses WHERE version = ? GROUP BY book',
-            [version]
-        );
-        return rows.map(r => ({ name: r.book, chapters: r.chapters }));
+        try {
+            const db = await this.getDb();
+            const rows = await db.getAllAsync<{ book: string; chapters: number }>(
+                'SELECT book, MAX(chapter) as chapters FROM verses WHERE version = ? GROUP BY book',
+                [version]
+            );
+            return rows.map(r => ({ name: r.book, chapters: r.chapters }));
+        } catch (e) {
+            console.error('getBooks offline failed:', e);
+            return [];
+        }
     }
 };
