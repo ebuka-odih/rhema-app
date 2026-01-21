@@ -14,13 +14,18 @@ import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { useSession } from '../services/auth';
 import { BibleHighlight } from '../types';
 
-const BibleScreen: React.FC = () => {
+interface BibleScreenProps {
+  initialBook?: string;
+  initialChapter?: number;
+}
+
+const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }) => {
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
 
   const [fontSize, setFontSize] = useState(18);
-  const [chapter, setChapter] = useState(1);
-  const [book, setBook] = useState("Genesis");
+  const [chapter, setChapter] = useState(initialChapter || 1);
+  const [book, setBook] = useState(initialBook || "Genesis");
   const [version, setVersion] = useState<BibleVersion>({
     id: 'NEW KING JAMES VERSION',
     name: 'NEW KING JAMES VERSION',
@@ -59,45 +64,45 @@ const BibleScreen: React.FC = () => {
         // 2. Load persisted state
         const savedState = await SecureStore.getItemAsync(BIBLE_STATE_KEY);
         let initialVersion = availableVersions?.[0] || { id: 'NKJV', name: 'NKJV', short_name: 'NKJV' };
-        let initialBook = "Genesis";
-        let initialChapter = 1;
+        let currentBook = initialBook || "Genesis";
+        let currentChapterNum = initialChapter || 1;
 
-        if (savedState) {
+        if (savedState && !initialBook && !initialChapter) {
           const parsed = JSON.parse(savedState);
           const versionExists = availableVersions?.find(v => v.id === parsed.versionId);
           if (versionExists) {
             initialVersion = versionExists;
-            initialBook = parsed.book;
-            initialChapter = parsed.chapter;
+            currentBook = parsed.book || currentBook;
+            currentChapterNum = parsed.chapter || currentChapterNum;
           }
         }
 
         setVersion(initialVersion);
-        setBook(initialBook);
-        setChapter(initialChapter);
+        setBook(currentBook);
+        setChapter(currentChapterNum);
 
         // 3. Try to get everything else Sync first for instant render
         const syncBooks = bibleService.getBooksSync(initialVersion.id);
-        const syncChapter = bibleService.getChapterSync(initialVersion.id, initialBook, initialChapter);
+        const syncChapter = bibleService.getChapterSync(initialVersion.id, currentBook, currentChapterNum);
 
         if (syncBooks && syncChapter) {
           setBooks(syncBooks);
-          const bookData = syncBooks.find(b => b.name === initialBook) || syncBooks[0];
+          const bookData = syncBooks.find(b => b.name === currentBook) || syncBooks[0];
           setCurrentBookData(bookData);
           setBibleData(syncChapter);
           setLoading(false);
           // Still fetch fresh highlights in background
-          bibleService.getHighlightsForChapter(initialVersion.id, initialBook, initialChapter).then(setHighlights);
+          bibleService.getHighlightsForChapter(initialVersion.id, currentBook, currentChapterNum).then(setHighlights);
         } else {
           // Fallback to Async fetch
           const [availableBooks, initialData, initialHighlights] = await Promise.all([
             bibleService.getBooks(initialVersion.id),
-            bibleService.getChapter(initialVersion.id, initialBook, initialChapter),
-            bibleService.getHighlightsForChapter(initialVersion.id, initialBook, initialChapter)
+            bibleService.getChapter(initialVersion.id, currentBook, currentChapterNum),
+            bibleService.getHighlightsForChapter(initialVersion.id, currentBook, currentChapterNum)
           ]);
 
           setBooks(availableBooks);
-          const bookData = availableBooks.find(b => b.name === initialBook) || availableBooks[0];
+          const bookData = availableBooks.find(b => b.name === currentBook) || availableBooks[0];
           setCurrentBookData(bookData);
           setBibleData(initialData);
           setHighlights(initialHighlights || []);

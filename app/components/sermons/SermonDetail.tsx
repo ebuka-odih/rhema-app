@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { Sermon } from '../../types/sermon';
 import { IconArrowLeft, IconTrash, IconPlay, IconDownload } from '../Icons';
 import { TabNavigator } from './TabNavigator';
+import { BibleReferenceHandler } from '../bible/BibleReferenceHandler';
+import { BibleVerseModal } from '../bible/BibleVerseModal';
 
 interface SermonDetailProps {
     sermon: Sermon;
@@ -10,6 +12,7 @@ interface SermonDetailProps {
     onBack: () => void;
     onDelete: () => void;
     onTabChange: (tab: 'SUMMARY' | 'TRANSCRIPTION') => void;
+    onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
 export const SermonDetail: React.FC<SermonDetailProps> = ({
@@ -17,55 +20,87 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
     activeTab,
     onBack,
     onDelete,
-    onTabChange
-}) => (
-    <View style={styles.viewContainer}>
-        <View style={styles.detailHeader}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                <IconArrowLeft size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.detailTitle} numberOfLines={1}>{sermon.title}</Text>
-            <View style={styles.detailActions}>
-                <TouchableOpacity style={styles.detailAction}>
-                    <IconDownload size={20} color="#FFFFFF" />
+    onTabChange,
+    onNavigateToBible
+}) => {
+    const [selectedVerse, setSelectedVerse] = React.useState<string | null>(null);
+
+    const handleReferencePress = (reference: string) => {
+        setSelectedVerse(reference);
+    };
+
+    const handleReadFull = () => {
+        if (!selectedVerse || !onNavigateToBible) return;
+        const parts = selectedVerse.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+        if (parts) {
+            const [_, book, chapter] = parts;
+            onNavigateToBible(book, parseInt(chapter));
+            setSelectedVerse(null);
+        }
+    };
+
+    return (
+        <View style={styles.viewContainer}>
+            <View style={styles.detailHeader}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <IconArrowLeft size={20} color="#FFFFFF" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onDelete} style={styles.detailAction}>
-                    <IconTrash size={20} color="#E8503A" />
-                </TouchableOpacity>
+                <Text style={styles.detailTitle} numberOfLines={1}>{sermon.title}</Text>
+                <View style={styles.detailActions}>
+                    <TouchableOpacity style={styles.detailAction}>
+                        <IconDownload size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={onDelete} style={styles.detailAction}>
+                        <IconTrash size={20} color="#E8503A" />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            <ScrollView style={styles.detailContent} contentContainerStyle={styles.detailContentPadding} showsVerticalScrollIndicator={false}>
+                <View style={styles.playerCard}>
+                    <View style={styles.playerInfo}>
+                        <Text style={styles.playerDate}>{sermon.date}</Text>
+                        <Text style={styles.playerDuration}>{sermon.duration}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.playButton}>
+                        <IconPlay size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.progressBar}>
+                    <View style={styles.progressFill} />
+                </View>
+
+                <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
+
+                {activeTab === 'SUMMARY' ? (
+                    <View style={styles.summaryCard}>
+                        <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
+                        <BibleReferenceHandler
+                            text={sermon.summary || 'No summary available.'}
+                            onReferencePress={handleReferencePress}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.transcriptionCard}>
+                        <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
+                        <BibleReferenceHandler
+                            text={sermon.transcription || 'No transcription available.'}
+                            onReferencePress={handleReferencePress}
+                        />
+                    </View>
+                )}
+            </ScrollView>
+
+            <BibleVerseModal
+                visible={!!selectedVerse}
+                reference={selectedVerse || ''}
+                onClose={() => setSelectedVerse(null)}
+                onReadFull={handleReadFull}
+            />
         </View>
-
-        <ScrollView style={styles.detailContent} contentContainerStyle={styles.detailContentPadding} showsVerticalScrollIndicator={false}>
-            <View style={styles.playerCard}>
-                <View style={styles.playerInfo}>
-                    <Text style={styles.playerDate}>{sermon.date}</Text>
-                    <Text style={styles.playerDuration}>{sermon.duration}</Text>
-                </View>
-                <TouchableOpacity style={styles.playButton}>
-                    <IconPlay size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.progressBar}>
-                <View style={styles.progressFill} />
-            </View>
-
-            <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
-
-            {activeTab === 'SUMMARY' ? (
-                <View style={styles.summaryCard}>
-                    <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
-                    <Text style={styles.summaryText}>{sermon.summary || 'No summary available.'}</Text>
-                </View>
-            ) : (
-                <View style={styles.transcriptionCard}>
-                    <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
-                    <Text style={styles.transcriptionText}>{sermon.transcription || 'No transcription available.'}</Text>
-                </View>
-            )}
-        </ScrollView>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     viewContainer: {

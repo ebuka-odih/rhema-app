@@ -65,6 +65,7 @@ class SermonController extends Controller
                 ->attach('file', file_get_contents($filePath), 'sermon.m4a')
                 ->post('https://api.openai.com/v1/audio/transcriptions', [
                     'model' => 'whisper-1',
+                    'prompt' => 'Transcribe the following sermon accurately. Keep it faithful to the speaker\'s words while ensuring correct punctuation and flow. If the recording is very short, just provide the exact transcript.',
                 ]);
 
             if ($transcriptionResponse->failed()) {
@@ -81,14 +82,14 @@ class SermonController extends Controller
                     'messages' => [
                         [
                             'role' => 'system',
-                            'content' => 'You are an expert theological assistant. Summarize the provided sermon transcription into concise bullet points highlighting the key theological takeaways.'
+                            'content' => 'You are a helpful assistant. Summarize the provided sermon transcription into a concise, accurate overview. The summary should be proportional to the length of the recording: for long sermons, provide key takeaways; for very short recordings, provide a simple one-sentence summary that remains very close to the original words. Avoid adding external theological context or "fillers" not mentioned by the speaker. THE SUMMARY SHOULD BE CONCISE AND NOT MORE THAN EXPECTED.'
                         ],
                         [
                             'role' => 'user',
                             'content' => "Sermon Transcription:\n\n" . $transcription
                         ]
                     ],
-                    'temperature' => 0.7
+                    'temperature' => 0.5
                 ]);
 
             if ($summaryResponse->failed()) {

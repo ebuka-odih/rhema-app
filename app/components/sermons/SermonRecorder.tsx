@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { IconArrowLeft, IconMic, IconTrash, IconCheck } from '../Icons';
+import { IconArrowLeft, IconMic, IconTrash, IconCheck, IconEdit } from '../Icons';
 import { AudioVisualizer } from './AudioVisualizer';
 import { TabNavigator } from './TabNavigator';
+import { BibleReferenceHandler } from '../bible/BibleReferenceHandler';
+import { BibleVerseModal } from '../bible/BibleVerseModal';
 
 interface SermonRecorderProps {
     isRecording: boolean;
@@ -26,6 +28,7 @@ interface SermonRecorderProps {
     onTitleChange: (title: string) => void;
     onTabChange: (tab: 'SUMMARY' | 'TRANSCRIPTION') => void;
     onBack: () => void;
+    onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
 export const SermonRecorder: React.FC<SermonRecorderProps> = ({
@@ -50,8 +53,24 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
     onTitleChange,
     onTabChange,
     onBack,
+    onNavigateToBible,
 }) => {
     const isOverLimit = duration >= maxDuration;
+    const [selectedVerse, setSelectedVerse] = React.useState<string | null>(null);
+
+    const handleReferencePress = (reference: string) => {
+        setSelectedVerse(reference);
+    };
+
+    const handleReadFull = () => {
+        if (!selectedVerse || !onNavigateToBible) return;
+        const parts = selectedVerse.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+        if (parts) {
+            const [_, book, chapter] = parts;
+            onNavigateToBible(book, parseInt(chapter));
+            setSelectedVerse(null);
+        }
+    };
 
     // Auto-stop if over limit
     React.useEffect(() => {
@@ -136,24 +155,35 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                     <View style={styles.resultsContainer}>
                         <View style={styles.resultsHeader}>
                             <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
-                            <TouchableOpacity
-                                onPress={onSaveAndFinish}
-                                style={styles.saveButton}
-                            >
-                                <IconCheck size={14} color="#FFFFFF" />
-                                <Text style={styles.saveButtonText}>Save</Text>
-                            </TouchableOpacity>
+                            <View style={styles.resultsActions}>
+                                <TouchableOpacity
+                                    onPress={onReset}
+                                    style={styles.resultsDeleteButton}
+                                >
+                                    <IconTrash size={18} color="#999999" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={onSaveAndFinish}
+                                    style={styles.saveButton}
+                                >
+                                    <IconCheck size={14} color="#FFFFFF" />
+                                    <Text style={styles.saveButtonText}>Save</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View style={styles.titleEditCard}>
                             <Text style={styles.cardLabel}>SERMON TITLE</Text>
-                            <TextInput
-                                style={styles.titleInput}
-                                value={sermonTitle}
-                                onChangeText={onTitleChange}
-                                placeholder="Enter sermon title..."
-                                placeholderTextColor="#666666"
-                            />
+                            <View style={styles.titleInputContainer}>
+                                <TextInput
+                                    style={styles.titleInput}
+                                    value={sermonTitle}
+                                    onChangeText={onTitleChange}
+                                    placeholder="Enter sermon title..."
+                                    placeholderTextColor="#666666"
+                                />
+                                <IconEdit size={18} color="#666666" />
+                            </View>
                         </View>
 
                         <TabNavigator activeTab={activeTab} onTabChange={onTabChange} />
@@ -161,17 +191,30 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                         {activeTab === 'SUMMARY' ? (
                             <View style={styles.summaryCard}>
                                 <Text style={styles.cardLabel}>KEY TAKEAWAYS</Text>
-                                <Text style={styles.summaryText}>{summary}</Text>
+                                <BibleReferenceHandler
+                                    text={summary || ''}
+                                    onReferencePress={handleReferencePress}
+                                />
                             </View>
                         ) : (
                             <View style={styles.transcriptionCard}>
                                 <Text style={styles.cardLabel}>TRANSCRIPTION</Text>
-                                <Text style={styles.transcriptionText}>{transcription}</Text>
+                                <BibleReferenceHandler
+                                    text={transcription || ''}
+                                    onReferencePress={handleReferencePress}
+                                />
                             </View>
                         )}
                     </View>
                 )}
             </ScrollView>
+
+            <BibleVerseModal
+                visible={!!selectedVerse}
+                reference={selectedVerse || ''}
+                onClose={() => setSelectedVerse(null)}
+                onReadFull={handleReadFull}
+            />
         </KeyboardAvoidingView>
     );
 };
@@ -360,12 +403,34 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         marginBottom: 8,
     },
+    titleInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
     titleInput: {
+        flex: 1,
         fontSize: 18,
         fontWeight: 'bold',
         color: '#FFFFFF',
         padding: 0,
-        marginTop: 4,
+        marginRight: 12,
+    },
+    resultsActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    resultsDeleteButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#1A1A1A',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     summaryCard: {
         backgroundColor: '#1A1A1A',

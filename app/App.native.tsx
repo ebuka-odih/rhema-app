@@ -24,6 +24,7 @@ const AppContent: React.FC = () => {
     // Navigation State
     const [appState, setAppState] = useState<AppState>('WELCOME');
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
+    const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
     const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
 
@@ -63,8 +64,15 @@ const AppContent: React.FC = () => {
         const renderScreen = () => {
             switch (activeTab) {
                 case Tab.HOME: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
-                case Tab.BIBLE: return <BibleScreen />;
-                case Tab.RECORD: return <RecordScreen />;
+                case Tab.BIBLE: return <BibleScreen initialBook={bibleNavState.book} initialChapter={bibleNavState.chapter} />;
+                case Tab.RECORD: return (
+                    <RecordScreen
+                        onNavigateToBible={(book, chapter) => {
+                            setBibleNavState({ book, chapter });
+                            setActiveTab(Tab.BIBLE);
+                        }}
+                    />
+                );
                 case Tab.JOURNEY: return <JourneyScreen onNavigateGlobal={(screen) => setActiveTab(screen as Tab)} />;
                 case Tab.MORE: return <MoreScreen />;
                 default: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;

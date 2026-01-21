@@ -13,7 +13,11 @@ import { SermonList } from '../components/sermons/SermonList';
 import { SermonDetail } from '../components/sermons/SermonDetail';
 import { SermonRecorder } from '../components/sermons/SermonRecorder';
 
-const RecordScreen: React.FC = () => {
+interface RecordScreenProps {
+  onNavigateToBible?: (book: string, chapter: number) => void;
+}
+
+const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
 
@@ -254,6 +258,39 @@ const RecordScreen: React.FC = () => {
     setActiveTab('SUMMARY');
   };
 
+  const handleDiscardRecording = async () => {
+    if (!currentSermonId) {
+      reset();
+      return;
+    }
+
+    Alert.alert('Discard Analysis', 'Are you sure you want to delete this recording and its analysis?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const token = await authService.getToken();
+            await fetch(`${API_BASE_URL}sermons/${currentSermonId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+            });
+            // Remove from local list if it was added optimistically during processing
+            setSermons(prev => prev.filter(s => s.id !== currentSermonId));
+            reset();
+          } catch (err) {
+            console.error('Discard error:', err);
+            reset(); // Reset anyway to clear state
+          }
+        }
+      }
+    ]);
+  };
+
   const handleDelete = () => {
     if (!selectedSermon) return;
     Alert.alert('Delete Sermon', 'Are you sure you want to permanently delete this sermon?', [
@@ -319,6 +356,7 @@ const RecordScreen: React.FC = () => {
           onBack={() => setView('LIST')}
           onDelete={handleDelete}
           onTabChange={setActiveTab}
+          onNavigateToBible={onNavigateToBible}
         />
       )}
 
@@ -339,12 +377,13 @@ const RecordScreen: React.FC = () => {
           formatTime={formatTime}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
-          onReset={reset}
+          onReset={handleDiscardRecording}
           onProcess={handleProcess}
           onSaveAndFinish={handleSaveAndFinish}
           onTitleChange={setSermonTitle}
           onTabChange={setActiveTab}
           onBack={() => { stopRecording(); setView('LIST'); }}
+          onNavigateToBible={onNavigateToBible}
         />
       )}
     </View>
