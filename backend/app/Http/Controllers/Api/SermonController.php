@@ -65,7 +65,7 @@ class SermonController extends Controller
                 ->attach('file', file_get_contents($filePath), 'sermon.m4a')
                 ->post('https://api.openai.com/v1/audio/transcriptions', [
                     'model' => 'whisper-1',
-                    'prompt' => 'Transcribe the following sermon accurately. Keep it faithful to the speaker\'s words while ensuring correct punctuation and flow. If the recording is very short, just provide the exact transcript.',
+                    'prompt' => 'A faithful and accurate transcript of a sermon, capturing the message, scripture references, and spiritual insights clearly.',
                 ]);
 
             if ($transcriptionResponse->failed()) {
@@ -82,7 +82,15 @@ class SermonController extends Controller
                     'messages' => [
                         [
                             'role' => 'system',
-                            'content' => 'You are a helpful assistant. Summarize the provided sermon transcription into a concise, accurate overview. The summary should be proportional to the length of the recording: for long sermons, provide key takeaways; for very short recordings, provide a simple one-sentence summary that remains very close to the original words. Avoid adding external theological context or "fillers" not mentioned by the speaker. THE SUMMARY SHOULD BE CONCISE AND NOT MORE THAN EXPECTED.'
+                            'content' => 'You are a helpful assistant. Provided is a sermon transcription. Create a clear, structured summary using key takeaways. 
+
+Format rules:
+1. Use bullet points (e.g., - **Header**: Explanation).
+2. Each point must have a bolded header.
+3. Use DOUBLE line breaks between each bullet point for readability.
+4. Be concise but maintain the core message.
+5. Avoid adding external theological context or fillers not mentioned by the speaker.
+6. For short recordings, provide 1-2 points. For longer sermons, provide 3-5 points.'
                         ],
                         [
                             'role' => 'user',
