@@ -64,7 +64,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         }
       });
     });
-  }, []);
+  }, [session]);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -102,7 +102,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     };
 
     fetchData();
-  }, []);
+  }, [session]);
 
   const suggestedDevotionals = [
     { id: '1', title: 'Walking in Faith', plan: '5 Day Plan' },

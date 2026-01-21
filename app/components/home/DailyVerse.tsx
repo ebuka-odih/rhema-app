@@ -125,7 +125,9 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
             {/* Wrapper for content to be captured (excluding buttons) */}
             <View ref={viewRef} collapsable={false} style={styles.captureContainer}>
                 <Image
-                    source={{ uri: backgroundImage || `https://source.unsplash.com/featured/800x1100?nature,spiritual,${theme || 'landscape'}` }}
+                    source={{
+                        uri: backgroundImage || `https://source.unsplash.com/featured/800x1100?nature,spiritual,${theme || 'landscape'}&sig=${id || 'fallback'}`
+                    }}
                     style={styles.verseBackground}
                 />
                 <View style={styles.verseOverlay} />

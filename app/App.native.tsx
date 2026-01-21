@@ -28,6 +28,8 @@ const AppContent: React.FC = () => {
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
+        if (isPending) return;
+
         const setupNotifications = async () => {
             await notificationService.registerForPushNotificationsAsync();
             const affirmation = await bibleService.getAffirmation();
@@ -41,7 +43,7 @@ const AppContent: React.FC = () => {
             }
         };
         setupNotifications();
-    }, []);
+    }, [session, isPending]);
 
     useEffect(() => {
         if (!isPending) {

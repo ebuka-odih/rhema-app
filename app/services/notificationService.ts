@@ -45,9 +45,20 @@ export const notificationService = {
     },
 
     async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string) {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        const identifier = 'daily-affirmation';
 
+        // 1. Clean up ANY scheduled notifications that have the "Daily Affirmation" title
+        // This handles older versions that didn't use a consistent identifier
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const notification of scheduled) {
+            if (notification.content.title === "Daily Affirmation") {
+                await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+            }
+        }
+
+        // 2. Schedule the new one with the consistent identifier
         await Notifications.scheduleNotificationAsync({
+            identifier,
             content: {
                 title: "Daily Affirmation",
                 body: `${affirmation}\n\n"${scripture}"`,

@@ -266,6 +266,24 @@ class BibleController extends Controller
                 ->first();
             
             if ($verse) {
+                // If the verse exists but is missing a background image (old data), generate one
+                if (!$verse->background_image) {
+                    $userSeed = $userId ? (string)$userId : 'guest';
+                    $seed = abs(crc32($today . $userSeed));
+                    $themeImages = [
+                        'Peace' => 'nature,calm,sunset,ocean',
+                        'Strength' => 'mountain,mountain-peak,climb,path',
+                        'Guidance' => 'light,stars,forest,path',
+                        'Provision' => 'wheat,harvest,sunrise,field',
+                        'Healing' => 'water,flower,soft-light,garden',
+                        'Faith' => 'prayer,hands,cross,clouds',
+                        'Love' => 'family,kids,heart,warmth'
+                    ];
+                    $keywords = $themeImages[$verse->theme] ?? 'landscape,abstract,spiritual';
+                    $verse->background_image = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
+                    $verse->save();
+                }
+
                 if ($userId) {
                     $verse->user_liked = $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists();
                 } else {
@@ -325,9 +343,8 @@ class BibleController extends Controller
             }
 
             // Pick one based on day of year + user id for consistency
-            $userSeed = $userId ? (int)abs(crc32((string)$userId)) : 0;
-            $dayOfYear = (int)Carbon::today()->dayOfYear;
-            $seed = $dayOfYear + $userSeed;
+            $userSeed = $userId ? (string)$userId : 'guest';
+            $seed = abs(crc32($today . $userSeed));
             
             $entriesCount = count($possibleEntries);
             $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
