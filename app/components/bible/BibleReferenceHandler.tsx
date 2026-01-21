@@ -8,7 +8,8 @@ interface BibleReferenceHandlerProps {
 
 export const BibleReferenceHandler: React.FC<BibleReferenceHandlerProps> = ({ text, onReferencePress }) => {
     // Regex to match Bible references
-    const referenceRegex = /\b(?:[123]\s)?[A-Z][a-z]+\.?\s\d+:\d+(?:-\d+)?\b/g;
+    // Matches: John 3:16, Hebrews 11, 1 John 5:4, 2 Corinthians 5:1-3
+    const referenceRegex = /\b(?:[123]\s)?[A-Z][a-z]+\.?\s\d+(?::\d+(?:-\d+)?)?\b/g;
 
     // Helper to parse markdown-like bolding **text**
     const renderContent = (content: string) => {
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     },
     textContainer: {
         fontSize: 16,
-        lineHeight: 26, // Increased line height for better readability
+        lineHeight: 24, // Reduced line height for better spacing
         color: '#CCCCCC',
     },
     boldText: {

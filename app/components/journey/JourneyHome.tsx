@@ -151,7 +151,7 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   journalEntries,
   activePrayers
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'prayers' | 'reflections'>('prayers');
+  const [activeTab, setActiveTab] = React.useState<'prayers' | 'reflections'>('reflections');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -168,37 +168,38 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Streak Card */}
-      <TouchableOpacity
-        style={styles.streakCard}
-        onPress={onViewGrowth}
-        activeOpacity={0.9}
-      >
-        <View style={styles.streakGradient}>
+      {/* Journey Dashboard */}
+      <View style={styles.dashboardContainer}>
+        <TouchableOpacity
+          style={styles.streakCard}
+          onPress={onViewGrowth}
+          activeOpacity={0.9}
+        >
           <View style={styles.streakHeader}>
             <View style={styles.streakHeaderLeft}>
               <View style={styles.fireIconContainer}>
-                <IconFire size={22} color="#FFFFFF" />
+                <IconFire size={20} color="#FFFFFF" />
               </View>
               <View>
-                <Text style={styles.streakTitle}>Faith Consistency</Text>
-                <Text style={styles.streakSubtitle}>Keep your spirit alive!</Text>
+                <Text style={styles.streakTitle}>Consistency</Text>
+                <Text style={styles.streakSubtitle}>Keep your spirit active</Text>
               </View>
             </View>
             <View style={styles.streakBadge}>
-              <Text style={styles.streakBadgeText}>Active</Text>
+              <View style={styles.pulseDot} />
+              <Text style={styles.streakBadgeText}>ON TRACK</Text>
             </View>
           </View>
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>-</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
+              <Text style={styles.statLabel}>Days</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{journalEntries.length}</Text>
-              <Text style={styles.statLabel}>Reflections</Text>
+              <Text style={styles.statLabel}>Notes</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
@@ -206,11 +207,18 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
               <Text style={styles.statLabel}>Fasts</Text>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
+        <TouchableOpacity style={styles.actionCard} onPress={onNewReflection}>
+          <View style={[styles.actionIconContainer, { backgroundColor: '#3B82F6' }]}>
+            <IconPen size={20} color="#FFFFFF" />
+          </View>
+          <Text style={styles.actionText}>Reflect</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionCard} onPress={onLogPrayer}>
           <View style={[styles.actionIconContainer, { backgroundColor: '#F59E0B' }]}>
             <IconActivity size={20} color="#FFFFFF" />
@@ -224,30 +232,23 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
           </View>
           <Text style={styles.actionText}>Fasting</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionCard} onPress={onNewReflection}>
-          <View style={[styles.actionIconContainer, { backgroundColor: '#3B82F6' }]}>
-            <IconPen size={20} color="#FFFFFF" />
-          </View>
-          <Text style={styles.actionText}>Reflect</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'prayers' && styles.activeTab]}
-          onPress={() => setActiveTab('prayers')}
-        >
-          <Text style={[styles.tabText, activeTab === 'prayers' && styles.activeTabText]}>Prayers</Text>
-          {activeTab === 'prayers' && <View style={styles.activeTabIndicator} />}
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'reflections' && styles.activeTab]}
           onPress={() => setActiveTab('reflections')}
         >
           <Text style={[styles.tabText, activeTab === 'reflections' && styles.activeTabText]}>Reflections</Text>
           {activeTab === 'reflections' && <View style={styles.activeTabIndicator} />}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'prayers' && styles.activeTab]}
+          onPress={() => setActiveTab('prayers')}
+        >
+          <Text style={[styles.tabText, activeTab === 'prayers' && styles.activeTabText]}>Prayers</Text>
+          {activeTab === 'prayers' && <View style={styles.activeTabIndicator} />}
         </TouchableOpacity>
       </View>
 
@@ -300,15 +301,19 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
                 {journalEntries.slice(0, 5).map((entry, idx) => (
                   <TouchableOpacity
                     key={entry.id}
-                    style={[styles.entryCard, { borderLeftColor: idx % 2 === 0 ? '#FFD35A' : '#3B82F6' }]}
+                    style={[
+                      styles.entryItem,
+                      idx === 4 && { borderBottomWidth: 0 }
+                    ]}
                     onPress={() => onSelectEntry(entry)}
                   >
-                    <View style={styles.entryHeader}>
-                      <Text style={styles.entryCategory}>{entry.category}</Text>
+                    <Text style={styles.entryTitle} numberOfLines={1}>{entry.title || 'Untitled Reflection'}</Text>
+                    <View style={styles.entryMeta}>
                       <Text style={styles.entryDate}>{entry.date}</Text>
+                      <Text style={styles.entryPreview} numberOfLines={1}>
+                        {entry.content || 'No additional text'}
+                      </Text>
                     </View>
-                    <Text style={styles.entryTitle}>{entry.title}</Text>
-                    <Text style={styles.entryPreview} numberOfLines={2}>{entry.content}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -323,7 +328,7 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#050505',
   },
   content: {
     paddingHorizontal: 20,
@@ -338,22 +343,22 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 14,
-    color: '#999999',
-    fontWeight: '500',
+    color: '#666666',
+    fontWeight: '600',
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: -1,
+    letterSpacing: -1.2,
   },
   profileButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
     padding: 2,
-    backgroundColor: 'rgba(232, 80, 58, 0.2)',
+    backgroundColor: 'rgba(232, 80, 58, 0.15)',
   },
   profileCircle: {
     flex: 1,
@@ -364,16 +369,17 @@ const styles = StyleSheet.create({
   },
   profileInitial: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '800',
   },
   streakCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 24,
+    backgroundColor: '#111111',
+    borderRadius: 28,
+    padding: 24,
     marginBottom: 32,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.03)',
   },
   streakGradient: {
     padding: 24,
@@ -381,25 +387,27 @@ const styles = StyleSheet.create({
   streakHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
+    alignItems: 'center',
+    marginBottom: 28,
   },
   streakHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    paddingLeft: 4,
   },
   fireIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: '#E8503A',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#E8503A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
   },
   streakTitle: {
     fontSize: 18,
@@ -409,65 +417,75 @@ const styles = StyleSheet.create({
   },
   streakSubtitle: {
     fontSize: 13,
-    color: '#999999',
+    color: '#666666',
     fontWeight: '500',
   },
   streakBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: 'rgba(232, 80, 58, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   streakBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#E8503A',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    padding: 20,
+    borderRadius: 20,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 11,
-    color: '#666666',
+    fontSize: 10,
+    color: '#555555',
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   statDivider: {
     width: 1,
-    height: 30,
+    height: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
+    marginBottom: 40,
+    gap: 12,
   },
   actionCard: {
-    width: (width - 64) / 3,
-    backgroundColor: '#161616',
-    borderRadius: 20,
-    padding: 16,
+    flex: 1,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   actionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -476,21 +494,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
   activePrayerTodo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161616',
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.04)',
     gap: 16,
   },
   todoCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: '#E8503A',
     justifyContent: 'center',
@@ -505,19 +524,12 @@ const styles = StyleSheet.create({
   todoContent: {
     flex: 1,
   },
-  todoLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#E8503A',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
   todoText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
+    lineHeight: 20,
   },
   todoMeta: {
     flexDirection: 'row',
@@ -525,9 +537,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   todoTime: {
-    fontSize: 12,
-    color: '#666666',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#555555',
+    fontWeight: '600',
   },
   todoActionButton: {
     width: 32,
@@ -543,7 +555,7 @@ const styles = StyleSheet.create({
   },
   todoTextDone: {
     textDecorationLine: 'line-through',
-    color: '#666666',
+    color: '#444444',
   },
   reminderDot: {
     width: 4,
@@ -558,12 +570,12 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'baseline',
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -573,92 +585,81 @@ const styles = StyleSheet.create({
     color: '#E8503A',
   },
   emptyState: {
-    backgroundColor: '#161616',
-    borderRadius: 20,
-    padding: 32,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    padding: 40,
     alignItems: 'center',
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 12,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#666666',
+    color: '#555555',
     fontWeight: '600',
   },
   entriesList: {
-    gap: 12,
-  },
-  entryCard: {
-    backgroundColor: '#161616',
-    borderRadius: 20,
-    padding: 20,
-    borderLeftWidth: 4,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
-  entryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  entryCategory: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#999999',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  entryDate: {
-    fontSize: 12,
-    color: '#444444',
-    fontWeight: '600',
+  entryItem: {
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   entryTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  entryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  entryDate: {
+    fontSize: 14,
+    color: '#666666',
+    marginRight: 10,
   },
   entryPreview: {
+    flex: 1,
     fontSize: 14,
-    color: '#999999',
-    lineHeight: 22,
+    color: '#444444',
   },
-
   tabContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 32,
+    padding: 4,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
-    position: 'relative',
+    borderRadius: 12,
   },
   activeTab: {
-    // Optional active tab styling
+    backgroundColor: '#161616',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666666',
+    color: '#555555',
   },
   activeTabText: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
   activeTabIndicator: {
-    position: 'absolute',
-    bottom: -1,
-    width: '40%',
-    height: 3,
-    backgroundColor: '#E8503A',
-    borderRadius: 3,
+    // Hidden in this design
   },
   tabContent: {
     flex: 1,
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
     overflow: 'hidden',
-    borderRadius: 20,
+    borderRadius: 24,
   },
   deleteAction: {
     position: 'absolute',
@@ -678,6 +679,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 24,
+  },
+  dashboardContainer: {
+    marginBottom: 32,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  categoryIndicator: {
+    width: 4,
+    height: 12,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  spacer: {
+    flex: 1,
   },
 });

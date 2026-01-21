@@ -33,9 +33,8 @@ export const BibleVerseModal: React.FC<BibleVerseModalProps> = ({
         setLoading(true);
         setError(null);
         try {
-            // Basic parsing of reference like "John 3:16"
-            // Handles references with single or multiple chapters/verses
-            const parts = reference.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+            // Updated regex to handle both Verse (John 3:16) and Chapter (Hebrews 11)
+            const parts = reference.match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
             if (!parts) {
                 setError("Could not parse reference.");
                 setLoading(false);
@@ -43,11 +42,16 @@ export const BibleVerseModal: React.FC<BibleVerseModalProps> = ({
             }
 
             const [_, book, chapter, startVerse, endVerse] = parts;
-            const versionId = 'NEW KING JAMES VERSION'; // Default version
+            const versionId = 'NEW KING JAMES VERSION';
 
             const chapterData = await bibleService.getChapter(versionId, book, parseInt(chapter));
             if (chapterData && chapterData.verses) {
-                if (endVerse) {
+                if (!startVerse) {
+                    // Chapter only reference - show first few verses or a placeholder
+                    const firstVerse = chapterData.verses["1"] || "";
+                    const secondVerse = chapterData.verses["2"] || "";
+                    setVerseText(`${firstVerse} ${secondVerse}...`.trim());
+                } else if (endVerse) {
                     let combined = "";
                     for (let i = parseInt(startVerse); i <= parseInt(endVerse); i++) {
                         combined += `[${i}] ${chapterData.verses[i.toString()] || ""} `;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, FlatList, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, SectionList, StyleSheet } from 'react-native';
 import { BibleBook } from '../../services/bibleService';
 
 interface BookChapterSelectorProps {
@@ -31,6 +31,25 @@ export const BookChapterSelector: React.FC<BookChapterSelectorProps> = ({
         setView('CHAPTERS');
     };
 
+    const OT_BOOKS = [
+        'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
+        '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+        'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
+        'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+        'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi'
+    ];
+
+    const sections = [
+        {
+            title: 'OLD TESTAMENT',
+            data: books.filter(b => OT_BOOKS.includes(b.name))
+        },
+        {
+            title: 'NEW TESTAMENT',
+            data: books.filter(b => !OT_BOOKS.includes(b.name))
+        }
+    ].filter(s => s.data.length > 0);
+
     return (
         <Modal
             visible={visible}
@@ -61,9 +80,14 @@ export const BookChapterSelector: React.FC<BookChapterSelectorProps> = ({
                     </View>
 
                     {view === 'BOOKS' ? (
-                        <FlatList
-                            data={books}
+                        <SectionList
+                            sections={sections}
                             keyExtractor={(item) => item.name}
+                            renderSectionHeader={({ section: { title } }) => (
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.sectionHeaderText}>{title}</Text>
+                                </View>
+                            )}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={[styles.selectionItem, currentBook === item.name && styles.selectionItemActive]}
@@ -77,6 +101,7 @@ export const BookChapterSelector: React.FC<BookChapterSelectorProps> = ({
                             )}
                             contentContainerStyle={styles.listContent}
                             showsVerticalScrollIndicator={false}
+                            stickySectionHeadersEnabled={true}
                         />
                     ) : (
                         <ScrollView contentContainerStyle={styles.chapterGrid} showsVerticalScrollIndicator={false}>
@@ -165,6 +190,19 @@ const styles = StyleSheet.create({
     },
     selectionItemActive: {
         backgroundColor: 'rgba(232, 80, 58, 0.05)',
+    },
+    sectionHeader: {
+        backgroundColor: '#1A1A1A',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    sectionHeaderText: {
+        color: '#E8503A',
+        fontSize: 12,
+        fontWeight: 'bold',
+        letterSpacing: 1,
     },
     selectionItemText: {
         fontSize: 16,

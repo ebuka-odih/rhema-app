@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { IconArrowLeft, IconPlus } from '../Icons';
 import { JournalEntry } from '../../types';
 
@@ -26,18 +26,22 @@ export const JournalList: React.FC<JournalListProps> = ({
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.entriesList}>
-                {entries.map(entry => (
+                {entries.map((entry, index) => (
                     <TouchableOpacity
                         key={entry.id}
-                        style={styles.entryCard}
+                        style={[
+                            styles.entryItem,
+                            index === entries.length - 1 && { borderBottomWidth: 0 }
+                        ]}
                         onPress={() => onSelectEntry(entry)}
                     >
-                        <View style={styles.entryHeader}>
-                            <Text style={styles.entryCategory}>{entry.category}</Text>
+                        <Text style={styles.entryTitle} numberOfLines={1}>{entry.title || 'Untitled Reflection'}</Text>
+                        <View style={styles.entryMeta}>
                             <Text style={styles.entryDate}>{entry.date}</Text>
+                            <Text style={styles.entryPreview} numberOfLines={1}>
+                                {entry.content || 'No additional text'}
+                            </Text>
                         </View>
-                        <Text style={styles.entryTitle}>{entry.title}</Text>
-                        <Text style={styles.entryPreview} numberOfLines={2}>{entry.content}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -55,85 +59,78 @@ export const JournalList: React.FC<JournalListProps> = ({
 const styles = StyleSheet.create({
     fullView: {
         flex: 1,
-        paddingHorizontal: 24,
-        paddingTop: 32,
-        paddingBottom: 100,
+        backgroundColor: '#000000',
     },
     viewHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
-        gap: 12,
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+        paddingBottom: 20,
+        backgroundColor: '#000000',
     },
     backButton: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#111111',
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: -8,
+        marginRight: 16,
     },
     viewTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: 28,
+        fontWeight: '900',
         color: '#FFFFFF',
+        letterSpacing: -0.5,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 24,
+        paddingBottom: 100,
     },
     entriesList: {
-        gap: 12,
+        paddingHorizontal: 20,
     },
-    entryCard: {
-        backgroundColor: '#1A1A1A',
-        borderRadius: 12,
-        padding: 16,
-        borderLeftWidth: 4,
-        borderLeftColor: '#FFD35A',
-    },
-    entryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    entryCategory: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#FFD35A',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    entryDate: {
-        fontSize: 12,
-        color: '#999999',
+    entryItem: {
+        paddingVertical: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     },
     entryTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '700',
         color: '#FFFFFF',
         marginBottom: 4,
     },
+    entryMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    entryDate: {
+        fontSize: 14,
+        color: '#666666',
+        marginRight: 10,
+    },
     entryPreview: {
-        fontSize: 12,
-        color: '#999999',
-        lineHeight: 18,
+        flex: 1,
+        fontSize: 14,
+        color: '#444444',
     },
     fab: {
         position: 'absolute',
-        bottom: 24,
+        bottom: 32,
         right: 24,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: '#E8503A',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#E8503A',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
         shadowRadius: 12,
         elevation: 8,
     },

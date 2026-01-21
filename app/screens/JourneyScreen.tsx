@@ -133,8 +133,8 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   };
 
   const handleSaveReflection = async (category: string) => {
-    if (!journalTitle || !journalContent) {
-      Alert.alert('Missing Info', 'Please provide a title and content.');
+    if (!journalTitle) {
+      Alert.alert('Missing Title', 'Please provide a title for your note.');
       return;
     }
 

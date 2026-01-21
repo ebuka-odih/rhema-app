@@ -83,6 +83,17 @@ export const bibleService = {
     },
 
     async getBooks(version: string): Promise<BibleBook[]> {
+        // Try Offline SQLITE first
+        try {
+            const { offlineBibleService } = await import('./offlineBibleService');
+            const isInstalled = await offlineBibleService.isBibleDownloaded(version);
+            if (isInstalled) {
+                return await offlineBibleService.getBooks(version);
+            }
+        } catch (e) {
+            console.error('Offline books check failed:', e);
+        }
+
         if (booksCache[version]) return booksCache[version];
 
         // Try persistent storage
@@ -119,6 +130,18 @@ export const bibleService = {
     },
 
     async getChapter(version: string, book: string, chapter: number): Promise<BibleChapter | null> {
+        // Try Offline SQLITE first
+        try {
+            const { offlineBibleService } = await import('./offlineBibleService');
+            const isInstalled = await offlineBibleService.isBibleDownloaded(version);
+            if (isInstalled) {
+                const data = await offlineBibleService.getChapter(version, book, chapter);
+                if (data) return data as BibleChapter;
+            }
+        } catch (e) {
+            console.error('Offline chapter check failed:', e);
+        }
+
         const key = CACHE_KEYS.CHAPTER(version, book, chapter);
         if (chapterCache[key]) return chapterCache[key];
 
@@ -150,6 +173,11 @@ export const bibleService = {
             console.error('Error fetching Bible chapter:', error);
             return null;
         }
+    },
+
+    async setupOffline(version: string, onProgress: (steps: any[]) => void) {
+        const { offlineBibleService } = await import('./offlineBibleService');
+        await offlineBibleService.downloadAndInstall(version, onProgress);
     },
 
     async getDailyVerse() {

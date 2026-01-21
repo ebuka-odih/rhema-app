@@ -190,3 +190,31 @@ export const IconHelp = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) 
 export const IconMessage = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
   <Ionicons name="mail-outline" size={size} color={color} />
 );
+
+export const IconBold = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-bold" size={size} color={color} />
+);
+
+export const IconItalic = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-italic" size={size} color={color} />
+);
+
+export const IconListBullet = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-list-bulleted" size={size} color={color} />
+);
+
+export const IconUnderline = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-underline" size={size} color={color} />
+);
+
+export const IconStrikethrough = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-strikethrough-variant" size={size} color={color} />
+);
+
+export const IconQuote = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-quote-open" size={size} color={color} />
+);
+
+export const IconFormat = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <MaterialCommunityIcons name="format-text" size={size} color={color} />
+);

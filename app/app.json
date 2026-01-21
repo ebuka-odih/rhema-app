@@ -38,7 +38,8 @@
         {
           "microphonePermission": "Allow Wordflow to access your microphone"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "web": {
       "favicon": "./assets/favicon.png",

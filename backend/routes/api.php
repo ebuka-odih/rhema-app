@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SermonController;
 use App\Http\Controllers\Api\ReflectionController;
 use App\Http\Controllers\Api\PrayerController;
 use App\Http\Controllers\Api\BibleHighlightController;
+use App\Http\Controllers\Api\TranscriptionController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -47,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/bible/highlights/{id}', [BibleHighlightController::class, 'destroy']);
     Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
     Route::post('/bible/daily-verse/interact', [BibleController::class, 'interact']);
+    Route::post('/transcribe', [TranscriptionController::class, 'transcribe']);
 });
 
 // Bible Routes (Public or Optionally Authenticated)
