@@ -50,16 +50,15 @@ const AppContent: React.FC = () => {
                     // SEND IT IMMEDIATELY FOR TESTING (As requested by user)
                     await notificationService.sendImmediateDailyAffirmation(
                         affirmation.scripture,
-                        affirmation.affirmation,
-                        affirmation.text
+                        affirmation.affirmation
                     );
 
                     if (session?.user?.settings?.dailyAffirmations !== false) {
+                        // Also schedule for 8:00 AM every day
                         await notificationService.scheduleDailyAffirmation(
                             8, 0,
                             affirmation.scripture,
-                            affirmation.affirmation,
-                            affirmation.text
+                            affirmation.affirmation
                         );
                     }
                     // Inform the user it was sent

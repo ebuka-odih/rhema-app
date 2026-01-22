@@ -138,8 +138,7 @@ const NotificationSettingsScreen: React.FC<{ onBack: () => void }> = ({ onBack }
                             if (affirmation) {
                                 await notificationService.sendImmediateDailyAffirmation(
                                     affirmation.scripture,
-                                    affirmation.affirmation,
-                                    affirmation.text
+                                    affirmation.affirmation
                                 );
                                 Alert.alert('Sent', 'Test notification sent to your device!');
                             }
