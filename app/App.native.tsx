@@ -49,21 +49,21 @@ const AppContent: React.FC = () => {
                 await notificationService.registerForPushNotificationsAsync();
 
                 const affirmation = await bibleService.getAffirmation();
-                if (!hasTriggeredSync.current) {
-                    await notificationService.sendImmediateDailyAffirmation(
-                        affirmation?.scripture || 'Psalms 23:1',
-                        affirmation?.affirmation || "I walk in God's grace today."
-                    );
-                    hasTriggeredSync.current = true;
 
-                    // Only schedule future dailies if we have a session and permission
-                    if (session?.user && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
-                        await notificationService.scheduleDailyAffirmation(
-                            8, 0,
-                            affirmation.scripture,
-                            affirmation.affirmation
-                        );
-                    }
+                // FORCE SENDING TEST NOTIFICATION NOW
+                await notificationService.sendImmediateDailyAffirmation(
+                    affirmation?.scripture || 'Psalms 23:1',
+                    affirmation?.affirmation || "I walk in God's grace today."
+                );
+
+                Alert.alert('Testing...', 'Triggering test notification now. Please check your tray.');
+
+                if (session?.user && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
+                    await notificationService.scheduleDailyAffirmation(
+                        8, 0,
+                        affirmation.scripture,
+                        affirmation.affirmation
+                    );
                 }
             } catch (err) {
                 console.error('setupNotifications error:', err);
