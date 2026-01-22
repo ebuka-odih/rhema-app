@@ -76,7 +76,10 @@ export const notificationService = {
             content: {
                 title: affirmation,
                 body: scripture,
-                data: { screen: 'HOME' }
+                data: { screen: 'HOME' },
+                android: {
+                    channelId: 'default',
+                },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -93,6 +96,9 @@ export const notificationService = {
                 body: scripture,
                 data: { screen: 'HOME' },
                 priority: Notifications.AndroidNotificationPriority.HIGH,
+                android: {
+                    channelId: 'default',
+                },
             },
             trigger: null,
         });

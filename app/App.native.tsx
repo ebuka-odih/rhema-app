@@ -61,19 +61,15 @@ const AppContent: React.FC = () => {
                             affirmation.affirmation
                         );
                     }
-                    // Inform the user it was sent
-                    Alert.alert('System Ready', 'Affirmation notification has been triggered for testing.');
                 } else {
                     // Fallback test if backend fails
                     await notificationService.sendImmediateNotification(
                         'System Sync Test',
                         'Backend affirmation call failed, but notification system is working.'
                     );
-                    Alert.alert('Warning', 'Could not fetch daily affirmation from sync server, but sent a test notification.');
                 }
             } catch (err) {
                 console.error('setupNotifications error:', err);
-                Alert.alert('Notification Error', `Failed to initialize: ${err.message}`);
             }
         };
         setupNotifications();

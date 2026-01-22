@@ -6,6 +6,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.svg",
+    "notification": {
+      "icon": "./assets/logo.svg",
+      "color": "#E8503A"
+    },
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
