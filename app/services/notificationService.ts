@@ -18,14 +18,20 @@ export const notificationService = {
         let token;
 
         if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'General',
+                importance: Notifications.AndroidImportance.DEFAULT,
+                sound: 'default',
+            });
+
             await Notifications.setNotificationChannelAsync('prayer-reminders', {
                 name: 'Urgent Prayer Reminders',
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 2000],
                 lightColor: '#E8503A',
-                sound: 'default', // Using default system sound
+                sound: 'default',
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-                bypassDnd: true, // Try to bypass Do Not Disturb for urgent prayers
+                bypassDnd: true,
             });
         }
 
@@ -85,7 +91,8 @@ export const notificationService = {
             content: {
                 title: "Daily Word of Affirmation",
                 body: `Remember: ${affirmation}\n\nToday's Verse: ${scripture}`,
-                data: { screen: 'HOME' }
+                data: { screen: 'HOME' },
+                priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: null,
         });
@@ -96,6 +103,7 @@ export const notificationService = {
             content: {
                 title: title,
                 body: body,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: null,
         });

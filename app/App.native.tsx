@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     IconHome, IconMic, IconBible, IconMore, IconJourney
@@ -42,24 +42,36 @@ const AppContent: React.FC = () => {
         });
 
         const setupNotifications = async () => {
-            await notificationService.registerForPushNotificationsAsync();
+            try {
+                const status = await notificationService.registerForPushNotificationsAsync();
 
-            const affirmation = await bibleService.getAffirmation();
-            if (affirmation) {
-                // SEND IT IMMEDIATELY FOR TESTING (As requested by user)
-                await notificationService.sendImmediateDailyAffirmation(
-                    affirmation.scripture,
-                    affirmation.affirmation
-                );
-
-                if (session?.user?.settings?.dailyAffirmations !== false) {
-                    // Also schedule for 8:00 AM every day
-                    await notificationService.scheduleDailyAffirmation(
-                        8, 0,
+                const affirmation = await bibleService.getAffirmation();
+                if (affirmation) {
+                    await notificationService.sendImmediateDailyAffirmation(
                         affirmation.scripture,
                         affirmation.affirmation
                     );
+
+                    if (session?.user?.settings?.dailyAffirmations !== false) {
+                        await notificationService.scheduleDailyAffirmation(
+                            8, 0,
+                            affirmation.scripture,
+                            affirmation.affirmation
+                        );
+                    }
+                    // Inform the user it was sent
+                    Alert.alert('System Ready', 'Affirmation notification has been triggered for testing.');
+                } else {
+                    // Fallback test if backend fails
+                    await notificationService.sendImmediateNotification(
+                        'System Sync Test',
+                        'Backend affirmation call failed, but notification system is working.'
+                    );
+                    Alert.alert('Warning', 'Could not fetch daily affirmation from sync server, but sent a test notification.');
                 }
+            } catch (err) {
+                console.error('setupNotifications error:', err);
+                Alert.alert('Notification Error', `Failed to initialize: ${err.message}`);
             }
         };
         setupNotifications();
