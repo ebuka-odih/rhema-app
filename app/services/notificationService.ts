@@ -20,7 +20,7 @@ export const notificationService = {
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'General',
-                importance: Notifications.AndroidImportance.DEFAULT,
+                importance: Notifications.AndroidImportance.HIGH,
                 sound: 'default',
             });
 

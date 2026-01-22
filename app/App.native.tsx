@@ -33,32 +33,29 @@ const AppContent: React.FC = () => {
     const hasTriggeredSync = useRef(false);
 
     useEffect(() => {
-        if (isPending) return;
-
-        // Register notification listeners
-        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-            const data = response.notification.request.content.data;
-            if (data?.screen === 'HOME') {
-                setActiveTab(Tab.HOME);
-            }
-        });
-
         const setupNotifications = async () => {
+            // Trace execution without blocking on session initially
+            console.log('setupNotifications: Starting...');
+
             try {
-                // Register for push notifications regardless of session
                 await notificationService.registerForPushNotificationsAsync();
+                console.log('setupNotifications: Registered');
 
                 const affirmation = await bibleService.getAffirmation();
+                console.log('setupNotifications: Affirmation fetched', !!affirmation);
 
-                // FORCE SENDING TEST NOTIFICATION NOW
-                await notificationService.sendImmediateDailyAffirmation(
-                    affirmation?.scripture || 'Psalms 23:1',
-                    affirmation?.affirmation || "I walk in God's grace today."
-                );
+                if (!hasTriggeredSync.current) {
+                    // Send exactly one sync notification per app launch
+                    await notificationService.sendImmediateDailyAffirmation(
+                        affirmation?.scripture || 'Psalms 23:1',
+                        affirmation?.affirmation || "I walk in God's grace today."
+                    );
+                    hasTriggeredSync.current = true;
+                    Alert.alert('✅ Notification Sent', 'A test affirmation was just triggered. Please check your notification tray.');
+                }
 
-                Alert.alert('Testing...', 'Triggering test notification now. Please check your tray.');
-
-                if (session?.user && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
+                // Future scheduling if session is available
+                if (session && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
                     await notificationService.scheduleDailyAffirmation(
                         8, 0,
                         affirmation.scripture,
@@ -67,9 +64,21 @@ const AppContent: React.FC = () => {
                 }
             } catch (err) {
                 console.error('setupNotifications error:', err);
+                Alert.alert('❌ Setup Error', err.message);
             }
         };
-        setupNotifications();
+
+        if (!isPending) {
+            setupNotifications();
+        }
+
+        // Register response listener
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            if (data?.screen === 'HOME') {
+                setActiveTab(Tab.HOME);
+            }
+        });
 
         return () => subscription.remove();
     }, [session, isPending]);
