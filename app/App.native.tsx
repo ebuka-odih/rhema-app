@@ -47,16 +47,19 @@ const AppContent: React.FC = () => {
 
                 const affirmation = await bibleService.getAffirmation();
                 if (affirmation) {
+                    // SEND IT IMMEDIATELY FOR TESTING (As requested by user)
                     await notificationService.sendImmediateDailyAffirmation(
                         affirmation.scripture,
-                        affirmation.affirmation
+                        affirmation.affirmation,
+                        affirmation.text
                     );
 
                     if (session?.user?.settings?.dailyAffirmations !== false) {
                         await notificationService.scheduleDailyAffirmation(
                             8, 0,
                             affirmation.scripture,
-                            affirmation.affirmation
+                            affirmation.affirmation,
+                            affirmation.text
                         );
                     }
                     // Inform the user it was sent

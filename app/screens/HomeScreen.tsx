@@ -28,9 +28,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
   const [dailyVerse, setDailyVerse] = React.useState({
     id: "",
-    reference: "Psalms 145:18",
-    text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
-    version: "NKJV",
+    reference: "",
+    text: "Preparing your word for today...",
+    version: "",
     affirmation: "",
     theme: "",
     backgroundImage: "",
@@ -43,8 +43,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const [notes, setNotes] = React.useState<JournalEntry[]>([]);
   const [prayers, setPrayers] = React.useState<Prayer[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isVerseLoading, setIsVerseLoading] = React.useState(true);
 
   React.useEffect(() => {
+    setIsVerseLoading(true);
     import('../services/bibleService').then(({ bibleService }) => {
       bibleService.getDailyVerse().then(verse => {
         if (verse) {
@@ -62,6 +64,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
             userLiked: verse.user_liked || false
           });
         }
+        setIsVerseLoading(false);
+      }).catch(err => {
+        console.error('getDailyVerse error:', err);
+        setIsVerseLoading(false);
       });
     });
   }, [session]);

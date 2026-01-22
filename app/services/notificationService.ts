@@ -64,7 +64,7 @@ export const notificationService = {
         }
     },
 
-    async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string) {
+    async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string, text: string) {
         const identifier = 'daily-affirmation';
 
         // Clear existing ones first to ensure no duplicates
@@ -75,7 +75,7 @@ export const notificationService = {
             identifier,
             content: {
                 title: "Daily Word of Affirmation",
-                body: `Remember: ${affirmation}\n\nToday's Verse: ${scripture}`,
+                body: `"${text}" - ${scripture}\n\nAffirmation: ${affirmation}`,
                 data: { screen: 'HOME' }
             },
             trigger: {
@@ -86,11 +86,11 @@ export const notificationService = {
         });
     },
 
-    async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
+    async sendImmediateDailyAffirmation(scripture: string, affirmation: string, text: string) {
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: "Daily Word of Affirmation",
-                body: `Remember: ${affirmation}\n\nToday's Verse: ${scripture}`,
+                body: `"${text}" - ${scripture}\n\nAffirmation: ${affirmation}`,
                 data: { screen: 'HOME' },
                 priority: Notifications.AndroidNotificationPriority.HIGH,
             },
