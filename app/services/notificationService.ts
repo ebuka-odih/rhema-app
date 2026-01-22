@@ -74,8 +74,8 @@ export const notificationService = {
         await Notifications.scheduleNotificationAsync({
             identifier,
             content: {
-                title: "Daily Affirmation",
-                body: `${affirmation}\n\n${scripture}`,
+                title: affirmation,
+                body: scripture,
                 data: { screen: 'HOME' }
             },
             trigger: {
@@ -89,8 +89,8 @@ export const notificationService = {
     async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Daily Affirmation",
-                body: `${affirmation}\n\n${scripture}`,
+                title: affirmation,
+                body: scripture,
                 data: { screen: 'HOME' },
                 priority: Notifications.AndroidNotificationPriority.HIGH,
             },
