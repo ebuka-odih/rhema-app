@@ -44,19 +44,19 @@ const AppContent: React.FC = () => {
         });
 
         const setupNotifications = async () => {
+            if (isPending || !session) return;
+
             try {
                 await notificationService.registerForPushNotificationsAsync();
 
                 const affirmation = await bibleService.getAffirmation();
-                if (affirmation) {
-                    // Only trigger the immediate "sync" notification once per app load
-                    if (!hasTriggeredSync.current) {
-                        await notificationService.sendImmediateDailyAffirmation(
-                            affirmation.scripture,
-                            affirmation.affirmation
-                        );
-                        hasTriggeredSync.current = true;
-                    }
+                if (affirmation && !hasTriggeredSync.current) {
+                    // Send exactly one sync notification per app launch
+                    await notificationService.sendImmediateDailyAffirmation(
+                        affirmation.scripture,
+                        affirmation.affirmation
+                    );
+                    hasTriggeredSync.current = true;
 
                     if (session?.user?.settings?.dailyAffirmations !== false) {
                         await notificationService.scheduleDailyAffirmation(
