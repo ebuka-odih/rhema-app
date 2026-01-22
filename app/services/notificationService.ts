@@ -88,8 +88,8 @@ export const notificationService = {
     },
 
     async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
-        // Use a consistent identifier for test notifications to prevent stacking/duplication
-        const identifier = 'test-affirmation';
+        // Use a random identifier to force a NEW notification every time for testing
+        const identifier = `test-affirmation-${Date.now()}`;
 
         await Notifications.scheduleNotificationAsync({
             identifier,
@@ -98,8 +98,13 @@ export const notificationService = {
                 body: scripture,
                 data: { screen: 'HOME' },
                 priority: Notifications.AndroidNotificationPriority.HIGH,
+                sound: true, // Force sound
             },
-            trigger: null,
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: 2,
+                repeats: false,
+            },
         });
     },
 
