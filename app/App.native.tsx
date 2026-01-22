@@ -44,21 +44,20 @@ const AppContent: React.FC = () => {
         });
 
         const setupNotifications = async () => {
-            if (isPending || !session) return;
-
             try {
+                // Register for push notifications regardless of session
                 await notificationService.registerForPushNotificationsAsync();
 
                 const affirmation = await bibleService.getAffirmation();
-                if (affirmation && !hasTriggeredSync.current) {
-                    // Send exactly one sync notification per app launch
+                if (!hasTriggeredSync.current) {
                     await notificationService.sendImmediateDailyAffirmation(
-                        affirmation.scripture,
-                        affirmation.affirmation
+                        affirmation?.scripture || 'Psalms 23:1',
+                        affirmation?.affirmation || "I walk in God's grace today."
                     );
                     hasTriggeredSync.current = true;
 
-                    if (session?.user?.settings?.dailyAffirmations !== false) {
+                    // Only schedule future dailies if we have a session and permission
+                    if (session?.user && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
                         await notificationService.scheduleDailyAffirmation(
                             8, 0,
                             affirmation.scripture,

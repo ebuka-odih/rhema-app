@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, Text, View, ActivityIndicator } from 'react-native';
 
 // Extracted Components
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -27,16 +27,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   if (hours >= 17) greeting = "Good Evening";
 
   const [dailyVerse, setDailyVerse] = React.useState({
-    id: "",
-    reference: "",
-    text: "Preparing your word for today...",
-    version: "",
-    affirmation: "",
-    theme: "",
-    backgroundImage: "",
-    likes: 0,
-    shares: 0,
-    downloads: 0,
+    id: "default",
+    reference: "Psalms 145:18",
+    text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
+    version: "NKJV",
+    affirmation: "I am never alone, for the Lord is with me always.",
+    theme: "Faith",
+    backgroundImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=800&q=80",
+    likes: 124,
+    shares: 45,
+    downloads: 32,
     userLiked: false
   });
 
@@ -49,14 +49,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     setIsVerseLoading(true);
     import('../services/bibleService').then(({ bibleService }) => {
       bibleService.getDailyVerse().then(verse => {
-        if (verse) {
+        if (verse && verse.id) {
           setDailyVerse({
             id: verse.id,
             reference: verse.reference,
             text: verse.text,
             version: verse.version,
-            affirmation: verse.affirmation,
-            theme: verse.theme,
+            affirmation: verse.affirmation || "I walk in God's grace today.",
+            theme: verse.theme || "Faith",
             backgroundImage: verse.background_image,
             likes: verse.likes_count || 0,
             shares: verse.shares_count || 0,
@@ -131,19 +131,26 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       />
 
 
-      <DailyVerse
-        id={dailyVerse.id}
-        reference={dailyVerse.reference}
-        text={dailyVerse.text}
-        version={dailyVerse.version}
-        affirmation={dailyVerse.affirmation}
-        theme={dailyVerse.theme}
-        backgroundImage={dailyVerse.backgroundImage}
-        initialLikes={dailyVerse.likes}
-        initialShares={dailyVerse.shares}
-        initialDownloads={dailyVerse.downloads}
-        initialUserLiked={dailyVerse.userLiked}
-      />
+      {isVerseLoading ? (
+        <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#E8503A" />
+          <Text style={{ color: '#666666', marginTop: 12, fontSize: 12 }}>Syncing your daily word...</Text>
+        </View>
+      ) : (
+        <DailyVerse
+          id={dailyVerse.id}
+          reference={dailyVerse.reference}
+          text={dailyVerse.text}
+          version={dailyVerse.version}
+          affirmation={dailyVerse.affirmation}
+          theme={dailyVerse.theme}
+          backgroundImage={dailyVerse.backgroundImage}
+          initialLikes={dailyVerse.likes}
+          initialShares={dailyVerse.shares}
+          initialDownloads={dailyVerse.downloads}
+          initialUserLiked={dailyVerse.userLiked}
+        />
+      )}
 
       <QuickActions onNavigate={onNavigate} />
 
