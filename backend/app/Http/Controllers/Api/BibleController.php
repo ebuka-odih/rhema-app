@@ -269,8 +269,8 @@ class BibleController extends Controller
                 // If the verse exists but is missing a background image (old data), generate one
                 if (!$verse->background_image) {
                     $userSeed = $userId ? (string)$userId : 'guest';
-                    // Use microtime for maximum salt to ensure a fresh image on every unique call
-                    $seed = abs(crc32($today . $userSeed . microtime(true)));
+                    // Deterministic seed based on date and user
+                    $seed = abs(crc32($today . $userSeed));
                     $themeImages = [
                         'Peace' => 'nature,calm,zen',
                         'Strength' => 'mountain,peak,climb',
@@ -281,8 +281,6 @@ class BibleController extends Controller
                         'Love' => 'family,heart,warmth'
                     ];
                     $keywords = $themeImages[$verse->theme] ?? 'spiritual,landscape';
-                    $verse->background_image = "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&q=80&sig={$seed}"; 
-                    // Note: The URL above is a high-quality base, but adding &sig ensures Unsplash serves a random one from their collection if redirected or using source.
                     $verse->background_image = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
                     $verse->save();
                 }
@@ -347,7 +345,7 @@ class BibleController extends Controller
 
             // Pick one based on day of year + user id for consistency
             $userSeed = $userId ? (string)$userId : 'guest';
-            $seed = abs(crc32($today . $userSeed . microtime(true)));
+            $seed = abs(crc32($today . $userSeed));
             
             $entriesCount = count($possibleEntries);
             $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
@@ -459,19 +457,15 @@ class BibleController extends Controller
         $userId = $user ? $user->id : null;
         $today = Carbon::today()->toDateString();
         
-        $verse = DailyVerse::where('date', $today)
-            ->where('user_id', $userId)
-            ->first();
+        // Always try to get or create the daily verse first to ensure sync
+        $verseResponse = $this->dailyVerse($request);
+        $verse = json_decode($verseResponse->getContent());
 
-        if (!$verse || !$verse->affirmation) {
-            // Create the daily verse if it doesn't exist yet (this will trigger the logic)
-            $verseJson = $this->dailyVerse($request);
-            $verseData = json_decode($verseJson->getContent(), true);
-            
+        if (isset($verse->error)) {
             return response()->json([
-                'affirmation' => $verseData['affirmation'] ?? 'I walk in God\'s grace today.',
-                'scripture' => $verseData['reference'] ?? '',
-                'text' => $verseData['text'] ?? ''
+                'affirmation' => 'I walk in God\'s grace today.',
+                'scripture' => 'Psalm 23:1',
+                'text' => 'The Lord is my shepherd; I shall not want.'
             ]);
         }
         
@@ -481,6 +475,7 @@ class BibleController extends Controller
             'text' => $verse->text
         ]);
     }
+
 
     public function versions()
     {

@@ -49,7 +49,13 @@ class TranscriptionController extends Controller
                 Storage::disk('public')->delete($path);
             }
             Log::error('Transcription Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Internal server error'], 500);
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
     }
 }

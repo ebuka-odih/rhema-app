@@ -44,30 +44,50 @@ export const notificationService = {
         return token;
     },
 
-    async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string) {
-        const identifier = 'daily-affirmation';
-
-        // 1. Clean up ANY scheduled notifications that have the "Daily Affirmation" title
-        // This handles older versions that didn't use a consistent identifier
+    async clearAllDailyAffirmations() {
         const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         for (const notification of scheduled) {
-            if (notification.content.title === "Daily Affirmation") {
+            // Check for any variations of the title or the specific identifier
+            if (
+                notification.content.title === "Daily Affirmation" ||
+                notification.content.title === "Daily Word of Affirmation" ||
+                notification.identifier === 'daily-affirmation'
+            ) {
                 await Notifications.cancelScheduledNotificationAsync(notification.identifier);
             }
         }
+    },
 
-        // 2. Schedule the new one with the consistent identifier
+    async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string) {
+        const identifier = 'daily-affirmation';
+
+        // Clear existing ones first to ensure no duplicates
+        await this.clearAllDailyAffirmations();
+
+        // Schedule the new one with the consistent identifier
         await Notifications.scheduleNotificationAsync({
             identifier,
             content: {
-                title: "Daily Affirmation",
-                body: `${affirmation}\n\n"${scripture}"`,
+                title: "Daily Word of Affirmation",
+                body: `Remember: ${affirmation}\n\nToday's Verse: ${scripture}`,
+                data: { screen: 'HOME' }
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
                 hour,
                 minute,
             },
+        });
+    },
+
+    async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "Daily Word of Affirmation",
+                body: `Remember: ${affirmation}\n\nToday's Verse: ${scripture}`,
+                data: { screen: 'HOME' }
+            },
+            trigger: null,
         });
     },
 

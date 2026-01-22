@@ -14,6 +14,7 @@ import JourneyScreen from './screens/JourneyScreen';
 import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
+import * as Notifications from 'expo-notifications';
 import { useSession } from './services/auth';
 import { notificationService } from './services/notificationService';
 import { bibleService } from './services/bibleService';
@@ -25,16 +26,26 @@ const AppContent: React.FC = () => {
     const [appState, setAppState] = useState<AppState>('WELCOME');
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
     const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
+    const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
     const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
         if (isPending) return;
 
+        // Register notification listeners
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            if (data?.screen === 'HOME') {
+                setActiveTab(Tab.HOME);
+            }
+        });
+
         const setupNotifications = async () => {
             await notificationService.registerForPushNotificationsAsync();
+
             const affirmation = await bibleService.getAffirmation();
-            if (affirmation) {
+            if (affirmation && session?.user?.settings?.dailyAffirmations !== false) {
                 // Schedule for 8:00 AM every day
                 await notificationService.scheduleDailyAffirmation(
                     8, 0,
@@ -44,6 +55,8 @@ const AppContent: React.FC = () => {
             }
         };
         setupNotifications();
+
+        return () => subscription.remove();
     }, [session, isPending]);
 
     useEffect(() => {
@@ -73,7 +86,7 @@ const AppContent: React.FC = () => {
                         }}
                     />
                 );
-                case Tab.JOURNEY: return <JourneyScreen onNavigateGlobal={(screen) => setActiveTab(screen as Tab)} />;
+                case Tab.JOURNEY: return <JourneyScreen onNavigateGlobal={(screen) => setActiveTab(screen as Tab)} onEditorStateChange={setIsJournalEditorOpen} />;
                 case Tab.MORE: return <MoreScreen />;
                 default: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
             }
@@ -86,52 +99,54 @@ const AppContent: React.FC = () => {
                     {renderScreen()}
                 </View>
 
-                {/* Bottom Navigation */}
-                <View style={[
-                    styles.bottomNav,
-                    { paddingBottom: Math.max(insets.bottom, 16) }
-                ]}>
-                    <NavButton
-                        active={activeTab === Tab.HOME}
-                        icon={<IconHome size={24} color={activeTab === Tab.HOME ? '#E8503A' : '#666666'} />}
-                        label="Home"
-                        onPress={() => setActiveTab(Tab.HOME)}
-                    />
+                {/* Bottom Navigation - Hidden when journal editor is open */}
+                {!isJournalEditorOpen && (
+                    <View style={[
+                        styles.bottomNav,
+                        { paddingBottom: Math.max(insets.bottom, 16) }
+                    ]}>
+                        <NavButton
+                            active={activeTab === Tab.HOME}
+                            icon={<IconHome size={24} color={activeTab === Tab.HOME ? '#E8503A' : '#666666'} />}
+                            label="Home"
+                            onPress={() => setActiveTab(Tab.HOME)}
+                        />
 
-                    <NavButton
-                        active={activeTab === Tab.BIBLE}
-                        icon={<IconBible size={24} color={activeTab === Tab.BIBLE ? '#E8503A' : '#666666'} />}
-                        label="Read"
-                        onPress={() => setActiveTab(Tab.BIBLE)}
-                    />
+                        <NavButton
+                            active={activeTab === Tab.BIBLE}
+                            icon={<IconBible size={24} color={activeTab === Tab.BIBLE ? '#E8503A' : '#666666'} />}
+                            label="Read"
+                            onPress={() => setActiveTab(Tab.BIBLE)}
+                        />
 
-                    {/* Central Action Button (Record/Mic) */}
-                    <View style={styles.centralButtonContainer}>
-                        <TouchableOpacity
-                            onPress={() => setActiveTab(Tab.RECORD)}
-                            style={[
-                                styles.centralButton,
-                                activeTab === Tab.RECORD ? styles.centralButtonActive : styles.centralButtonInactive
-                            ]}
-                        >
-                            <IconMic size={28} color={activeTab === Tab.RECORD ? '#FFFFFF' : '#999999'} />
-                        </TouchableOpacity>
+                        {/* Central Action Button (Record/Mic) */}
+                        <View style={styles.centralButtonContainer}>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab(Tab.RECORD)}
+                                style={[
+                                    styles.centralButton,
+                                    activeTab === Tab.RECORD ? styles.centralButtonActive : styles.centralButtonInactive
+                                ]}
+                            >
+                                <IconMic size={28} color={activeTab === Tab.RECORD ? '#FFFFFF' : '#999999'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <NavButton
+                            active={activeTab === Tab.JOURNEY}
+                            icon={<IconJourney size={24} color={activeTab === Tab.JOURNEY ? '#E8503A' : '#666666'} />}
+                            label="Journey"
+                            onPress={() => setActiveTab(Tab.JOURNEY)}
+                        />
+
+                        <NavButton
+                            active={activeTab === Tab.MORE}
+                            icon={<IconMore size={24} color={activeTab === Tab.MORE ? '#E8503A' : '#666666'} />}
+                            label="More"
+                            onPress={() => setActiveTab(Tab.MORE)}
+                        />
                     </View>
-
-                    <NavButton
-                        active={activeTab === Tab.JOURNEY}
-                        icon={<IconJourney size={24} color={activeTab === Tab.JOURNEY ? '#E8503A' : '#666666'} />}
-                        label="Journey"
-                        onPress={() => setActiveTab(Tab.JOURNEY)}
-                    />
-
-                    <NavButton
-                        active={activeTab === Tab.MORE}
-                        icon={<IconMore size={24} color={activeTab === Tab.MORE ? '#E8503A' : '#666666'} />}
-                        label="More"
-                        onPress={() => setActiveTab(Tab.MORE)}
-                    />
-                </View>
+                )}
             </View>
         );
     };

@@ -127,6 +127,23 @@ const NotificationSettingsScreen: React.FC<{ onBack: () => void }> = ({ onBack }
                         <Text style={styles.saveButtonText}>Save Preferences</Text>
                     )}
                 </TouchableOpacity>
+
+                <View style={{ marginTop: 12 }}>
+                    <TouchableOpacity
+                        style={[styles.saveButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#333333' }]}
+                        onPress={async () => {
+                            const { bibleService } = await import('../../services/bibleService');
+                            const { notificationService } = await import('../../services/notificationService');
+                            const affirmation = await bibleService.getAffirmation();
+                            if (affirmation) {
+                                await notificationService.sendImmediateDailyAffirmation(affirmation.scripture, affirmation.affirmation);
+                                Alert.alert('Sent', 'Test notification sent to your device!');
+                            }
+                        }}
+                    >
+                        <Text style={[styles.saveButtonText, { color: '#999999' }]}>Send Test Notification</Text>
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
         </View>
     );

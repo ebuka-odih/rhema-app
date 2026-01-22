@@ -17,9 +17,10 @@ type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'pray
 
 interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
+  onEditorStateChange?: (isOpen: boolean) => void;
 }
 
-const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
+const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal, onEditorStateChange }) => {
   const [currentView, setCurrentView] = useState<JourneyView>('home');
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [journalTitle, setJournalTitle] = useState('');
@@ -32,6 +33,11 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal }) => {
   const [reflections, setReflections] = useState<JournalEntry[]>([]);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Notify parent when editor opens/closes
+  useEffect(() => {
+    onEditorStateChange?.(currentView === 'journal_editor');
+  }, [currentView, onEditorStateChange]);
 
   // Fetch Data
   useEffect(() => {
