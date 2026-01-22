@@ -74,12 +74,10 @@ export const notificationService = {
         await Notifications.scheduleNotificationAsync({
             identifier,
             content: {
-                title: `🕊️ ${affirmation}`,
+                title: `🕊️ ${affirmation || 'Daily Affirmation'}`,
                 body: scripture,
                 data: { screen: 'HOME' },
-                android: {
-                    channelId: 'default',
-                },
+                priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -90,15 +88,16 @@ export const notificationService = {
     },
 
     async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
+        // Use a consistent identifier for test notifications to prevent stacking/duplication
+        const identifier = 'test-affirmation';
+
         await Notifications.scheduleNotificationAsync({
+            identifier,
             content: {
-                title: `🕊️ ${affirmation}`,
+                title: `🕊️ ${affirmation || 'Daily Affirmation'}`,
                 body: scripture,
                 data: { screen: 'HOME' },
                 priority: Notifications.AndroidNotificationPriority.HIGH,
-                android: {
-                    channelId: 'default',
-                },
             },
             trigger: null,
         });

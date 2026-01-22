@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -30,6 +30,8 @@ const AppContent: React.FC = () => {
     const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
 
+    const hasTriggeredSync = useRef(false);
+
     useEffect(() => {
         if (isPending) return;
 
@@ -43,30 +45,26 @@ const AppContent: React.FC = () => {
 
         const setupNotifications = async () => {
             try {
-                const status = await notificationService.registerForPushNotificationsAsync();
+                await notificationService.registerForPushNotificationsAsync();
 
                 const affirmation = await bibleService.getAffirmation();
                 if (affirmation) {
-                    // SEND IT IMMEDIATELY FOR TESTING (As requested by user)
-                    await notificationService.sendImmediateDailyAffirmation(
-                        affirmation.scripture,
-                        affirmation.affirmation
-                    );
+                    // Only trigger the immediate "sync" notification once per app load
+                    if (!hasTriggeredSync.current) {
+                        await notificationService.sendImmediateDailyAffirmation(
+                            affirmation.scripture,
+                            affirmation.affirmation
+                        );
+                        hasTriggeredSync.current = true;
+                    }
 
                     if (session?.user?.settings?.dailyAffirmations !== false) {
-                        // Also schedule for 8:00 AM every day
                         await notificationService.scheduleDailyAffirmation(
                             8, 0,
                             affirmation.scripture,
                             affirmation.affirmation
                         );
                     }
-                } else {
-                    // Fallback test if backend fails
-                    await notificationService.sendImmediateNotification(
-                        'System Sync Test',
-                        'Backend affirmation call failed, but notification system is working.'
-                    );
                 }
             } catch (err) {
                 console.error('setupNotifications error:', err);
