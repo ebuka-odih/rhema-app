@@ -45,13 +45,21 @@ const AppContent: React.FC = () => {
             await notificationService.registerForPushNotificationsAsync();
 
             const affirmation = await bibleService.getAffirmation();
-            if (affirmation && session?.user?.settings?.dailyAffirmations !== false) {
-                // Schedule for 8:00 AM every day
-                await notificationService.scheduleDailyAffirmation(
-                    8, 0,
+            if (affirmation) {
+                // SEND IT IMMEDIATELY FOR TESTING (As requested by user)
+                await notificationService.sendImmediateDailyAffirmation(
                     affirmation.scripture,
                     affirmation.affirmation
                 );
+
+                if (session?.user?.settings?.dailyAffirmations !== false) {
+                    // Also schedule for 8:00 AM every day
+                    await notificationService.scheduleDailyAffirmation(
+                        8, 0,
+                        affirmation.scripture,
+                        affirmation.affirmation
+                    );
+                }
             }
         };
         setupNotifications();
