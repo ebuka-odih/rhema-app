@@ -218,3 +218,7 @@ export const IconQuote = ({ size = 24, color = '#FFFFFF', ...props }: IconProps)
 export const IconFormat = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
   <MaterialCommunityIcons name="format-text" size={size} color={color} />
 );
+
+export const IconCopy = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="copy-outline" size={size} color={color} />
+);

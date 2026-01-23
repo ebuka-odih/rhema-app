@@ -4,8 +4,10 @@ import { useSession, signOut } from '../services/auth';
 import {
   IconUser, IconSettings, IconBell, IconLock,
   IconShield, IconStar, IconHelp, IconLogout,
-  IconChevronRight, IconArrowLeft
+  IconChevronRight, IconArrowLeft, IconShare
 } from '../components/Icons';
+import QRCodeScreen from './QRCodeScreen';
+
 import PersonalInfoScreen from './settings/PersonalInfoScreen';
 import SecurityScreen from './settings/SecurityScreen';
 import SubscriptionScreen from './settings/SubscriptionScreen';
@@ -39,7 +41,7 @@ const SettingsItem: React.FC<{
   </TouchableOpacity>
 );
 
-type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'HELP';
+type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'HELP' | 'QR_CODE';
 
 const MoreScreen: React.FC = () => {
   const { data: session } = useSession();
@@ -63,6 +65,7 @@ const MoreScreen: React.FC = () => {
   if (currentView === 'NOTIFICATIONS') return <NotificationSettingsScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'PRIVACY') return <PrivacyScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'HELP') return <HelpSupportScreen onBack={() => setCurrentView('MAIN')} />;
+  if (currentView === 'QR_CODE') return <QRCodeScreen onBack={() => setCurrentView('MAIN')} />;
 
   return (
     <View style={styles.container}>
@@ -144,6 +147,12 @@ const MoreScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support & About</Text>
           <View style={styles.sectionCard}>
+            <SettingsItem
+              icon={<IconShare size={20} color="#FFFFFF" />}
+              label="Share App"
+              onPress={() => setCurrentView('QR_CODE')}
+            />
+            <View style={styles.divider} />
             <SettingsItem
               icon={<IconHelp size={20} color="#FFFFFF" />}
               label="Help Center"

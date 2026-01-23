@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, Text, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, Text, View, ActivityIndicator, AppState } from 'react-native';
 
 // Extracted Components
 import { HomeHeader } from '../components/home/HomeHeader';
@@ -45,32 +45,69 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isVerseLoading, setIsVerseLoading] = React.useState(true);
 
-  React.useEffect(() => {
+  const lastFetchDate = React.useRef<string>('');
+
+  const fetchDailyVerse = React.useCallback(async () => {
+    const now = new Date();
+    // TEST LOGIC: Simulate 11 AM as the new day trigger
+    // If it's past 11 AM, we pretend it's "Tomorrow" relative to the actual date
+    const currentHour = now.getHours();
+    const isPastTestCutoff = currentHour >= 11;
+
+    // Calculate the "Simulated Date"
+    // If >= 11 AM, add 1 day to the current date to force a content change
+    const targetDate = new Date(now);
+    if (isPastTestCutoff) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    const targetDateString = targetDate.toISOString().split('T')[0];
+
+    // If we have already fetched for this "Simulated Date", do nothing
+    if (targetDateString === lastFetchDate.current) return;
+
     setIsVerseLoading(true);
-    import('../services/bibleService').then(({ bibleService }) => {
-      bibleService.getDailyVerse().then(verse => {
-        if (verse && verse.id) {
-          setDailyVerse({
-            id: verse.id,
-            reference: verse.reference,
-            text: verse.text,
-            version: verse.version,
-            affirmation: verse.affirmation || "I walk in God's grace today.",
-            theme: verse.theme || "Faith",
-            backgroundImage: verse.background_image,
-            likes: verse.likes_count || 0,
-            shares: verse.shares_count || 0,
-            downloads: verse.downloads_count || 0,
-            userLiked: verse.user_liked || false
-          });
-        }
-        setIsVerseLoading(false);
-      }).catch(err => {
-        console.error('getDailyVerse error:', err);
-        setIsVerseLoading(false);
-      });
+    try {
+      const { bibleService } = await import('../services/bibleService');
+
+      // Pass the simulated date to the service
+      const verse = await bibleService.getDailyVerse(targetDateString);
+
+      if (verse && verse.id) {
+        lastFetchDate.current = targetDateString;
+        setDailyVerse({
+          id: verse.id,
+          reference: verse.reference,
+          text: verse.text,
+          version: verse.version,
+          affirmation: verse.affirmation || "I walk in God's grace today.",
+          theme: verse.theme || "Faith",
+          backgroundImage: verse.background_image,
+          likes: verse.likes_count || 0,
+          shares: verse.shares_count || 0,
+          downloads: verse.downloads_count || 0,
+          userLiked: verse.user_liked || false
+        });
+      }
+    } catch (err) {
+      console.error('getDailyVerse error:', err);
+    } finally {
+      setIsVerseLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchDailyVerse();
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        fetchDailyVerse();
+      }
     });
-  }, [session]);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [session, fetchDailyVerse]);
 
   React.useEffect(() => {
     const fetchData = async () => {

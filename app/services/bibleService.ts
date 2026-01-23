@@ -180,7 +180,7 @@ export const bibleService = {
         await offlineBibleService.downloadAndInstall(version, onProgress);
     },
 
-    async getDailyVerse() {
+    async getDailyVerse(dateOverride?: string) {
         const cacheKey = 'bible_daily_verse_cache';
         try {
             const { authService } = await import('./auth');
@@ -189,11 +189,15 @@ export const bibleService = {
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
             // Get local date in YYYY-MM-DD format to ensure server respects user's timezone
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const localDate = `${year}-${month}-${day}`;
+            let localDate = dateOverride;
+
+            if (!localDate) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                localDate = `${year}-${month}-${day}`;
+            }
 
             const response = await fetch(`${API_BASE_URL}bible/daily-verse?date=${localDate}`, { headers });
 
@@ -213,7 +217,7 @@ export const bibleService = {
         }
     },
 
-    async getAffirmation() {
+    async getAffirmation(dateOverride?: string) {
         const cacheKey = 'bible_affirmation_cache';
         try {
             const { authService } = await import('./auth');
@@ -221,14 +225,16 @@ export const bibleService = {
             const headers: Record<string, string> = { 'Accept': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
             // Get local date in YYYY-MM-DD format
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const localDate = `${year}-${month}-${day}`;
+            let localDate = dateOverride;
+
+            if (!localDate) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                localDate = `${year}-${month}-${day}`;
+            }
 
             const response = await fetch(`${API_BASE_URL}bible/affirmation?date=${localDate}`, { headers });
 

@@ -5,9 +5,9 @@
     "scheme": "rhema",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.svg",
+    "icon": "./assets/icon.png",
     "notification": {
-      "icon": "./assets/logo.svg",
+      "icon": "./assets/icon.png",
       "color": "#E8503A"
     },
     "userInterfaceStyle": "dark",
