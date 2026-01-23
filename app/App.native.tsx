@@ -45,19 +45,13 @@ const AppContent: React.FC = () => {
                 console.log('setupNotifications: Affirmation fetched', !!affirmation);
 
                 if (!hasTriggeredSync.current) {
-                    // Send exactly one sync notification per app launch
-                    await notificationService.sendImmediateDailyAffirmation(
-                        affirmation?.scripture || 'Psalms 23:1',
-                        affirmation?.affirmation || "I walk in God's grace today."
-                    );
                     hasTriggeredSync.current = true;
-                    Alert.alert('✅ Notification Sent', 'A test affirmation was just triggered. Please check your notification tray.');
                 }
 
                 // Future scheduling if session is available
                 if (session && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
                     await notificationService.scheduleDailyAffirmation(
-                        8, 0,
+                        7, 0,
                         affirmation.scripture,
                         affirmation.affirmation
                     );

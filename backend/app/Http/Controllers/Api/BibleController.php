@@ -258,7 +258,8 @@ class BibleController extends Controller
         try {
             $user = auth('sanctum')->user();
             $userId = $user ? $user->id : null;
-            $today = Carbon::today()->toDateString();
+            // Allow client to specify date (for timezone consistency)
+            $today = $request->query('date') ? $request->query('date') : Carbon::today()->toDateString();
             
             // Check if we already have a verse for today for this user
             $verse = DailyVerse::where('date', $today)

@@ -57,6 +57,7 @@ export const notificationService = {
             if (
                 notification.content.title === "Daily Affirmation" ||
                 notification.content.title === "Daily Word of Affirmation" ||
+                notification.content.title === "🕊️ Daily Affirmation" ||
                 notification.identifier === 'daily-affirmation'
             ) {
                 await Notifications.cancelScheduledNotificationAsync(notification.identifier);
@@ -70,88 +71,82 @@ export const notificationService = {
         // Clear existing ones first to ensure no duplicates
         await this.clearAllDailyAffirmations();
 
-    async scheduleDailyAffirmation(hour: number, minute: number, scripture: string, affirmation: string) {
-            const identifier = 'daily-affirmation';
-
-            // Clear existing ones first to ensure no duplicates
-            await this.clearAllDailyAffirmations();
-
-            // Schedule the new one with the consistent identifier
-            await Notifications.scheduleNotificationAsync({
-                identifier,
-                content: {
-                    title: "🕊️ Daily Affirmation",
-                    body: `${affirmation}\n\n${scripture}`,
-                    data: { screen: 'HOME' },
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                },
-                trigger: {
-                    type: Notifications.SchedulableTriggerInputTypes.DAILY,
-                    hour,
-                    minute,
-                },
-            });
-        },
+        // Schedule the new one with the consistent identifier
+        await Notifications.scheduleNotificationAsync({
+            identifier,
+            content: {
+                title: "🕊️ Daily Affirmation",
+                body: `${affirmation}\n\n${scripture}`,
+                data: { screen: 'HOME' },
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour,
+                minute,
+            },
+        });
+    },
 
     async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
-            // Use a random identifier to force a NEW notification every time for testing
-            const identifier = `test-affirmation-${Date.now()}`;
+        // Use a random identifier to force a NEW notification every time for testing
+        const identifier = `test-affirmation-${Date.now()}`;
 
-            await Notifications.scheduleNotificationAsync({
-                identifier,
-                content: {
-                    title: "🕊️ Daily Affirmation",
-                    body: `${affirmation}\n\n${scripture}`,
-                    data: { screen: 'HOME' },
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                    sound: true, // Force sound
-                },
-                trigger: {
-                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                    seconds: 2,
-                    repeats: false,
-                },
-            });
-        },
+        await Notifications.scheduleNotificationAsync({
+            identifier,
+            content: {
+                title: "🕊️ Daily Affirmation",
+                body: `${affirmation}\n\n${scripture}`,
+                data: { screen: 'HOME' },
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+                sound: true, // Force sound
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: 2,
+                repeats: false,
+            },
+        });
+    },
 
     async sendImmediateNotification(title: string, body: string) {
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: title,
-                    body: body,
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                },
-                trigger: null,
-            });
-        },
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: title,
+                body: body,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: null,
+        });
+    },
 
     async schedulePrayerReminder(id: string | number, hour: number, minute: number, request: string) {
-            // Schedule the primary alarm with a consistent ID for this specific prayer
-            await Notifications.scheduleNotificationAsync({
-                identifier: `prayer-${id}`,
-                content: {
-                    title: "🚨 Prayer Session Beginning",
-                    body: request || "It's time for your scheduled prayer session. Your soul awaits.",
-                    sound: true,
-                    priority: Notifications.AndroidNotificationPriority.MAX,
-                    vibrate: [0, 1000, 500, 1000, 500, 1000, 500, 3000, 500, 3000] as any,
-                    autoDismiss: false,
-                    sticky: true,
-                },
-                trigger: {
-                    type: Notifications.SchedulableTriggerInputTypes.DAILY,
-                    hour,
-                    minute,
-                    channelId: 'prayer-reminders',
-                },
-            });
-        },
+        // Schedule the primary alarm with a consistent ID for this specific prayer
+        await Notifications.scheduleNotificationAsync({
+            identifier: `prayer-${id}`,
+            content: {
+                title: "🚨 Prayer Session Beginning",
+                body: request || "It's time for your scheduled prayer session. Your soul awaits.",
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+                vibrate: [0, 1000, 500, 1000, 500, 1000, 500, 3000, 500, 3000] as any,
+                autoDismiss: false,
+                sticky: true,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour,
+                minute,
+                channelId: 'prayer-reminders',
+            },
+        });
+    },
 
     async cancelPrayerReminder(id: string | number) {
-            await Notifications.cancelScheduledNotificationAsync(`prayer-${id}`);
-        },
+        await Notifications.cancelScheduledNotificationAsync(`prayer-${id}`);
+    },
 
     async cancelAllReminders() {
-            await Notifications.cancelAllScheduledNotificationsAsync();
-        }
-    };
+        await Notifications.cancelAllScheduledNotificationsAsync();
+    }
+};

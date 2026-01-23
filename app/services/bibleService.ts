@@ -188,7 +188,14 @@ export const bibleService = {
             const headers: Record<string, string> = { 'Accept': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const response = await fetch(`${API_BASE_URL}bible/daily-verse`, { headers });
+            // Get local date in YYYY-MM-DD format to ensure server respects user's timezone
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const localDate = `${year}-${month}-${day}`;
+
+            const response = await fetch(`${API_BASE_URL}bible/daily-verse?date=${localDate}`, { headers });
 
             if (!response.ok) {
                 const text = await response.text();
@@ -214,7 +221,16 @@ export const bibleService = {
             const headers: Record<string, string> = { 'Accept': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const response = await fetch(`${API_BASE_URL}bible/affirmation`, { headers });
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            // Get local date in YYYY-MM-DD format
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const localDate = `${year}-${month}-${day}`;
+
+            const response = await fetch(`${API_BASE_URL}bible/affirmation?date=${localDate}`, { headers });
 
             if (!response.ok) {
                 const text = await response.text();
