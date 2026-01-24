@@ -367,18 +367,33 @@ class BibleController extends Controller
             $bgImage = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
 
             // Store it so it stays the same for 24h for this user
-            $verse = DailyVerse::create([
-                'user_id' => $userId,
-                'date' => $today,
-                'reference' => $entry['reference'],
-                'text' => $entry['text'],
-                'version' => $entry['version'] ?? 'NKJV',
-                'affirmation' => $entry['affirmation'],
-                'theme' => $entry['theme'],
-                'background_image' => $bgImage
-            ]);
+            try {
+                $verse = DailyVerse::create([
+                    'user_id' => $userId,
+                    'date' => $today,
+                    'reference' => $entry['reference'],
+                    'text' => $entry['text'],
+                    'version' => $entry['version'] ?? 'NKJV',
+                    'affirmation' => $entry['affirmation'],
+                    'theme' => $entry['theme'],
+                    'background_image' => $bgImage
+                ]);
+                $verse->user_liked = false;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ($e->getCode() == 23000) {
+                    $verse = DailyVerse::where('date', $today)
+                        ->where('user_id', $userId)
+                        ->firstOrFail();
 
-            $verse->user_liked = false;
+                     if ($userId) {
+                        $verse->user_liked = $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists();
+                    } else {
+                        $verse->user_liked = false;
+                    }
+                } else {
+                    throw $e;
+                }
+            }
             return response()->json($verse);
         } catch (\Exception $e) {
             \Log::error("Error in dailyVerse: " . $e->getMessage());

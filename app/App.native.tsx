@@ -41,17 +41,16 @@ const AppContent: React.FC = () => {
                 await notificationService.registerForPushNotificationsAsync();
                 console.log('setupNotifications: Registered');
 
-                // TEST LOGIC: Fetch upcoming affirmation (Tomorrows) and schedule for 12 PM
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                const affirmation = await bibleService.getAffirmation();
+                console.log('setupNotifications: Affirmation fetched', !!affirmation);
 
-                const affirmation = await bibleService.getAffirmation(tomorrowStr);
-                console.log('setupNotifications: Affirmation fetched for test', !!affirmation);
+                if (!hasTriggeredSync.current) {
+                    hasTriggeredSync.current = true;
+                }
 
                 if (session && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
                     await notificationService.scheduleDailyAffirmation(
-                        12, 0, // Schedule for 12:00 PM
+                        7, 0,
                         affirmation.scripture,
                         affirmation.affirmation
                     );

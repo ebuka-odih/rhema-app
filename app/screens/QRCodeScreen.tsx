@@ -18,7 +18,7 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
 
     // The URL that leads to the Welcome Page
     // TODO: Replace with the actual production URL
-    const APP_URL = "https://nyem.app";
+    const APP_URL = "https://rhema.daily";
 
     const handleShare = async () => {
         try {
@@ -54,7 +54,7 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
 
             if (Platform.OS === 'web') {
                 const link = document.createElement('a');
-                link.download = 'nyem-qrcode.png';
+                link.download = 'rhema-daily-qrcode.png';
                 link.href = uri;
                 link.click();
                 return;
@@ -87,13 +87,13 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <IconArrowLeft size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Share Nyem</Text>
-                <View style={{ width: 40 }} /> {/* Spacer for alignment */}
+                <Text style={styles.headerTitle}>Share Rhema Daily</Text>
+                <View style={{ width: 40 }} />
             </View>
 
             <View style={styles.content}>
                 <Text style={styles.description}>
-                    Scan to visit the Welcome Page
+                    Scan to get Rhema Daily
                 </Text>
 
                 <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0 }} style={styles.cardContainer}>
@@ -105,7 +105,7 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
                         <View style={styles.qrContainer}>
                             <QRCode
                                 value={APP_URL}
-                                size={200}
+                                size={180}
                                 color="black"
                                 backgroundColor="white"
                                 logoSize={40}
@@ -113,7 +113,7 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
                             />
                         </View>
 
-                        <Text style={styles.appName}>Nyem</Text>
+                        <Text style={styles.appName}>Rhema Daily</Text>
                         <Text style={styles.appTagline}>Reflect. Grow. Flow.</Text>
                         <Text style={styles.urlText}>{APP_URL}</Text>
                     </View>
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
-        padding: 30,
+        padding: 24,
         alignItems: 'center',
         width: '100%',
         maxWidth: 320,
@@ -216,28 +216,31 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     logoContainer: {
-        marginBottom: 20,
+        marginBottom: 16,
     },
     qrContainer: {
         padding: 10,
         backgroundColor: 'white',
         borderRadius: 10,
-        marginBottom: 20,
+        marginBottom: 16,
     },
     appName: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#000000',
         marginBottom: 4,
+        textAlign: 'center',
     },
     appTagline: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#666666',
-        marginBottom: 16,
+        marginBottom: 12,
+        textAlign: 'center',
     },
     urlText: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#999999',
+        textAlign: 'center',
     },
     actions: {
         flexDirection: 'row',
