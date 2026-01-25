@@ -11,6 +11,7 @@ import { RecentPrayers } from '../components/home/RecentPrayers';
 import { useSession, authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 import { Tab, JournalEntry, Prayer } from '../types';
+import { notificationService } from '../services/notificationService';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -49,20 +50,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
   const fetchDailyVerse = React.useCallback(async () => {
     const now = new Date();
-    // TEST LOGIC: Simulate 11 AM as the new day trigger
-    // If it's past 11 AM, we pretend it's "Tomorrow" relative to the actual date
-    const currentHour = now.getHours();
-    const isPastTestCutoff = currentHour >= 11;
+    // Use actual local date
+    const targetDateString = now.toISOString().split('T')[0];
 
-    // Calculate the "Simulated Date"
-    // If >= 11 AM, add 1 day to the current date to force a content change
-    const targetDate = new Date(now);
-    if (isPastTestCutoff) {
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-    const targetDateString = targetDate.toISOString().split('T')[0];
-
-    // If we have already fetched for this "Simulated Date", do nothing
+    // If we have already fetched for this date, do nothing
     if (targetDateString === lastFetchDate.current) return;
 
     setIsVerseLoading(true);
@@ -87,6 +78,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           downloads: verse.downloads_count || 0,
           userLiked: verse.user_liked || false
         });
+
+        // Sync Notification for Unity
+        // Schedule/Update the daily affirmation notification to match the current daily verse
+        // This ensures that if the notification fires (e.g. tomorrow morning if app isn't opened),
+        // it matches what was last seen or fetched.
+        // We schedule it for 7:00 AM.
+        try {
+          await notificationService.scheduleDailyAffirmation(
+            7,
+            0,
+            `${verse.reference} ${verse.text}`,
+            verse.affirmation || "I walk in God's grace today."
+          );
+        } catch (notifErr) {
+          console.error("Failed to schedule affirmation:", notifErr);
+        }
       }
     } catch (err) {
       console.error('getDailyVerse error:', err);
@@ -104,8 +111,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       }
     });
 
+    // Auto-refresh at midnight
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    // Add a small buffer (e.g., 10 seconds) to ensure server date has also flipped
+    const midnightTimer = setTimeout(() => {
+      fetchDailyVerse();
+    }, msUntilMidnight + 10000);
+
     return () => {
       subscription.remove();
+      clearTimeout(midnightTimer);
     };
   }, [session, fetchDailyVerse]);
 
@@ -148,9 +166,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   }, [session]);
 
   const suggestedDevotionals = [
-    { id: '1', title: 'Walking in Faith', plan: '5 Day Plan' },
-    { id: '2', title: 'Power of Prayer', plan: '7 Day Plan' },
-    { id: '3', title: 'Grace & Mercy', plan: '3 Day Plan' },
+    { id: '1', title: 'David & Goliath', plan: 'Coming Soon' },
+    { id: '2', title: 'The Good Samaritan', plan: 'Coming Soon' },
+    { id: '3', title: 'Daniel in the Lions\' Den', plan: 'Coming Soon' },
   ];
 
   const formattedDate = time.toLocaleDateString(undefined, {
@@ -196,7 +214,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         onViewAll={() => onNavigate(Tab.JOURNEY)}
       />
 
-      <DevotionalList devotionals={suggestedDevotionals} />
+
 
       <RecentNotes
         notes={notes.map(n => ({
@@ -207,6 +225,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         }))}
         onViewAll={() => onNavigate(Tab.JOURNEY)}
       />
+
+      <DevotionalList devotionals={suggestedDevotionals} />
     </ScrollView>
   );
 };

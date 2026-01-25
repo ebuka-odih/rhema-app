@@ -58,6 +58,54 @@ class AuthController extends Controller
         ]);
     }
 
+    public function googleLogin(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        $googleUser = $this->verifyGoogleToken($request->token);
+
+        if (!$googleUser) {
+            return response()->json(['message' => 'Invalid Google token'], 401);
+        }
+
+        $user = User::where('email', $googleUser['email'])->first();
+
+        if (!$user) {
+            $user = User::create([
+                'name' => $googleUser['name'],
+                'email' => $googleUser['email'],
+                'password' => Hash::make(uniqid()), // Random password
+                'email_verified_at' => now(),
+            ]);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user,
+        ]);
+    }
+
+    private function verifyGoogleToken($token)
+    {
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->get('https://www.googleapis.com/oauth2/v3/userinfo', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

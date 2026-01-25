@@ -63,6 +63,31 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      // TODO: Integrate Google One Tap or expo-auth-session here to get the token
+      // const token = await GoogleSignin.getTokens();
+      // const { data, error } = await signIn.google(token);
+
+      Alert.alert('Google Login', 'Google Sign-In integration requires Google SDK. Endpoint is ready at /auth/google.');
+
+      // Example integration if token was available:
+      /*
+      const { data, error } = await signIn.google('GOOGLE_ACCESS_TOKEN');
+      if (error) {
+        Alert.alert('Login Error', error.message);
+      } else {
+        onAuthenticated();
+      }
+      */
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -137,7 +162,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
             )}
           </TouchableOpacity>
 
-          <SocialAuth />
+          <SocialAuth onGooglePress={handleGoogleLogin} />
 
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleText}>

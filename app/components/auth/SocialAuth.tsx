@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export const SocialAuth: React.FC = () => (
+interface SocialAuthProps {
+    onGooglePress: () => void;
+}
+
+export const SocialAuth: React.FC<SocialAuthProps> = ({ onGooglePress }) => (
     <View style={styles.socialContainer}>
         <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -10,11 +14,8 @@ export const SocialAuth: React.FC = () => (
         </View>
 
         <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton}>
+            <TouchableOpacity style={styles.socialButton} onPress={onGooglePress}>
                 <Text style={styles.socialButtonText}>Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-                <Text style={styles.socialButtonText}>Apple</Text>
             </TouchableOpacity>
         </View>
     </View>

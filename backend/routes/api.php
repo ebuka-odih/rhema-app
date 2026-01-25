@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\TranscriptionController;
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/auth/google', [AuthController::class, 'googleLogin']);
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {

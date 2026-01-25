@@ -99,6 +99,39 @@ export const authService = {
         }
     },
 
+    async googleLogin(token: string) {
+        try {
+            const response = await fetch(`${API_BASE_URL}auth/google`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ token }),
+            });
+            const text = await response.text();
+
+            if (!response.ok) {
+                let message = 'Google login failed';
+                try {
+                    const data = JSON.parse(text);
+                    message = data.message || message;
+                } catch (e) {
+                    console.error('Failed to parse error JSON:', text.substring(0, 100));
+                }
+                throw new Error(message);
+            }
+
+            const data = JSON.parse(text);
+            await this.setToken(data.access_token);
+            await this.setUser(data.user);
+            notifyListeners({ user: data.user });
+            return { data, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
+    },
+
     async logout() {
         const token = await this.getToken();
         try {
@@ -239,7 +272,8 @@ export const useSession = () => {
 
 // Mimic better-auth structure for compatibility in screens
 export const signIn = {
-    email: (creds: any) => authService.login(creds)
+    email: (creds: any) => authService.login(creds),
+    google: (token: string) => authService.googleLogin(token)
 };
 
 export const signUp = {

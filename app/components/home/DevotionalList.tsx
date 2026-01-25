@@ -13,7 +13,7 @@ interface DevotionalListProps {
 
 export const DevotionalList: React.FC<DevotionalListProps> = ({ devotionals }) => (
     <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Suggested For You</Text>
+        <Text style={styles.sectionTitle}>Bible Stories (Coming Soon)</Text>
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}

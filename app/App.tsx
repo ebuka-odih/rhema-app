@@ -14,9 +14,10 @@ import JourneyScreen from './screens/JourneyScreen';
 import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
+import LegalScreen from './screens/LegalScreen';
 import { useSession } from './services/auth';
 
-type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
+type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN' | 'LEGAL';
 
 const AppContent: React.FC = () => {
   // Navigation State
@@ -133,7 +134,12 @@ const AppContent: React.FC = () => {
               <WelcomeScreen
                 onGetStarted={() => setAppState('AUTH_SIGNUP')}
                 onLogin={() => setAppState('AUTH_LOGIN')}
+                onTermsPress={() => setAppState('LEGAL')}
               />
+            )}
+
+            {appState === 'LEGAL' && (
+              <LegalScreen onBack={() => setAppState('WELCOME')} />
             )}
 
             {(appState === 'AUTH_LOGIN' || appState === 'AUTH_SIGNUP') && (

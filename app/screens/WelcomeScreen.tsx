@@ -1,18 +1,22 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconArrowRight } from '../components/Icons';
 import { Logo } from '../components/Logo';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
   onLogin: () => void;
+  onTermsPress: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin, onTermsPress }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
       {/* Background Image with Overlay */}
-      <View style={styles.backgroundContainer}>
+      <View style={styles.backgroundContainer} pointerEvents="none">
         <Image
           source={{ uri: "https://images.unsplash.com/photo-1502481851541-7cc86ac743ea?auto=format&fit=crop&w=800&q=80" }}
           style={styles.backgroundImage}
@@ -21,7 +25,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) 
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: Math.max(insets.bottom + 20, 32) }]}>
         <View style={styles.spacer} />
 
         <View style={styles.textContainer}>
@@ -57,9 +61,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) 
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.termsText}>
-          By continuing, you agree to our Terms of Service.
-        </Text>
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsText}>By continuing, you agree to our </Text>
+          <TouchableOpacity onPress={onTermsPress} activeOpacity={0.7} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+            <Text style={styles.linkText}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={styles.termsText}> and </Text>
+          <TouchableOpacity onPress={onTermsPress} activeOpacity={0.7} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+            <Text style={styles.linkText}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <Text style={styles.termsText}>.</Text>
+        </View>
       </View>
     </View>
   );
@@ -161,10 +173,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  termsContainer: {
+    marginTop: 16,
+    paddingVertical: 8,
+    zIndex: 100,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   termsText: {
-    textAlign: 'center',
     fontSize: 12,
     color: '#666666',
+  },
+  linkText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 });
 
