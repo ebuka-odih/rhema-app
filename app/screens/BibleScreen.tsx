@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import * as Haptics from 'expo-haptics';
 import { bibleService, BibleVersion, BibleChapter, BibleBook } from '../services/bibleService';
+import { IconNote } from '../components/Icons';
 
 // Extracted Components
 import { BibleHeader } from '../components/bible/BibleHeader';
@@ -17,9 +19,10 @@ import { BibleHighlight } from '../types';
 interface BibleScreenProps {
   initialBook?: string;
   initialChapter?: number;
+  onNavigateNote?: () => void;
 }
 
-const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }) => {
+const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, onNavigateNote }) => {
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
 
@@ -176,6 +179,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }
   }, [version, book, chapter, isInitializing]);
 
   const handleNextChapter = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     if (currentBookData && chapter < currentBookData.chapters) {
       setChapter(prev => prev + 1);
     } else {
@@ -190,6 +196,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }
   };
 
   const handlePrevChapter = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     if (chapter > 1) {
       setChapter(prev => prev - 1);
     } else {
@@ -264,7 +273,6 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }
       setHighlights(freshHighlights);
     } catch (err) {
       console.error('Highlight error:', err);
-      // Revert on error if necessary, or just rely on next fetch
     }
   };
 
@@ -347,6 +355,22 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter }
         onNext={handleNextChapter}
         isPro={isPro}
       />
+
+      {/* Note Floating Action Button - Moved to Top Right */}
+      {selectedVerses.length === 0 && onNavigateNote && (
+        <TouchableOpacity
+          style={styles.noteFab}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            onNavigateNote();
+          }}
+          activeOpacity={0.8}
+        >
+          <IconNote size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -355,6 +379,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0D0D0D',
+  },
+  noteFab: {
+    position: 'absolute',
+    top: 100,
+    right: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(232, 80, 58, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 10,
   }
 });
 

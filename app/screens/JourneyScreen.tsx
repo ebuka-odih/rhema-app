@@ -18,10 +18,15 @@ type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'pray
 interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
   onEditorStateChange?: (isOpen: boolean) => void;
+  initialView?: JourneyView;
 }
 
-const JourneyScreen: React.FC<JourneyScreenProps> = ({ onNavigateGlobal, onEditorStateChange }) => {
-  const [currentView, setCurrentView] = useState<JourneyView>('home');
+const JourneyScreen: React.FC<JourneyScreenProps> = ({
+  onNavigateGlobal,
+  onEditorStateChange,
+  initialView = 'home'
+}) => {
+  const [currentView, setCurrentView] = useState<JourneyView>(initialView);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [journalTitle, setJournalTitle] = useState('');
   const [journalContent, setJournalContent] = useState('');

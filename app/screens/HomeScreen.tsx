@@ -48,6 +48,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
   const lastFetchDate = React.useRef<string>('');
 
+  // Fallback images for Daily Verse (Client-side rotation)
+  const FALLBACK_BACKGROUNDS = [
+    "https://images.unsplash.com/photo-1576360427338-b75e204055d8?q=80&w=1089&auto=format&fit=crop", // User provided
+    "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?auto=format&fit=crop&w=800&q=80",  // Nature
+    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",  // Mountains
+    "https://images.unsplash.com/photo-1448375240586-dfd8d395ea6c?auto=format&fit=crop&w=800&q=80",  // Forest
+    "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80",  // Stars
+    "https://images.unsplash.com/photo-1505118380757-91f5f5631fc0?auto=format&fit=crop&w=800&q=80",  // Ocean
+    "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=800&q=80",  // Dawn
+  ];
+
   const fetchDailyVerse = React.useCallback(async () => {
     const now = new Date();
     // Use actual local date
@@ -63,8 +74,23 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       // Pass the simulated date to the service
       const verse = await bibleService.getDailyVerse(targetDateString);
 
+      // Select fallback image based on day of month locally to ensure rotation
+      const dayOfMonth = now.getDate();
+      const fallbackImage = FALLBACK_BACKGROUNDS[dayOfMonth % FALLBACK_BACKGROUNDS.length];
+
       if (verse && verse.id) {
         lastFetchDate.current = targetDateString;
+
+        // Use backend image if available and valid URL, otherwise use client fallback
+        // Use backend image if available and valid URL (and not deprecated source.unsplash), otherwise use client fallback
+        const isValidBackendImage = verse.background_image &&
+          verse.background_image.startsWith('http') &&
+          !verse.background_image.includes('source.unsplash.com');
+
+        const bgImage = isValidBackendImage
+          ? verse.background_image
+          : fallbackImage;
+
         setDailyVerse({
           id: verse.id,
           reference: verse.reference,
@@ -72,7 +98,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           version: verse.version,
           affirmation: verse.affirmation || "I walk in God's grace today.",
           theme: verse.theme || "Faith",
-          backgroundImage: verse.background_image,
+          backgroundImage: bgImage,
           likes: verse.likes_count || 0,
           shares: verse.shares_count || 0,
           downloads: verse.downloads_count || 0,
@@ -94,6 +120,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         } catch (notifErr) {
           console.error("Failed to schedule affirmation:", notifErr);
         }
+      } else {
+        // Handle case where API returns null/empty but we still want to show something?
+        // For now, if API fails or returns null, we stick with default state or error state.
+        // But let's at least update the image of default state if initial state is being used?
+        // The default state (lines 30-42) already has a hardcoded image.
       }
     } catch (err) {
       console.error('getDailyVerse error:', err);

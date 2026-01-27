@@ -39,8 +39,8 @@ export const IconShare = ({ size = 24, color = '#FFFFFF', ...props }: IconProps)
   <Ionicons name="share-outline" size={size} color={color} />
 );
 
-export const IconHeart = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
-  <Ionicons name="heart-outline" size={size} color={color} />
+export const IconHeart = ({ size = 24, color = '#FFFFFF', fill, ...props }: IconProps) => (
+  <Ionicons name={fill && fill !== 'transparent' ? "heart" : "heart-outline"} size={size} color={fill && fill !== 'transparent' ? fill : color} />
 );
 
 export const IconComment = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
@@ -221,4 +221,8 @@ export const IconFormat = ({ size = 24, color = '#FFFFFF', ...props }: IconProps
 
 export const IconCopy = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
   <Ionicons name="copy-outline" size={size} color={color} />
+);
+
+export const IconNote = ({ size = 24, color = '#FFFFFF', ...props }: IconProps) => (
+  <Ionicons name="create-outline" size={size} color={color} />
 );

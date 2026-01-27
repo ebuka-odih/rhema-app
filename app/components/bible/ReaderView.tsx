@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { BibleChapter } from '../../services/bibleService';
 import { BibleHighlight } from '../../types';
 import { isJesusSpeaking } from '../../services/redLetterService';
@@ -26,12 +27,23 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     onVersePress
 }) => {
     const scrollRef = React.useRef<ScrollView>(null);
+    const { width } = useWindowDimensions();
+
+    // Calculate dynamic padding based on screen width for better readability on tablets
+    const horizontalPadding = width > 600 ? 40 : 24;
 
     React.useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo({ y: 0, animated: false });
         }
     }, [book, chapter]);
+
+    const handleVersePress = (num: number) => {
+        if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        onVersePress(num);
+    };
 
     if (loading && !bibleData) {
         return (
@@ -58,7 +70,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
         <ScrollView
             ref={scrollRef}
             style={styles.readerScroll}
-            contentContainerStyle={styles.readerContent}
+            contentContainerStyle={[styles.readerContent, { paddingHorizontal: horizontalPadding }]}
             showsVerticalScrollIndicator={false}
         >
             <Text style={styles.chapterTitle}>{book} {chapter}</Text>
@@ -70,26 +82,31 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                     const jesusSpeaks = isJesusSpeaking(book, chapter, num);
 
                     return (
-                        <TouchableOpacity
+                        <Pressable
                             key={numStr}
-                            activeOpacity={0.7}
-                            onPress={() => onVersePress(num)}
-                            style={[
+                            onPress={() => handleVersePress(num)}
+                            style={({ pressed }) => [
                                 styles.verseContainer,
-                                highlight && { backgroundColor: `${highlight.color}60` },
+                                highlight && { backgroundColor: `${highlight.color}40` }, // Less opacity for base highlight
                                 isSelected && styles.selectedVerse,
-                                isSelected && highlight && { backgroundColor: `${highlight.color}80` }
+                                (isSelected && highlight) && { backgroundColor: `${highlight.color}60` },
+                                pressed && !isSelected && styles.pressedVerse
                             ]}
                         >
-                            <Text style={[styles.bibleParagraph, { fontSize: fontSize }]}>
-                                <Text style={[styles.verseNumber, !jesusSpeaks && styles.brandVerseNumber]}>
-                                    {numStr}{' '}
+                            <Text style={[styles.bibleParagraph, { fontSize: fontSize, lineHeight: fontSize * 1.6 }]}>
+                                <Text style={[
+                                    styles.verseNumber,
+                                    !jesusSpeaks && styles.brandVerseNumber,
+                                    { fontSize: fontSize * 0.65 } // Dynamic verse number size
+                                ]}>
+                                    {numStr}
                                 </Text>
-                                <Text style={jesusSpeaks ? styles.jesusWords : null}>
+                                <Text>  </Text>
+                                <Text style={jesusSpeaks ? styles.jesusWords : styles.textWords}>
                                     {content}
                                 </Text>
                             </Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     );
                 })}
             </View>
@@ -125,48 +142,54 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     readerContent: {
-        paddingHorizontal: 24,
         paddingTop: 40,
         paddingBottom: 150,
     },
     chapterTitle: {
         fontSize: 32,
-        fontWeight: 'bold',
+        fontWeight: '800', // Heavier weight
         color: '#FFFFFF',
-        marginBottom: 32,
+        marginBottom: 40,
         textAlign: 'center',
-        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+        fontFamily: Platform.OS === 'ios' ? 'System' : 'serif', // Cleaner system font
+        letterSpacing: -0.5,
     },
     textContainer: {
-        maxWidth: 600,
+        maxWidth: 700,
         alignSelf: 'center',
         width: '100%',
     },
     verseContainer: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        marginHorizontal: -12,
-        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        marginHorizontal: -16, // Bleed selection to edges
+        borderRadius: 12, // Smoother corners using continuous curve simulation
+        marginBottom: 2,
+    },
+    pressedVerse: {
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
     },
     selectedVerse: {
         backgroundColor: 'rgba(232, 80, 58, 0.15)',
-        borderLeftWidth: 3,
-        borderLeftColor: '#E8503A',
     },
     bibleParagraph: {
         color: '#E0E0E0',
-        lineHeight: 32,
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
+    textWords: {
+        color: '#E0E0E0',
+    },
     jesusWords: {
-        color: '#FF4D4D', // Semi-red for Jesus' words
+        color: '#FF6B6B', // Softer red
     },
     verseNumber: {
-        fontSize: 14,
-        color: '#FFFFFF',
+        color: '#E8503A',
         fontWeight: 'bold',
+        fontVariant: ['tabular-nums'], // Monospaced numbers
+        opacity: 0.8,
+        textAlignVertical: 'top',
     },
     brandVerseNumber: {
-        color: '#E8503A',
+        color: '#888888',
     },
 });

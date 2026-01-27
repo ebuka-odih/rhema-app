@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { IconFont, IconSearch } from '../Icons';
 
 interface BibleHeaderProps {
@@ -18,41 +19,56 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
     onOpenBookSelector,
     onOpenVersionSelector,
     onToggleFontMenu
-}) => (
-    <View style={styles.topNav}>
-        <View style={styles.selectorGroup}>
-            <TouchableOpacity
-                style={styles.bookSelector}
-                onPress={onOpenBookSelector}
-            >
-                <Text style={styles.bookHeader}>{book} {chapter}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={styles.versionBadge}
-                onPress={onOpenVersionSelector}
-            >
-                <Text style={styles.versionLabel}>{shortVersion}</Text>
-            </TouchableOpacity>
-        </View>
+}) => {
+    const handlePress = (callback: () => void) => {
+        if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        callback();
+    };
 
-        <View style={styles.navIcons}>
-            <TouchableOpacity onPress={onToggleFontMenu} style={styles.navIcon}>
-                <IconFont size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navIcon}>
-                <IconSearch size={22} color="#FFFFFF" />
-            </TouchableOpacity>
+    return (
+        <View style={styles.topNav}>
+            <View style={styles.selectorGroup}>
+                <Pressable
+                    style={({ pressed }) => [styles.bookSelector, pressed && styles.pressedSelector]}
+                    onPress={() => handlePress(onOpenBookSelector)}
+                >
+                    <Text style={styles.bookHeader}>{book} {chapter}</Text>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                    style={({ pressed }) => [styles.versionBadge, pressed && styles.pressedSelector]}
+                    onPress={() => handlePress(onOpenVersionSelector)}
+                >
+                    <Text style={styles.versionLabel}>{shortVersion}</Text>
+                </Pressable>
+            </View>
+
+            <View style={styles.navIcons}>
+                <Pressable
+                    onPress={() => handlePress(onToggleFontMenu)}
+                    style={({ pressed }) => [styles.navIcon, pressed && styles.pressedIcon]}
+                >
+                    <IconFont size={24} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                    style={({ pressed }) => [styles.navIcon, pressed && styles.pressedIcon]}
+                >
+                    <IconSearch size={24} color="#FFFFFF" />
+                </Pressable>
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     topNav: {
-        height: 64,
+        height: 60,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255, 255, 255, 0.05)',
         backgroundColor: '#0D0D0D',
@@ -61,35 +77,51 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#1A1A1A',
-        borderRadius: 20,
-        paddingRight: 4,
+        borderRadius: 16,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     bookSelector: {
         paddingHorizontal: 16,
         paddingVertical: 8,
+        borderRadius: 12,
     },
     versionBadge: {
-        backgroundColor: 'rgba(232, 80, 58, 0.1)',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 16,
-        marginRight: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+    },
+    divider: {
+        width: 1,
+        height: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        marginHorizontal: 0,
+    },
+    pressedSelector: {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
     bookHeader: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '700',
         color: '#FFFFFF',
+        letterSpacing: -0.3,
     },
     versionLabel: {
         fontSize: 12,
         color: '#E8503A',
-        fontWeight: '700',
+        fontWeight: '800', // Extra bold for badge
+        letterSpacing: 0.5,
     },
     navIcons: {
         flexDirection: 'row',
-        gap: 20,
+        gap: 16,
     },
     navIcon: {
-        padding: 4,
+        padding: 8,
+        borderRadius: 20,
+    },
+    pressedIcon: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
 });

@@ -18,6 +18,23 @@ export interface FastingGroup {
   members: number;
   description: string;
   joined: boolean;
+  code?: string;
+  created_by?: string;
+}
+
+export interface FastingSession {
+  id: string;
+  user_id: string;
+  duration_hours: number;
+  start_time: string;
+  end_time?: string;
+  recommend_verses: boolean;
+  reminder_interval?: number;
+  status: 'active' | 'completed' | 'cancelled';
+  recommended_verse?: {
+    text: string;
+    ref: string;
+  };
 }
 
 export interface Recording {

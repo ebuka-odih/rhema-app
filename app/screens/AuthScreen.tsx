@@ -6,6 +6,9 @@ import { SocialAuth } from '../components/auth/SocialAuth';
 import { signIn, signUp } from '../services/auth';
 import { Alert, ActivityIndicator } from 'react-native';
 
+// GoogleSignin import removed to allow conditional loading
+// import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
+
 interface AuthScreenProps {
   initialMode: 'login' | 'signup';
   onAuthenticated: () => void;
@@ -18,6 +21,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    let GoogleSignin;
+    try {
+      // Dynamically require the module to avoid import-time crashes if native module is missing
+      const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+      GoogleSignin = GoogleSigninModule.GoogleSignin;
+
+      GoogleSignin.configure({
+        webClientId: '335759882370-olmomtjn2n2q97sujehp3rpknp6jlk2h.apps.googleusercontent.com', // From backend/.env
+        offlineAccess: true,
+        forceCodeForRefreshToken: true,
+      });
+    } catch (e) {
+      console.log("GoogleSignin not available (likely missing native module). Skipping configure.");
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -64,25 +84,58 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   };
 
   const handleGoogleLogin = async () => {
+    let GoogleSignin;
+    let statusCodes: any;
+    let isErrorWithCode: any;
+
     try {
-      setLoading(true);
-      // TODO: Integrate Google One Tap or expo-auth-session here to get the token
-      // const token = await GoogleSignin.getTokens();
-      // const { data, error } = await signIn.google(token);
+      const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+      GoogleSignin = GoogleSigninModule.GoogleSignin;
+      statusCodes = GoogleSigninModule.statusCodes;
+      isErrorWithCode = GoogleSigninModule.isErrorWithCode;
+    } catch (e) {
+      Alert.alert(
+        "Google Sign-In Not Ready",
+        "The Google Sign-In native module is not installed or linked in this build.\n\nTo fix this:\n1. Run 'npx expo prebuild --platform ios'\n2. Rebuild the app with 'npx expo run:ios'"
+      );
+      return;
+    }
 
-      Alert.alert('Google Login', 'Google Sign-In integration requires Google SDK. Endpoint is ready at /auth/google.');
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
 
-      // Example integration if token was available:
-      /*
-      const { data, error } = await signIn.google('GOOGLE_ACCESS_TOKEN');
-      if (error) {
-        Alert.alert('Login Error', error.message);
+      const idToken = userInfo.data?.idToken;
+      if (idToken) {
+        setLoading(true);
+        const { error } = await signIn.google(idToken);
+
+        if (error) {
+          Alert.alert('Login Error', error.message || 'Failed to authenticate with backend');
+        } else {
+          onAuthenticated();
+        }
       } else {
-        onAuthenticated();
+        throw new Error('No ID token obtained from Google');
       }
-      */
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
+    } catch (error: any) {
+      if (isErrorWithCode && isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            // user cancelled the login flow
+            break;
+          case statusCodes.IN_PROGRESS:
+            // operation (eg. sign in) already in progress
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Alert.alert('Error', 'Google Play Services not available or outdated.');
+            break;
+          default:
+            Alert.alert('Error', error.message);
+        }
+      } else {
+        Alert.alert('Error', error.message || 'An unexpected error occurred during Google Sign-In');
+      }
     } finally {
       setLoading(false);
     }

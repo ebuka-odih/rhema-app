@@ -15,6 +15,7 @@ import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 import { useSession } from './services/auth';
 import { notificationService } from './services/notificationService';
 import { bibleService } from './services/bibleService';
@@ -25,8 +26,10 @@ const AppContent: React.FC = () => {
     // Navigation State
     const [appState, setAppState] = useState<AppState>('WELCOME');
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
+    const [previousTab, setPreviousTab] = useState<Tab | null>(null);
     const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
     const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
+
     const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
 
@@ -34,26 +37,13 @@ const AppContent: React.FC = () => {
 
     useEffect(() => {
         const setupNotifications = async () => {
-            // Trace execution without blocking on session initially
             console.log('setupNotifications: Starting...');
-
             try {
                 await notificationService.registerForPushNotificationsAsync();
                 console.log('setupNotifications: Registered');
 
-                const affirmation = await bibleService.getAffirmation();
-                console.log('setupNotifications: Affirmation fetched', !!affirmation);
-
                 if (!hasTriggeredSync.current) {
                     hasTriggeredSync.current = true;
-                }
-
-                if (session && session?.user?.settings?.dailyAffirmations !== false && affirmation) {
-                    await notificationService.scheduleDailyAffirmation(
-                        7, 0,
-                        affirmation.scripture,
-                        affirmation.affirmation
-                    );
                 }
             } catch (err) {
                 console.error('setupNotifications error:', err);
@@ -65,7 +55,6 @@ const AppContent: React.FC = () => {
             setupNotifications();
         }
 
-        // Register response listener
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
             const data = response.notification.request.content.data;
             if (data?.screen === 'HOME') {
@@ -90,11 +79,28 @@ const AppContent: React.FC = () => {
         setAppState('MAIN');
     };
 
+    const handleNavPress = (tab: Tab) => {
+        if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        setActiveTab(tab);
+    };
+
     const renderMainApp = () => {
         const renderScreen = () => {
             switch (activeTab) {
                 case Tab.HOME: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
-                case Tab.BIBLE: return <BibleScreen initialBook={bibleNavState.book} initialChapter={bibleNavState.chapter} />;
+                case Tab.BIBLE: return (
+                    <BibleScreen
+                        initialBook={bibleNavState.book}
+                        initialChapter={bibleNavState.chapter}
+                        onNavigateNote={() => {
+                            setPreviousTab(Tab.BIBLE);
+                            setActiveTab(Tab.JOURNEY);
+                            setIsJournalEditorOpen(true);
+                        }}
+                    />
+                );
                 case Tab.RECORD: return (
                     <RecordScreen
                         onNavigateToBible={(book, chapter) => {
@@ -103,7 +109,19 @@ const AppContent: React.FC = () => {
                         }}
                     />
                 );
-                case Tab.JOURNEY: return <JourneyScreen onNavigateGlobal={(screen) => setActiveTab(screen as Tab)} onEditorStateChange={setIsJournalEditorOpen} />;
+                case Tab.JOURNEY: return (
+                    <JourneyScreen
+                        onNavigateGlobal={(screen) => setActiveTab(screen as Tab)}
+                        initialView={isJournalEditorOpen ? 'journal_editor' : 'home'}
+                        onEditorStateChange={(isOpen) => {
+                            setIsJournalEditorOpen(isOpen);
+                            if (!isOpen && previousTab === Tab.BIBLE) {
+                                setActiveTab(Tab.BIBLE);
+                                setPreviousTab(null);
+                            }
+                        }}
+                    />
+                );
                 case Tab.MORE: return <MoreScreen />;
                 default: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
             }
@@ -126,20 +144,20 @@ const AppContent: React.FC = () => {
                             active={activeTab === Tab.HOME}
                             icon={<IconHome size={24} color={activeTab === Tab.HOME ? '#E8503A' : '#666666'} />}
                             label="Home"
-                            onPress={() => setActiveTab(Tab.HOME)}
+                            onPress={() => handleNavPress(Tab.HOME)}
                         />
 
                         <NavButton
                             active={activeTab === Tab.BIBLE}
                             icon={<IconBible size={24} color={activeTab === Tab.BIBLE ? '#E8503A' : '#666666'} />}
                             label="Read"
-                            onPress={() => setActiveTab(Tab.BIBLE)}
+                            onPress={() => handleNavPress(Tab.BIBLE)}
                         />
 
                         {/* Central Action Button (Record/Mic) */}
                         <View style={styles.centralButtonContainer}>
                             <TouchableOpacity
-                                onPress={() => setActiveTab(Tab.RECORD)}
+                                onPress={() => handleNavPress(Tab.RECORD)}
                                 style={[
                                     styles.centralButton,
                                     activeTab === Tab.RECORD ? styles.centralButtonActive : styles.centralButtonInactive
@@ -153,14 +171,14 @@ const AppContent: React.FC = () => {
                             active={activeTab === Tab.JOURNEY}
                             icon={<IconJourney size={24} color={activeTab === Tab.JOURNEY ? '#E8503A' : '#666666'} />}
                             label="Journey"
-                            onPress={() => setActiveTab(Tab.JOURNEY)}
+                            onPress={() => handleNavPress(Tab.JOURNEY)}
                         />
 
                         <NavButton
                             active={activeTab === Tab.MORE}
                             icon={<IconMore size={24} color={activeTab === Tab.MORE ? '#E8503A' : '#666666'} />}
                             label="More"
-                            onPress={() => setActiveTab(Tab.MORE)}
+                            onPress={() => handleNavPress(Tab.MORE)}
                         />
                     </View>
                 )}
@@ -181,6 +199,7 @@ const AppContent: React.FC = () => {
                             <WelcomeScreen
                                 onGetStarted={() => setAppState('AUTH_SIGNUP')}
                                 onLogin={() => setAppState('AUTH_LOGIN')}
+                                onTermsPress={() => Alert.alert('Legal', 'Terms and Privacy policies are available in the More section.')}
                             />
                         )}
 

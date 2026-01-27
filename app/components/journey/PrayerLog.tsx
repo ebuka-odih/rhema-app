@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Switch, Platform, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Switch, Platform, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Animated } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Haptics from 'expo-haptics';
 import { IconClose, IconClock, IconBell, IconCheck } from '../Icons';
 
 interface PrayerLogProps {
@@ -27,6 +28,34 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
     const [status, setStatus] = useState<'active' | 'done'>('active');
     const [showTimePicker, setShowTimePicker] = useState(false);
 
+    // Animations
+    const fadeAnim = useState(new Animated.Value(0))[0];
+    const scaleAnim = useState(new Animated.Value(0.95))[0];
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+            })
+        ]).start();
+    }, []);
+
+    const handleClose = () => {
+        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+            Animated.timing(scaleAnim, { toValue: 0.95, duration: 150, useNativeDriver: true })
+        ]).start(() => onClose());
+    };
+
     // Parse current prayerTime string to Date for picker
     const getInitialDate = () => {
         const date = new Date();
@@ -48,6 +77,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
         }
 
         if (selectedDate) {
+            if (Platform.OS !== 'web') Haptics.selectionAsync();
             const hours = selectedDate.getHours();
             const minutes = selectedDate.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -55,6 +85,20 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
             const displayMinutes = minutes.toString().padStart(2, '0');
             setPrayerTime(`${displayHours}:${displayMinutes} ${ampm}`);
         }
+
+        // Auto-close sticky picker on iOS if desired, but standard pattern is to keep open until "Done".
+        // However, user mentioned 'friction', so let's keep the explicitly separate 'Done' button for closing on iOS 
+        // as it's already implemented in the 'Close' button logic in the JSX.
+    };
+
+    const toggleReminder = (val: boolean) => {
+        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setReminderEnabled(val);
+    };
+
+    const handleSave = () => {
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onSave(status);
     };
 
     return (
@@ -62,115 +106,143 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.prayerLogContainer}>
-                    <View style={styles.prayerLogCard}>
-                        <View style={styles.prayerLogHeader}>
-                            <Text style={styles.prayerLogTitle}>Prayer Reminder</Text>
-                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                                <IconClose size={24} color="#999999" />
-                            </TouchableOpacity>
+            <Animated.View style={[styles.prayerLogContainer, { opacity: fadeAnim }]}>
+                <TouchableOpacity
+                    style={StyleSheet.absoluteFill}
+                    onPress={Keyboard.dismiss}
+                    activeOpacity={1}
+                />
+                <Animated.View style={[styles.prayerLogCard, { transform: [{ scale: scaleAnim }] }]}>
+                    <View style={styles.prayerLogHeader}>
+                        <View>
+                            <Text style={styles.prayerLogTitle}>Meditate in Prayer</Text>
+                            <Text style={styles.prayerLogSubtitle}>Bring your request to God</Text>
+                        </View>
+                        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                            <IconClose size={20} color="#999999" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        contentContainerStyle={styles.scrollContent}
+                    >
+                        {/* Input Area */}
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                style={styles.todoInput}
+                                placeholder="Type your prayer request here..."
+                                placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                                value={prayerRequest}
+                                onChangeText={setPrayerRequest}
+                                multiline
+                                maxLength={200}
+                            />
+                            <Text style={styles.charCount}>{prayerRequest.length}/200</Text>
                         </View>
 
-                        <ScrollView
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            contentContainerStyle={styles.scrollContent}
-                        >
-                            {/* Clean Text Entry */}
-                            <View style={styles.todoEntryContainer}>
-                                <TextInput
-                                    style={styles.todoInput}
-                                    placeholder="What are you praying for?"
-                                    placeholderTextColor="#666666"
-                                    value={prayerRequest}
-                                    onChangeText={setPrayerRequest}
-                                    multiline
+                        <View style={styles.settingsContainer}>
+                            {/* Reminder Toggle */}
+                            <View style={styles.settingRow}>
+                                <View style={styles.settingInfo}>
+                                    <View style={styles.iconBadge}>
+                                        <IconBell size={16} color={reminderEnabled ? '#FFFFFF' : '#999999'} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.settingTitle}>Daily Reminder</Text>
+                                        <Text style={styles.settingDesc}>Get notified to pray</Text>
+                                    </View>
+                                </View>
+                                <Switch
+                                    value={reminderEnabled}
+                                    onValueChange={toggleReminder}
+                                    trackColor={{ false: '#333', true: '#E8503A' }}
+                                    thumbColor={'#FFFFFF'}
+                                    ios_backgroundColor="#333"
                                 />
                             </View>
 
-                            <View style={styles.divider} />
+                            {/* Time Picker */}
+                            {reminderEnabled && (
+                                <TouchableOpacity
+                                    style={styles.timeSelector}
+                                    onPress={() => {
+                                        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        setShowTimePicker(true)
+                                    }}
+                                >
+                                    <Text style={styles.timeLabel}>Remind me at</Text>
+                                    <View style={styles.timeValueContainer}>
+                                        <IconClock size={14} color="#E8503A" />
+                                        <Text style={styles.timeValue}>{prayerTime}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
 
-                            <View style={styles.settingsGrid}>
-                                <View style={styles.settingItem}>
-                                    <Text style={styles.inputLabel}>RECURRING TIME</Text>
-                                    <TouchableOpacity
-                                        style={styles.timePickerButton}
-                                        onPress={() => setShowTimePicker(true)}
-                                    >
-                                        <IconClock size={16} color="#E8503A" />
-                                        <Text style={styles.timeDisplayText}>{prayerTime || '08:00 AM'}</Text>
-                                    </TouchableOpacity>
-                                    {showTimePicker && (
-                                        <View>
-                                            <DateTimePicker
-                                                value={getInitialDate()}
-                                                mode="time"
-                                                is24Hour={false}
-                                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                                onChange={handleTimeChange}
-                                            />
-                                            {Platform.OS === 'ios' && (
-                                                <TouchableOpacity
-                                                    style={styles.donePickerButton}
-                                                    onPress={() => setShowTimePicker(false)}
-                                                >
-                                                    <Text style={styles.donePickerText}>Done</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
+                            {showTimePicker && (
+                                <View style={styles.pickerContainer}>
+                                    <DateTimePicker
+                                        value={getInitialDate()}
+                                        mode="time"
+                                        is24Hour={false}
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        onChange={handleTimeChange}
+                                        textColor="#FFFFFF"
+                                    />
+                                    {Platform.OS === 'ios' && (
+                                        <TouchableOpacity
+                                            style={styles.donePickerButton}
+                                            onPress={() => setShowTimePicker(false)}
+                                        >
+                                            <Text style={styles.donePickerText}>Done</Text>
+                                        </TouchableOpacity>
                                     )}
                                 </View>
+                            )}
+                        </View>
 
-                                <View style={styles.settingItem}>
-                                    <View style={styles.labelWithBadge}>
-                                        <Text style={styles.inputLabel}>REMINDER</Text>
-                                        {reminderEnabled && <View style={styles.activeBadge} />}
-                                    </View>
-                                    <View style={styles.reminderToggleContainer}>
-                                        <IconBell size={18} color={reminderEnabled ? '#E8503A' : '#444444'} />
-                                        <Switch
-                                            value={reminderEnabled}
-                                            onValueChange={setReminderEnabled}
-                                            trackColor={{ false: '#333', true: 'rgba(232, 80, 58, 0.5)' }}
-                                            thumbColor={reminderEnabled ? '#E8503A' : '#999'}
-                                            ios_backgroundColor="#333"
-                                        />
-                                    </View>
-                                </View>
+                        {/* Status Section */}
+                        <View style={styles.statusSection}>
+                            <Text style={styles.sectionLabel}>STATUS</Text>
+                            <View style={styles.statusButtons}>
+                                <TouchableOpacity
+                                    style={[styles.statusButton, status === 'active' && styles.statusButtonActive]}
+                                    onPress={() => {
+                                        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        setStatus('active');
+                                    }}
+                                >
+                                    <View style={[styles.statusDot, status === 'active' && { backgroundColor: '#E8503A' }]} />
+                                    <Text style={[styles.statusButtonText, status === 'active' && styles.statusButtonTextActive]}>Praying</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.statusButton, status === 'done' && styles.statusButtonActiveDone]}
+                                    onPress={() => {
+                                        if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        setStatus('done');
+                                    }}
+                                >
+                                    {status === 'done' && <IconCheck size={14} color="#4CAF50" style={{ marginRight: 6 }} />}
+                                    <Text style={[styles.statusButtonText, status === 'done' && styles.statusButtonTextActiveDone]}>Done</Text>
+                                </TouchableOpacity>
                             </View>
+                        </View>
 
-                            <View style={styles.statusSection}>
-                                <Text style={styles.inputLabel}>MARK STATUS</Text>
-                                <View style={styles.statusButtons}>
-                                    <TouchableOpacity
-                                        style={[styles.statusButton, status === 'active' && styles.statusButtonActive]}
-                                        onPress={() => setStatus('active')}
-                                    >
-                                        <Text style={[styles.statusButtonText, status === 'active' && styles.statusButtonTextActive]}>Active</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.statusButton, status === 'done' && styles.statusButtonActiveAnswered]}
-                                        onPress={() => setStatus('done')}
-                                    >
-                                        <Text style={[styles.statusButtonText, status === 'done' && styles.statusButtonTextActiveAnswered]}>Done</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.saveLogButton, !prayerRequest && styles.saveLogButtonDisabled]}
-                                onPress={() => onSave(status)}
-                                disabled={!prayerRequest}
-                            >
-                                <Text style={styles.saveLogButtonText}>
-                                    {status === 'done' ? 'Update Prayer Reminder' : 'Add Prayer Reminder'}
-                                </Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </TouchableWithoutFeedback>
+                        <TouchableOpacity
+                            style={[styles.saveLogButton, !prayerRequest && styles.saveLogButtonDisabled]}
+                            onPress={handleSave}
+                            disabled={!prayerRequest}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.saveLogButtonText}>
+                                {status === 'done' ? 'Mark as Done' : 'Save Prayer'}
+                            </Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </Animated.View>
+            </Animated.View>
         </KeyboardAvoidingView>
     );
 };
@@ -181,145 +253,166 @@ const styles = StyleSheet.create({
     },
     prayerLogContainer: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 16,
     },
     prayerLogCard: {
-        backgroundColor: '#161616',
-        borderRadius: 24,
-        padding: 24,
+        backgroundColor: '#1A1A1A',
+        borderRadius: 28,
+        padding: 0,
         width: '100%',
-        maxWidth: 400,
-        maxHeight: '85%',
+        maxWidth: 380,
+        maxHeight: '90%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+        elevation: 10,
+        overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: 'rgba(255,255,255,0.08)',
     },
     prayerLogHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        padding: 24,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.05)',
     },
     prayerLogTitle: {
-        fontSize: 20,
-        fontWeight: '800',
+        fontSize: 22,
+        fontWeight: 'bold',
         color: '#FFFFFF',
+        letterSpacing: -0.5,
+    },
+    prayerLogSubtitle: {
+        fontSize: 14,
+        color: '#666666',
+        marginTop: 4,
     },
     closeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#252525',
         justifyContent: 'center',
         alignItems: 'center',
     },
     scrollContent: {
-        paddingBottom: 20,
+        padding: 24,
     },
-    todoEntryContainer: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
+    inputContainer: {
+        marginBottom: 24,
+    },
+    todoInput: {
+        backgroundColor: '#252525',
+        borderRadius: 16,
+        padding: 16,
+        color: '#FFFFFF',
+        fontSize: 16,
+        lineHeight: 24,
+        minHeight: 120,
+        textAlignVertical: 'top',
+        marginBottom: 8,
+    },
+    charCount: {
+        alignSelf: 'flex-end',
+        color: '#666666',
+        fontSize: 12,
+    },
+    settingsContainer: {
+        backgroundColor: '#252525',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 24,
         gap: 16,
-        paddingVertical: 12,
     },
-    todoCircle: {
-        width: 24,
-        height: 24,
+    settingRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    settingInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    iconBadge: {
+        width: 36,
+        height: 36,
         borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#E8503A',
-        marginTop: 4,
+        backgroundColor: '#333333',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    todoInput: {
-        flex: 1,
+    settingTitle: {
+        fontSize: 16,
+        fontWeight: '600',
         color: '#FFFFFF',
-        fontSize: 18,
+    },
+    settingDesc: {
+        fontSize: 12,
+        color: '#888888',
+        marginTop: 2,
+    },
+    timeSelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#333333',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 4,
+    },
+    timeLabel: {
+        color: '#AAAAAA',
+        fontSize: 14,
         fontWeight: '500',
-        minHeight: 80,
-        textAlignVertical: 'top',
-        paddingTop: 0,
     },
-    divider: {
-        height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        marginVertical: 20,
-    },
-    inputLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#E8503A',
-        letterSpacing: 1,
-        marginBottom: 10,
-        textTransform: 'uppercase',
-    },
-    labelWithBadge: {
+    timeValueContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
-    activeBadge: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#E8503A',
-        marginBottom: 8,
-    },
-    settingsGrid: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    settingItem: {
-        flex: 1,
-    },
-    timePickerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#0D0D0D',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        gap: 8,
-    },
-    timeDisplayText: {
-        color: '#FFFFFF',
+    timeValue: {
+        color: '#E8503A',
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '600',
+    },
+    pickerContainer: {
+        marginTop: 10,
+        backgroundColor: '#222',
+        borderRadius: 12,
+        overflow: 'hidden',
     },
     donePickerButton: {
-        backgroundColor: 'rgba(232, 80, 58, 0.1)',
-        paddingVertical: 8,
-        borderRadius: 8,
         alignItems: 'center',
-        marginTop: -10,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(232, 80, 58, 0.3)',
+        padding: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#333',
     },
     donePickerText: {
         color: '#E8503A',
         fontWeight: 'bold',
-        fontSize: 14,
-    },
-    reminderToggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#0D0D0D',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     statusSection: {
-        marginBottom: 28,
+        marginBottom: 24,
+    },
+    sectionLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#666666',
+        marginBottom: 12,
+        letterSpacing: 1,
     },
     statusButtons: {
         flexDirection: 'row',
@@ -327,45 +420,59 @@ const styles = StyleSheet.create({
     },
     statusButton: {
         flex: 1,
-        backgroundColor: '#0D0D0D',
-        borderRadius: 12,
-        paddingVertical: 12,
+        backgroundColor: '#252525',
+        borderRadius: 16,
+        paddingVertical: 14,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'transparent',
+        flexDirection: 'row',
     },
     statusButtonActive: {
-        backgroundColor: 'rgba(232, 80, 58, 0.08)',
-        borderColor: 'rgba(232, 80, 58, 0.4)',
+        backgroundColor: '#252525',
+        borderColor: '#E8503A',
     },
-    statusButtonActiveAnswered: {
-        backgroundColor: 'rgba(34, 197, 94, 0.08)',
-        borderColor: 'rgba(34, 197, 94, 0.4)',
+    statusButtonActiveDone: {
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderColor: '#4CAF50',
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#666666',
+        marginRight: 8,
     },
     statusButtonText: {
-        color: '#666666',
-        fontWeight: '700',
-        fontSize: 13,
+        color: '#888888',
+        fontSize: 14,
+        fontWeight: '600',
     },
     statusButtonTextActive: {
-        color: '#E8503A',
+        color: '#FFFFFF',
     },
-    statusButtonTextActiveAnswered: {
-        color: '#22C55E',
+    statusButtonTextActiveDone: {
+        color: '#4CAF50',
     },
     saveLogButton: {
         backgroundColor: '#E8503A',
-        borderRadius: 16,
-        paddingVertical: 16,
+        borderRadius: 18,
+        paddingVertical: 18,
         alignItems: 'center',
-        marginTop: 10,
+        shadowColor: '#E8503A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
     },
     saveLogButtonDisabled: {
         opacity: 0.5,
+        shadowOpacity: 0,
     },
     saveLogButtonText: {
         color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '800',
+        fontSize: 16,
+        fontWeight: 'bold',
+        letterSpacing: 0.5,
     },
 });

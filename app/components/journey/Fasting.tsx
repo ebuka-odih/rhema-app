@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Switch, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity, ScrollView,
+    Platform, Switch, Dimensions, TextInput, PanResponder,
+    ActivityIndicator, Alert
+} from 'react-native';
 import {
     IconClock, IconPlus, IconChevronLeft, IconHeart,
     IconShare, IconDots, IconClose, IconFire, IconCheck
 } from '../Icons';
-import { FastingGroup } from '../../types';
+import { FastingGroup, FastingSession } from '../../types';
+import { fastingService } from '../../services/fastingService';
+import { notificationService } from '../../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
-// Mock types for the internal feed
 interface FeedItem {
     id: string;
     user: {
@@ -17,7 +22,7 @@ interface FeedItem {
     };
     type: 'scripture' | 'prayer' | 'milestone';
     content: string;
-    meta?: string; // e.g., verse reference
+    meta?: string;
     time: string;
     likes: number;
 }
@@ -26,52 +31,105 @@ interface FastingProps {
     onBack: () => void;
 }
 
+// Custom Slider Component
+const DurationSlider = ({ value, onChange, min = 1, max = 100 }: { value: number, onChange: (v: number) => void, min?: number, max?: number }) => {
+    const sliderWidth = width - 80;
+    const [localX, setLocalX] = useState(((value - min) / (max - min)) * sliderWidth);
+
+    const panResponder = useMemo(() => PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderMove: (_, gestureState) => {
+            let newX = Math.max(0, Math.min(sliderWidth, gestureState.moveX - 40));
+            setLocalX(newX);
+            const newValue = Math.round(min + (newX / sliderWidth) * (max - min));
+            onChange(newValue);
+        },
+    }), [sliderWidth, min, max, onChange]);
+
+    return (
+        <View style={styles.sliderContainer}>
+            <View style={styles.sliderTrack}>
+                <View style={[styles.sliderFill, { width: localX }]} />
+            </View>
+            <View
+                {...panResponder.panHandlers}
+                style={[styles.sliderThumb, { transform: [{ translateX: localX - 12 }] }]}
+            >
+                <View style={styles.thumbInner} />
+            </View>
+        </View>
+    );
+};
+
 export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     // Fasting Timer State
     const [isFasting, setIsFasting] = useState(false);
-    const [startTime, setStartTime] = useState<Date | null>(null);
+    const [activeSession, setActiveSession] = useState<FastingSession | null>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-    // Navigation State
+    // Settings State
+    const [durationHours, setDurationHours] = useState(24);
+    const [recommendVerses, setRecommendVerses] = useState(true);
+    const [reminderInterval, setReminderInterval] = useState(4);
+
+    // Group State
+    const [groups, setGroups] = useState<FastingGroup[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [selectedGroup, setSelectedGroup] = useState<FastingGroup | null>(null);
     const [activeGroupTab, setActiveGroupTab] = useState<'feed' | 'info'>('feed');
 
-    // Mock Data
-    const groups: FastingGroup[] = [
-        { id: '1', name: '21 Days of Prayer', members: 1240, description: 'Annual church-wide fast.', joined: true },
-        { id: '2', name: 'Youth Ministry Fast', members: 56, description: 'Wednesday partial fast.', joined: false },
-        { id: '3', name: 'Leadership Team', members: 12, description: 'Preparing for the retreat.', joined: true },
-    ];
+    // UI State
+    const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+    const [groupName, setGroupName] = useState('');
+    const [groupDesc, setGroupDesc] = useState('');
+    const [joinCode, setJoinCode] = useState('');
+    const [isJoining, setIsJoining] = useState(false);
 
-    const groupFeed: FeedItem[] = [
-        {
-            id: '1',
-            user: { name: 'Sarah Jenkins', avatar_color: '#A855F7' }, // Purple
-            type: 'scripture',
-            content: '“Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke...”',
-            meta: 'Isaiah 58:6',
-            time: '2h ago',
-            likes: 24
-        },
-        {
-            id: '2',
-            user: { name: 'Pastor Mike', avatar_color: '#3B82F6' }, // Blue
-            type: 'milestone',
-            content: 'Just completed Day 7! God is moving in incredible ways. Keep pressing in, family!',
-            time: '4h ago',
-            likes: 156
-        },
-        {
-            id: '3',
-            user: { name: 'David L.', avatar_color: '#F97316' }, // Orange
-            type: 'prayer',
-            content: 'Please join me in praying for clarity in my career direction during this fast.',
-            time: '6h ago',
-            likes: 12
+    // Data Fetching
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const [session, allGroups, userGroups] = await Promise.all([
+                fastingService.getActiveSession(),
+                fastingService.getGroups(),
+                fastingService.getUserGroups()
+            ]);
+
+            if (session) {
+                setActiveSession(session);
+                setIsFasting(true);
+                const start = new Date(session.start_time).getTime();
+                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+            }
+
+            const merged = allGroups.map(g => ({
+                ...g,
+                joined: userGroups.some(ug => ug.id === g.id)
+            }));
+            setGroups(merged);
+        } catch (e) {
+            console.error('Load data error:', e);
+        } finally {
+            setIsLoading(false);
         }
-    ];
+    }, []);
 
-    // Timer Logic
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    const fetchActiveFast = useCallback(async () => {
+        const session = await fastingService.getActiveSession();
+        if (session) {
+            setActiveSession(session);
+            setIsFasting(true);
+            const start = new Date(session.start_time).getTime();
+            setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+        }
+    }, []);
+
+    // Timer Interval
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (isFasting) {
@@ -82,16 +140,78 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
         return () => clearInterval(interval);
     }, [isFasting]);
 
-    const handleStartFast = () => {
-        setIsFasting(true);
-        setStartTime(new Date());
-        setElapsedSeconds(0);
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#E8503A" />
+            </View>
+        );
+    }
+
+    const handleStartFast = async () => {
+        try {
+            const session = await fastingService.startFast(durationHours, recommendVerses, reminderInterval);
+            setActiveSession(session);
+            setIsFasting(true);
+            setElapsedSeconds(0);
+            if (reminderInterval) {
+                await notificationService.scheduleFastingReminder(reminderInterval);
+            }
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
     };
 
-    const handleEndFast = () => {
-        setIsFasting(false);
-        setStartTime(null);
-        setElapsedSeconds(0);
+    const handleEndFast = async () => {
+        if (!activeSession) return;
+        try {
+            await fastingService.endFast(activeSession.id, 'completed');
+            setIsFasting(false);
+            setActiveSession(null);
+            setElapsedSeconds(0);
+            await notificationService.cancelFastingReminder();
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
+    const handleJoinGroup = async () => {
+        if (!joinCode) return;
+        setIsJoining(true);
+        try {
+            const group = await fastingService.joinGroup(joinCode);
+            setJoinCode('');
+            setIsCreatingGroup(false);
+            loadData();
+            Alert.alert('Success', `Joined ${group.name}`);
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
+    const handleCreateGroup = async () => {
+        if (!groupName) return;
+        try {
+            await fastingService.createGroup(groupName, groupDesc);
+            setGroupName('');
+            setGroupDesc('');
+            setIsCreatingGroup(false);
+            loadData();
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
+    const handleLeaveGroup = async (groupId: string) => {
+        try {
+            await fastingService.leaveGroup(groupId);
+            setSelectedGroup(null);
+            loadData();
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
     };
 
     const formatTime = (totalSeconds: number) => {
@@ -103,107 +223,66 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     const timerDisplay = formatTime(elapsedSeconds);
 
-    // --- Render Views ---
+    // Mock Feed
+    const groupFeed: FeedItem[] = [
+        {
+            id: '1',
+            user: { name: 'Sarah Jenkins', avatar_color: '#A855F7' },
+            type: 'scripture',
+            content: '“Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke...”',
+            meta: 'Isaiah 58:6',
+            time: '2h ago',
+            likes: 24
+        }
+    ];
+
+    // --- Render Functions ---
 
     const renderGroupInfoContent = (group: FastingGroup) => (
-        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.infoContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.infoContent}>
             <View style={styles.infoCard}>
                 <Text style={styles.infoTitle}>About this Group</Text>
                 <Text style={styles.infoText}>{group.description}</Text>
                 <View style={styles.infoMeta}>
                     <IconClock size={14} color="#999999" />
-                    <Text style={styles.metaLabel}>Created Oct 1, 2023</Text>
+                    <Text style={styles.metaLabel}>Fasting Together</Text>
                 </View>
             </View>
 
-            <View style={styles.infoCard}>
-                <Text style={styles.infoTitle}>Group Guidelines</Text>
-                <View style={styles.guidelineRow}>
-                    <View style={styles.dot} />
-                    <Text style={styles.guidelineText}>Be respectful and encouraging to all members.</Text>
-                </View>
-                <View style={styles.guidelineRow}>
-                    <View style={styles.dot} />
-                    <Text style={styles.guidelineText}>Keep posts relevant to the fasting topic.</Text>
-                </View>
-                <View style={styles.guidelineRow}>
-                    <View style={styles.dot} />
-                    <Text style={styles.guidelineText}>Share your daily progress and prayer requests.</Text>
-                </View>
-            </View>
-
-            <View style={styles.settingRow}>
-                <View>
-                    <Text style={styles.settingLabel}>Notifications</Text>
-                    <Text style={styles.settingSub}>Receive updates from this group</Text>
-                </View>
-                <Switch
-                    value={true}
-                    trackColor={{ false: '#333', true: 'rgba(232, 80, 58, 0.5)' }}
-                    thumbColor="#E8503A"
-                />
-            </View>
-
-            <TouchableOpacity style={styles.leaveButton}>
+            <TouchableOpacity
+                style={styles.leaveButton}
+                onPress={() => Alert.alert('Leave Group', 'Are you sure?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Leave', style: 'destructive', onPress: () => handleLeaveGroup(group.id) }
+                ])}
+            >
                 <Text style={styles.leaveButtonText}>Leave Group</Text>
             </TouchableOpacity>
         </ScrollView>
     );
 
     const renderFeedContent = () => (
-        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent} showsVerticalScrollIndicator={false}>
-            {/* Post Input Placeholder */}
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent}>
             <TouchableOpacity style={styles.postInput}>
                 <View style={styles.avatarMini} />
-                <Text style={styles.postInputText}>Share encouragement, scripture, or prayer...</Text>
+                <Text style={styles.postInputText}>Share encouragement...</Text>
             </TouchableOpacity>
 
             {groupFeed.map(item => (
                 <View key={item.id} style={styles.postCard}>
-                    {/* Header */}
                     <View style={styles.postHeader}>
                         <View style={styles.authorRow}>
                             <View style={[styles.avatar, { backgroundColor: item.user.avatar_color }]}>
-                                <Text style={styles.avatarText}>{item.user.name.charAt(0)}</Text>
+                                <Text style={styles.avatarText}>{item.user.name[0]}</Text>
                             </View>
                             <View>
                                 <Text style={styles.authorName}>{item.user.name}</Text>
                                 <Text style={styles.postTime}>{item.time}</Text>
                             </View>
                         </View>
-                        <TouchableOpacity><IconDots size={16} color="#666666" /></TouchableOpacity>
                     </View>
-
-                    {/* Content */}
                     <View style={styles.postBody}>
-                        {item.type === 'scripture' && (
-                            <View style={styles.scriptureContainer}>
-                                <Text style={styles.scriptureText}>"{item.content}"</Text>
-                                <Text style={styles.scriptureMeta}>{item.meta}</Text>
-                            </View>
-                        )}
-                        {item.type === 'milestone' && (
-                            <View style={styles.milestoneBox}>
-                                <IconFire size={18} color="#E8503A" />
-                                <Text style={styles.milestoneText}>{item.content}</Text>
-                            </View>
-                        )}
-                        {item.type === 'prayer' && (
-                            <Text style={styles.prayerText}>{item.content}</Text>
-                        )}
-                    </View>
-
-                    {/* Actions */}
-                    <View style={styles.postActions}>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <IconHeart size={16} color="#666666" />
-                            <Text style={styles.actionText}>{item.likes}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionButton}>
-                            <IconShare size={16} color="#666666" />
-                            <Text style={styles.actionText}>Share</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.scriptureText}>{item.content}</Text>
                     </View>
                 </View>
             ))}
@@ -212,48 +291,28 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     const renderGroupDetail = (group: FastingGroup) => (
         <View style={styles.fullScreenContainer}>
-            {/* Group Header */}
             <View style={styles.groupHero}>
                 <View style={styles.heroOverlay} />
                 <View style={styles.heroHeader}>
-                    <TouchableOpacity
-                        onPress={() => setSelectedGroup(null)}
-                        style={styles.heroIconButton}
-                    >
+                    <TouchableOpacity onPress={() => setSelectedGroup(null)} style={styles.heroIconButton}>
                         <IconChevronLeft size={24} color="#FFFFFF" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.heroIconButton}>
-                        <IconDots size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
                 </View>
-
                 <View style={styles.heroBottom}>
                     <Text style={styles.heroTitle}>{group.name}</Text>
-                    <View style={styles.heroSubRow}>
-                        <Text style={styles.heroSubtext}>{group.members} Members</Text>
-                        <View style={styles.dotSeparator} />
-                        <Text style={styles.heroAccent}>{group.joined ? 'Joined' : 'Join Group'}</Text>
-                    </View>
+                    <Text style={styles.heroSubtext}>{group.members} Members • {group.code}</Text>
                 </View>
             </View>
 
-            {/* Action Tabs */}
             <View style={styles.tabsContainer}>
-                <TouchableOpacity
-                    onPress={() => setActiveGroupTab('feed')}
-                    style={[styles.tabButton, activeGroupTab === 'feed' && styles.activeTab]}
-                >
-                    <Text style={[styles.tabText, activeGroupTab === 'feed' && styles.activeTabText]}>Community Feed</Text>
+                <TouchableOpacity onPress={() => setActiveGroupTab('feed')} style={[styles.tabButton, activeGroupTab === 'feed' && styles.activeTab]}>
+                    <Text style={[styles.tabText, activeGroupTab === 'feed' && styles.activeTabText]}>Feed</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => setActiveGroupTab('info')}
-                    style={[styles.tabButton, activeGroupTab === 'info' && styles.activeTab]}
-                >
-                    <Text style={[styles.tabText, activeGroupTab === 'info' && styles.activeTabText]}>Group Info</Text>
+                <TouchableOpacity onPress={() => setActiveGroupTab('info')} style={[styles.tabButton, activeGroupTab === 'info' && styles.activeTab]}>
+                    <Text style={[styles.tabText, activeGroupTab === 'info' && styles.activeTabText]}>Info</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Content */}
             <View style={{ flex: 1 }}>
                 {activeGroupTab === 'feed' ? renderFeedContent() : renderGroupInfoContent(group)}
             </View>
@@ -261,102 +320,162 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     );
 
     const renderMainScreen = () => (
-        <ScrollView style={styles.container} contentContainerStyle={styles.mainContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.mainContent}>
             <View style={styles.mainHeader}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <IconChevronLeft size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <Text style={styles.mainTitle}>Fasting</Text>
-                <TouchableOpacity style={styles.headerPlus}>
+                <TouchableOpacity onPress={() => setIsCreatingGroup(true)} style={styles.headerPlus}>
                     <IconPlus size={20} color="#FFFFFF" />
                 </TouchableOpacity>
             </View>
 
-            {/* Active/Start Fast Card */}
             {!isFasting ? (
                 <View style={styles.startCard}>
-                    <View style={styles.startIconCircle}>
-                        <IconClock size={32} color="#999999" />
-                    </View>
-                    <Text style={styles.startTitle}>Ready to Fast?</Text>
-                    <Text style={styles.startSubtitle}>Select a preset or start a custom timer to begin your journey.</Text>
+                    <Text style={styles.startTitle}>Start Your Fast</Text>
+                    <Text style={styles.durationValue}>{durationHours} Hours</Text>
 
-                    <TouchableOpacity
-                        onPress={handleStartFast}
-                        style={styles.startButton}
-                    >
-                        <Text style={styles.startButtonText}>Start Fast</Text>
+                    <DurationSlider
+                        value={durationHours}
+                        onChange={setDurationHours}
+                        min={1}
+                        max={100}
+                    />
+
+                    <View style={styles.optionsContainer}>
+                        <View style={styles.optionRow}>
+                            <Text style={styles.optionLabel}>Recommend Bible Verses</Text>
+                            <Switch
+                                value={recommendVerses}
+                                onValueChange={setRecommendVerses}
+                                trackColor={{ false: '#333', true: '#E8503A' }}
+                            />
+                        </View>
+                        <View style={styles.optionRow}>
+                            <Text style={styles.optionLabel}>Reminders (Hours)</Text>
+                            <View style={styles.reminderSelector}>
+                                {[2, 4, 8, 12].map(h => (
+                                    <TouchableOpacity
+                                        key={h}
+                                        onPress={() => setReminderInterval(h)}
+                                        style={[styles.reminderBtn, reminderInterval === h && styles.reminderBtnActive]}
+                                    >
+                                        <Text style={[styles.reminderText, reminderInterval === h && styles.reminderTextActive]}>{h}h</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity onPress={handleStartFast} style={styles.startButton}>
+                        <Text style={styles.startButtonText}>Begin Fast</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
                 <View style={styles.activeCard}>
-                    <IconClock size={32} color="rgba(255, 255, 255, 0.8)" />
-                    <Text style={styles.activeLabel}>CURRENT FAST</Text>
-                    <Text style={styles.activeTitle}>Custom Fast</Text>
-
+                    <Text style={styles.activeLabel}>ACTIVE FAST</Text>
                     <View style={styles.timerRow}>
                         <View style={styles.timerBlock}>
-                            <Text style={styles.timerValue}>{timerDisplay.hours.toString().padStart(2, '0')}</Text>
-                            <Text style={styles.timerBlockLabel}>Hours</Text>
+                            <Text style={styles.timerValue}>{timerDisplay.hours}</Text>
+                            <Text style={styles.timerBlockLabel}>Hrs</Text>
                         </View>
                         <Text style={styles.timerDivider}>:</Text>
                         <View style={styles.timerBlock}>
-                            <Text style={styles.timerValue}>{timerDisplay.minutes.toString().padStart(2, '0')}</Text>
-                            <Text style={styles.timerBlockLabel}>Mins</Text>
-                        </View>
-                        <Text style={styles.timerDivider}>:</Text>
-                        <View style={styles.timerBlock}>
-                            <Text style={styles.timerValue}>{timerDisplay.seconds.toString().padStart(2, '0')}</Text>
-                            <Text style={styles.timerBlockLabel}>Secs</Text>
+                            <Text style={styles.timerValue}>{timerDisplay.minutes}</Text>
+                            <Text style={styles.timerBlockLabel}>Min</Text>
                         </View>
                     </View>
 
-                    <TouchableOpacity
-                        onPress={handleEndFast}
-                        style={styles.endButton}
-                    >
-                        <Text style={styles.endButtonText}>End Fast</Text>
+                    {activeSession?.recommended_verse && (
+                        <View style={styles.verseRecommendation}>
+                            <Text style={styles.verseText}>"{activeSession.recommended_verse.text}"</Text>
+                            <Text style={styles.verseRef}>{activeSession.recommended_verse.ref}</Text>
+                        </View>
+                    )}
+
+                    <TouchableOpacity onPress={handleEndFast} style={styles.endButton}>
+                        <Text style={styles.endButtonText}>Complete Fast</Text>
                     </TouchableOpacity>
                 </View>
             )}
 
-            {/* Groups List */}
             <View style={styles.groupsSection}>
                 <Text style={styles.sectionHeading}>Community Groups</Text>
-                <View style={styles.groupList}>
-                    {groups.map(group => (
+                {isLoading ? (
+                    <ActivityIndicator color="#E8503A" />
+                ) : (
+                    groups.map(group => (
                         <TouchableOpacity
                             key={group.id}
-                            onPress={() => {
-                                setSelectedGroup(group);
-                                setActiveGroupTab('feed');
-                            }}
+                            onPress={() => group.joined && setSelectedGroup(group)}
                             style={styles.groupItem}
                         >
-                            <View style={styles.groupInfoCol}>
+                            <View style={{ flex: 1 }}>
                                 <Text style={styles.groupName}>{group.name}</Text>
                                 <Text style={styles.groupDesc} numberOfLines={1}>{group.description}</Text>
-                                <View style={styles.memberCountBadge}>
-                                    <Text style={styles.memberCountText}>{group.members} members</Text>
-                                </View>
                             </View>
-                            <TouchableOpacity
-                                style={[
-                                    styles.joinBtn,
-                                    group.joined ? styles.joinedBtn : styles.notJoinedBtn
-                                ]}
-                            >
-                                <Text style={[
-                                    styles.joinBtnText,
-                                    group.joined ? styles.joinedBtnText : styles.notJoinedBtnText
-                                ]}>
-                                    {group.joined ? 'Joined' : 'Join'}
-                                </Text>
-                            </TouchableOpacity>
+                            {!group.joined && (
+                                <TouchableOpacity
+                                    style={styles.joinBtn}
+                                    onPress={() => {
+                                        setJoinCode(group.code || '');
+                                        handleJoinGroup();
+                                    }}
+                                >
+                                    <Text style={styles.joinBtnText}>Join</Text>
+                                </TouchableOpacity>
+                            )}
                         </TouchableOpacity>
-                    ))}
-                </View>
+                    ))
+                )}
             </View>
+
+            {isCreatingGroup && (
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Join or Create Group</Text>
+                        <TextInput
+                            placeholder="Enter Join Code"
+                            placeholderTextColor="#666"
+                            style={styles.modalInput}
+                            value={joinCode}
+                            onChangeText={setJoinCode}
+                        />
+                        <TouchableOpacity
+                            onPress={handleJoinGroup}
+                            style={styles.modalButton}
+                            disabled={isJoining}
+                        >
+                            {isJoining ? <ActivityIndicator color="#FFF" /> : <Text style={styles.modalButtonText}>Join with Code</Text>}
+                        </TouchableOpacity>
+
+                        <View style={styles.modalDivider} />
+
+                        <TextInput
+                            placeholder="Group Name"
+                            placeholderTextColor="#666"
+                            style={styles.modalInput}
+                            value={groupName}
+                            onChangeText={setGroupName}
+                        />
+                        <TextInput
+                            placeholder="Description"
+                            placeholderTextColor="#666"
+                            style={styles.modalInput}
+                            value={groupDesc}
+                            onChangeText={setGroupDesc}
+                        />
+                        <TouchableOpacity onPress={handleCreateGroup} style={[styles.modalButton, { backgroundColor: '#333' }]}>
+                            <Text style={styles.modalButtonText}>Create New Group</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => setIsCreatingGroup(false)} style={styles.modalClose}>
+                            <IconClose size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
         </ScrollView>
     );
 
@@ -364,509 +483,90 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 };
 
 const styles = StyleSheet.create({
-    fullScreenContainer: {
-        flex: 1,
-        backgroundColor: '#0D0D0D',
-    },
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-    },
-    mainContent: {
-        paddingHorizontal: 20,
-        paddingTop: 60,
-        paddingBottom: 100,
-    },
-    mainHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-    },
-    mainTitle: {
-        fontSize: 24,
-        fontWeight: '900',
-        color: '#FFFFFF',
-    },
-    headerPlus: {
-        backgroundColor: '#222',
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    scrollContainer: {
-        flex: 1,
-    },
-    infoContent: {
-        padding: 24,
-        paddingBottom: 100,
-    },
-    infoCard: {
-        backgroundColor: '#161616',
-        borderRadius: 16,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 24,
-    },
-    infoTitle: {
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        fontSize: 16,
-        marginBottom: 8,
-    },
-    infoText: {
-        fontSize: 14,
-        color: '#999999',
-        lineHeight: 20,
-        marginBottom: 16,
-    },
-    infoMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    metaLabel: {
-        fontSize: 12,
-        color: '#666666',
-    },
-    guidelineRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        marginBottom: 12,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#E8503A',
-        marginTop: 6,
-    },
-    guidelineText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#999999',
-        lineHeight: 20,
-    },
-    settingRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#161616',
-        borderRadius: 16,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 24,
-    },
-    settingLabel: {
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        fontSize: 14,
-    },
-    settingSub: {
-        fontSize: 12,
-        color: '#666666',
-    },
-    leaveButton: {
-        width: '100%',
-        paddingVertical: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)',
-        alignItems: 'center',
-    },
-    leaveButtonText: {
-        color: '#EF4444',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    feedContent: {
-        paddingHorizontal: 20,
-        paddingVertical: 24,
-        paddingBottom: 100,
-    },
-    postInput: {
-        backgroundColor: '#161616',
-        padding: 16,
-        borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 24,
-    },
-    avatarMini: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#333',
-    },
-    postInputText: {
-        color: '#666666',
-        fontSize: 14,
-        flex: 1,
-    },
-    postCard: {
-        backgroundColor: '#161616',
-        borderRadius: 24,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 24,
-    },
-    postHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-    },
-    authorRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    authorName: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    postTime: {
-        fontSize: 12,
-        color: '#666666',
-    },
-    postBody: {
-        marginBottom: 16,
-    },
-    scriptureContainer: {
-        paddingLeft: 16,
-        borderLeftWidth: 2,
-        borderLeftColor: '#FFD35A',
-        marginBottom: 8,
-    },
-    scriptureText: {
-        fontSize: 14,
-        fontStyle: 'italic',
-        color: '#D1D5DB',
-        lineHeight: 22,
-    },
-    scriptureMeta: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#FFD35A',
-        marginTop: 4,
-    },
-    milestoneBox: {
-        backgroundColor: 'rgba(232, 80, 58, 0.1)',
-        padding: 12,
-        borderRadius: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    milestoneText: {
-        fontSize: 14,
-        color: '#FFFFFF',
-        fontWeight: '500',
-        flex: 1,
-    },
-    prayerText: {
-        fontSize: 14,
-        color: '#D1D5DB',
-        lineHeight: 22,
-    },
-    postActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 24,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.05)',
-    },
-    actionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    actionText: {
-        fontSize: 12,
-        color: '#666666',
-    },
-    groupHero: {
-        height: 200,
-        backgroundColor: '#1A1A1A',
-        position: 'relative',
-        justifyContent: 'space-between',
-    },
-    heroOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(232, 80, 58, 0.05)',
-    },
-    heroHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 48,
-    },
-    heroIconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    heroBottom: {
-        padding: 24,
-        backgroundColor: 'rgba(13, 13, 13, 0.6)',
-    },
-    heroTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 4,
-    },
-    heroSubRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    heroSubtext: {
-        fontSize: 14,
-        color: '#999999',
-    },
-    dotSeparator: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#666',
-    },
-    heroAccent: {
-        fontSize: 14,
-        color: '#FFD35A',
-        fontWeight: 'bold',
-    },
-    tabsContainer: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-        paddingHorizontal: 24,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 16,
-        alignItems: 'center',
-    },
-    activeTab: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#E8503A',
-    },
-    tabText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#666666',
-    },
-    activeTabText: {
-        color: '#FFFFFF',
-    },
-    startCard: {
-        backgroundColor: '#161616',
-        borderRadius: 32,
-        padding: 32,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 32,
-    },
-    startIconCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#0D0D0D',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    startTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 8,
-    },
-    startSubtitle: {
-        fontSize: 14,
-        color: '#999999',
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 24,
-        maxWidth: 240,
-    },
-    startButton: {
-        backgroundColor: '#E8503A',
-        paddingHorizontal: 32,
-        paddingVertical: 14,
-        borderRadius: 24,
-    },
-    startButtonText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    activeCard: {
-        backgroundColor: '#E8503A',
-        borderRadius: 32,
-        padding: 32,
-        alignItems: 'center',
-        marginBottom: 32,
-        shadowColor: '#E8503A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    activeLabel: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: 'rgba(255, 255, 255, 0.7)',
-        letterSpacing: 1.5,
-        marginBottom: 4,
-    },
-    activeTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 24,
-    },
-    timerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 24,
-    },
-    timerBlock: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 12,
-        alignItems: 'center',
-        minWidth: 64,
-    },
-    timerValue: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    timerBlockLabel: {
-        fontSize: 10,
-        color: 'rgba(255, 255, 255, 0.7)',
-    },
-    timerDivider: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 16,
-    },
-    endButton: {
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 24,
-        paddingVertical: 10,
-        borderRadius: 20,
-    },
-    endButtonText: {
-        color: '#E8503A',
-        fontWeight: 'bold',
-        fontSize: 13,
-    },
-    groupsSection: {
-        marginBottom: 32,
-    },
-    sectionHeading: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 16,
-    },
-    groupList: {
-        gap: 16,
-    },
-    groupItem: {
-        backgroundColor: '#161616',
-        borderRadius: 20,
-        padding: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-    },
-    groupInfoCol: {
-        flex: 1,
-    },
-    groupName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 4,
-    },
-    groupDesc: {
-        fontSize: 12,
-        color: '#666666',
-        marginBottom: 8,
-    },
-    memberCountBadge: {
-        backgroundColor: '#222',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        alignSelf: 'flex-start',
-    },
-    memberCountText: {
-        fontSize: 10,
-        color: '#999999',
-        fontWeight: 'bold',
-    },
-    joinBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    notJoinedBtn: {
-        backgroundColor: '#FFFFFF',
-    },
-    joinedBtn: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '#444',
-    },
-    joinBtnText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    notJoinedBtnText: {
-        color: '#000000',
-    },
-    joinedBtnText: {
-        color: '#666666',
-    },
+    container: { flex: 1, backgroundColor: '#000' },
+    fullScreenContainer: { flex: 1, backgroundColor: '#0D0D0D' },
+    mainContent: { padding: 20, paddingTop: 60, paddingBottom: 100 },
+    mainHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+    backButton: { width: 40 },
+    mainTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
+    headerPlus: { backgroundColor: '#222', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+    startCard: { backgroundColor: '#161616', borderRadius: 24, padding: 24, alignItems: 'center' },
+    startTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 20 },
+    durationValue: { color: '#E8503A', fontSize: 32, fontWeight: 'bold', marginBottom: 10 },
+    sliderContainer: { width: '100%', height: 40, justifyContent: 'center', marginVertical: 20 },
+    sliderTrack: { height: 4, backgroundColor: '#333', borderRadius: 2, width: '100%' },
+    sliderFill: { height: 4, backgroundColor: '#E8503A', borderRadius: 2, position: 'absolute' },
+    sliderThumb: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF', position: 'absolute', justifyContent: 'center', alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 2 },
+    thumbInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E8503A' },
+    optionsContainer: { width: '100%', marginTop: 20 },
+    optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    optionLabel: { color: '#999', fontSize: 14 },
+    reminderSelector: { flexDirection: 'row', gap: 10 },
+    reminderBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#222' },
+    reminderBtnActive: { backgroundColor: '#E8503A' },
+    reminderText: { color: '#666', fontSize: 12 },
+    reminderTextActive: { color: '#FFF' },
+    startButton: { backgroundColor: '#E8503A', paddingHorizontal: 40, paddingVertical: 15, borderRadius: 30, marginTop: 10 },
+    startButtonText: { color: '#FFF', fontWeight: 'bold' },
+    activeCard: { backgroundColor: '#E8503A', borderRadius: 24, padding: 30, alignItems: 'center' },
+    activeLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 'bold', marginBottom: 20 },
+    timerRow: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 30 },
+    timerBlock: { alignItems: 'center' },
+    timerValue: { color: '#FFF', fontSize: 40, fontWeight: 'bold' },
+    timerBlockLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+    timerDivider: { color: '#FFF', fontSize: 40, fontWeight: 'bold' },
+    endButton: { backgroundColor: '#FFF', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25 },
+    endButtonText: { color: '#E8503A', fontWeight: 'bold' },
+    groupsSection: { marginTop: 40 },
+    sectionHeading: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 20 },
+    groupItem: { backgroundColor: '#111', padding: 20, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+    groupName: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+    groupDesc: { color: '#666', fontSize: 12, marginTop: 4 },
+    joinBtn: { backgroundColor: '#222', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
+    joinBtnText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
+    modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20, zIndex: 100 },
+    modalContent: { backgroundColor: '#161616', borderRadius: 24, padding: 24, position: 'relative' },
+    modalTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+    modalInput: { backgroundColor: '#0D0D0D', borderRadius: 12, padding: 15, color: '#FFF', marginBottom: 15 },
+    modalButton: { backgroundColor: '#E8503A', padding: 15, borderRadius: 12, alignItems: 'center' },
+    modalButtonText: { color: '#FFF', fontWeight: 'bold' },
+    modalDivider: { height: 1, backgroundColor: '#333', marginVertical: 20 },
+    modalClose: { position: 'absolute', top: 20, right: 20 },
+    groupHero: { height: 250, position: 'relative', justifyContent: 'flex-end' },
+    heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#E8503A', opacity: 0.1 },
+    heroHeader: { position: 'absolute', top: 60, left: 20 },
+    heroIconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+    heroBottom: { padding: 24 },
+    heroTitle: { color: '#FFF', fontSize: 32, fontWeight: 'bold' },
+    heroSubtext: { color: '#999', fontSize: 14, marginTop: 5 },
+    tabsContainer: { flexDirection: 'row', paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
+    tabButton: { flex: 1, paddingVertical: 15, alignItems: 'center' },
+    activeTab: { borderBottomWidth: 2, borderBottomColor: '#E8503A' },
+    tabText: { color: '#666', fontWeight: 'bold' },
+    activeTabText: { color: '#FFF' },
+    scrollContainer: { flex: 1 },
+    infoContent: { padding: 20 },
+    infoCard: { backgroundColor: '#111', padding: 20, borderRadius: 16, marginBottom: 20 },
+    infoTitle: { color: '#FFF', fontWeight: 'bold', marginBottom: 10 },
+    infoText: { color: '#999', lineHeight: 20 },
+    infoMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 15 },
+    metaLabel: { color: '#666', fontSize: 12 },
+    leaveButton: { borderColor: '#ef4444', borderWidth: 1, padding: 15, borderRadius: 12, alignItems: 'center' },
+    leaveButtonText: { color: '#ef4444', fontWeight: 'bold' },
+    feedContent: { padding: 20 },
+    postInput: { backgroundColor: '#111', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+    avatarMini: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#333' },
+    postInputText: { color: '#666' },
+    postCard: { backgroundColor: '#111', borderRadius: 20, padding: 20, marginBottom: 20 },
+    postHeader: { flexDirection: 'row', marginBottom: 15 },
+    authorRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+    avatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    avatarText: { color: '#FFF', fontWeight: 'bold' },
+    authorName: { color: '#FFF', fontWeight: 'bold' },
+    postTime: { color: '#666', fontSize: 12 },
+    postBody: {},
+    scriptureText: { color: '#DDD', lineHeight: 22, fontStyle: 'italic' },
+    verseRecommendation: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 12, marginHorizontal: 20, marginBottom: 25, alignItems: 'center' },
+    verseText: { color: '#FFF', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginBottom: 5 },
+    verseRef: { color: '#FFD35A', fontSize: 11, fontWeight: 'bold' },
 });

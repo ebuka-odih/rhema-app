@@ -53,12 +53,13 @@ export const notificationService = {
     async clearAllDailyAffirmations() {
         const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         for (const notification of scheduled) {
-            // Check for any variations of the title or the specific identifier
+            const title = notification.content.title || "";
+            // Be more aggressive in clearing anything that looks like a daily affirmation
             if (
-                notification.content.title === "Daily Affirmation" ||
-                notification.content.title === "Daily Word of Affirmation" ||
-                notification.content.title === "🕊️ Daily Affirmation" ||
-                notification.identifier === 'daily-affirmation'
+                title.includes("Affirmation") ||
+                title.includes("Daily") ||
+                notification.identifier === 'daily-affirmation' ||
+                notification.identifier.startsWith('test-affirmation-')
             ) {
                 await Notifications.cancelScheduledNotificationAsync(notification.identifier);
             }
@@ -148,5 +149,29 @@ export const notificationService = {
 
     async cancelAllReminders() {
         await Notifications.cancelAllScheduledNotificationsAsync();
+    },
+
+    async scheduleFastingReminder(intervalHours: number) {
+        // Cancel existing first
+        await this.cancelFastingReminder();
+
+        await Notifications.scheduleNotificationAsync({
+            identifier: 'fasting-reminder',
+            content: {
+                title: "⏳ Fasting Journey",
+                body: "Don't forget to check in on your fast and stay hydrated! God is with you.",
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+                sound: true,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: intervalHours * 3600,
+                repeats: true,
+            },
+        });
+    },
+
+    async cancelFastingReminder() {
+        await Notifications.cancelScheduledNotificationAsync('fasting-reminder');
     }
 };

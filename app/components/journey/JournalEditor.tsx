@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { JournalEntry } from '../../types';
 import { IconChevronLeft, IconCheck, IconTrash } from '../Icons';
 import { styles } from './JournalEditor.styles';
@@ -109,7 +110,12 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                         placeholder="Title"
                         placeholderTextColor="rgba(255, 255, 255, 0.2)"
                         value={title}
-                        onChangeText={setTitle}
+                        onChangeText={(text) => {
+                            if (Platform.OS !== 'web') {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }
+                            setTitle(text);
+                        }}
                         multiline
                     />
                     <Text style={styles.dateText}>
@@ -157,7 +163,12 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                                 placeholder="Start typing your reflection..."
                                 placeholderTextColor="rgba(255, 255, 255, 0.1)"
                                 value={content}
-                                onChangeText={setContent}
+                                onChangeText={(text) => {
+                                    if (Platform.OS !== 'web' && Math.abs(text.length - content.length) < 2) {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    }
+                                    setContent(text);
+                                }}
                                 onSelectionChange={handleSelectionChange}
                                 onBlur={() => setIsEditing(false)}
                                 multiline

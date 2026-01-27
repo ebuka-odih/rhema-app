@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Share, Alert } from 'react-native';
-import { IconHeart, IconShare, IconDownload } from '../Icons';
+import * as Haptics from 'expo-haptics';
+import { IconHeart, IconShare, IconComment } from '../Icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
 import { API_BASE_URL } from '../../services/apiConfig';
 import { authService } from '../../services/auth';
 
@@ -29,7 +29,7 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
     const [metrics, setMetrics] = useState({
         likes: initialLikes,
         shares: initialShares,
-        downloads: initialDownloads,
+        // downloads: initialDownloads, // Download removed
         userLiked: initialUserLiked
     });
     const [isInteracting, setIsInteracting] = useState(false);
@@ -39,16 +39,30 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
         setMetrics({
             likes: initialLikes,
             shares: initialShares,
-            downloads: initialDownloads,
+            // downloads: initialDownloads,
             userLiked: initialUserLiked
         });
     }, [id, initialLikes, initialShares, initialDownloads, initialUserLiked]);
 
-    const handleInteract = async (type: 'like' | 'share' | 'download') => {
+    const handleInteract = async (type: 'like' | 'share' | 'comment') => {
         if (isInteracting) return;
+
+        // Haptic Feedback
+        if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+
         setIsInteracting(true);
         try {
             const token = await authService.getToken();
+
+            if (type === 'comment') {
+                // Placeholder for comment section logic
+                Alert.alert("Comments", "Comment section coming soon!");
+                setIsInteracting(false);
+                return;
+            }
+
             const res = await fetch(`${API_BASE_URL}bible/daily-verse/interact`, {
                 method: 'POST',
                 headers: {
@@ -70,9 +84,6 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
                 } else if (type === 'share') {
                     setMetrics(prev => ({ ...prev, shares: data.shares_count || prev.shares + 1 }));
                     await processShare();
-                } else if (type === 'download') {
-                    setMetrics(prev => ({ ...prev, downloads: data.downloads_count || prev.downloads + 1 }));
-                    await processDownload();
                 }
             } else if (res.status === 401) {
                 Alert.alert("Authentication Required", "Please sign in to interact with daily verses.");
@@ -101,24 +112,10 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
         }
     };
 
-    const processDownload = async () => {
-        try {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert("Permission Required", "Allow access to your photo library to save verses.");
-                return;
-            }
-            const uri = await captureRef(viewRef, {
-                format: 'png',
-                quality: 1.0,
-                result: 'tmpfile'
-            });
-            await MediaLibrary.saveToLibraryAsync(uri);
-            Alert.alert("Saved!", "Daily verse image has been saved to your gallery.");
-        } catch (err) {
-            console.error('Download capture error:', err);
-        }
-    };
+    const [imageError, setImageError] = useState(false);
+
+    // Safely robust fallback image
+    const DEFAULT_BG = "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?auto=format&fit=crop&w=800&q=80";
 
     return (
         <View style={styles.verseCard}>
@@ -126,7 +123,13 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
             <View ref={viewRef} collapsable={false} style={styles.captureContainer}>
                 <Image
                     source={{
-                        uri: backgroundImage || `https://source.unsplash.com/featured/800x1100?nature,spiritual,${theme || 'landscape'}&sig=${id || 'fallback'}`
+                        uri: (backgroundImage && !imageError)
+                            ? backgroundImage
+                            : DEFAULT_BG
+                    }}
+                    onError={() => {
+                        console.log('DailyVerse image load failed, using fallback');
+                        setImageError(true);
                     }}
                     style={styles.verseBackground}
                 />
@@ -200,13 +203,14 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
                     <View style={styles.actionItem}>
                         <TouchableOpacity
                             style={styles.actionCircle}
-                            onPress={() => handleInteract('download')}
+                            onPress={() => handleInteract('comment')}
                             activeOpacity={0.7}
                             disabled={!id || isInteracting}
                         >
-                            <IconDownload size={20} color={id ? "#FFFFFF" : "#444"} strokeWidth={2.5} />
+                            <IconComment size={20} color={id ? "#FFFFFF" : "#444"} strokeWidth={2.5} />
                         </TouchableOpacity>
-                        <Text style={styles.actionCount}>{metrics.downloads}</Text>
+                        {/* Placeholder count */}
+                        <Text style={styles.actionCount}>0</Text>
                     </View>
                 </View>
             </View>

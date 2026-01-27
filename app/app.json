@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Rhema Daily",
-    "slug": "rhema",
-    "scheme": "rhema",
+    "slug": "wordflow",
+    "scheme": "wordflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,22 +13,22 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo.svg",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0D0D0D"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.odih.rhema",
+      "bundleIdentifier": "com.odih.wordflow",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Rhema Daily needs access to your microphone to record and transcribe sermons.",
         "NSPhotoLibraryUsageDescription": "Rhema Daily needs access to your photo library to save generated content."
       }
     },
     "android": {
-      "package": "com.odih.rhema",
+      "package": "com.odih.wordflow",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.svg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0D0D"
       },
       "permissions": [
@@ -43,17 +43,18 @@
           "microphonePermission": "Allow Wordflow to access your microphone"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@react-native-google-signin/google-signin"
     ],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
+    "owner": "odih",
     "extra": {
       "eas": {
-        "projectId": "b9182640-8da5-4379-909a-53ab74c46bcd"
+        "projectId": "44d3ac4c-732f-45f7-ac0d-17471876a5bb"
       }
-    },
-    "owner": "odih"
+    }
   }
 }
