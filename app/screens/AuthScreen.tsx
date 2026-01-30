@@ -4,7 +4,7 @@ import { AuthHeader } from '../components/auth/AuthHeader';
 import { AuthInput } from '../components/auth/AuthInput';
 import { SocialAuth } from '../components/auth/SocialAuth';
 import { signIn, signUp } from '../services/auth';
-import { Alert, ActivityIndicator } from 'react-native';
+import { Alert, ActivityIndicator, NativeModules } from 'react-native';
 
 // GoogleSignin import removed to allow conditional loading
 // import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
@@ -23,19 +23,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
-    let GoogleSignin;
-    try {
-      // Dynamically require the module to avoid import-time crashes if native module is missing
-      const GoogleSigninModule = require('@react-native-google-signin/google-signin');
-      GoogleSignin = GoogleSigninModule.GoogleSignin;
+    if (Platform.OS === 'web' || __DEV__) return;
 
-      GoogleSignin.configure({
-        webClientId: '335759882370-olmomtjn2n2q97sujehp3rpknp6jlk2h.apps.googleusercontent.com', // From backend/.env
-        offlineAccess: true,
-        forceCodeForRefreshToken: true,
-      });
+    if (!NativeModules.RNGoogleSignin) return;
+
+    try {
+      const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+      const GoogleSignin = GoogleSigninModule.GoogleSignin;
+
+      if (GoogleSignin) {
+        GoogleSignin.configure({
+          webClientId: '335759882370-olmomtjn2n2q97sujehp3rpknp6jlk2h.apps.googleusercontent.com',
+          offlineAccess: true,
+          forceCodeForRefreshToken: true,
+        });
+      }
     } catch (e) {
-      console.log("GoogleSignin not available (likely missing native module). Skipping configure.");
+      // Completely silent in dev
     }
   }, []);
 
@@ -84,6 +88,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   };
 
   const handleGoogleLogin = async () => {
+    if (!NativeModules.RNGoogleSignin) {
+      Alert.alert(
+        "Google Sign-In Preview",
+        "Google login requires the native module which isn't available in this preview build.\n\nPlease use Email/Password to sign in."
+      );
+      return;
+    }
+
     let GoogleSignin;
     let statusCodes: any;
     let isErrorWithCode: any;
@@ -95,8 +107,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
       isErrorWithCode = GoogleSigninModule.isErrorWithCode;
     } catch (e) {
       Alert.alert(
-        "Google Sign-In Not Ready",
-        "The Google Sign-In native module is not installed or linked in this build.\n\nTo fix this:\n1. Run 'npx expo prebuild --platform ios'\n2. Rebuild the app with 'npx expo run:ios'"
+        "Google Sign-In Error",
+        "Failed to load the Google Sign-In module properly."
       );
       return;
     }
@@ -215,7 +227,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
             )}
           </TouchableOpacity>
 
-          <SocialAuth onGooglePress={handleGoogleLogin} />
+          {!__DEV__ && NativeModules.RNGoogleSignin && (
+            <SocialAuth onGooglePress={handleGoogleLogin} />
+          )}
 
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleText}>

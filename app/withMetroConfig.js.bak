@@ -1,0 +1,25 @@
+const { ExpoConfigView } = require('@expo/config-plugins');
+const { withDangerousMod, withPlugins } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
+
+const withMetroConfig = (config) => {
+    return withDangerousMod(config, [
+        'ios',
+        async (config) => {
+            const filePath = path.join(config.modRequest.projectRoot, 'metro.config.js');
+            if (!fs.existsSync(filePath)) {
+                const content = `const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+`;
+                fs.writeFileSync(filePath, content);
+            }
+            return config;
+        },
+    ]);
+};
+
+module.exports = withMetroConfig;

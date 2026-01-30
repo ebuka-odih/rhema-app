@@ -15,27 +15,50 @@ import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import LegalScreen from './screens/LegalScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from './services/auth';
 
-type AppState = 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN' | 'LEGAL';
+type AppState = 'ONBOARDING' | 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN' | 'LEGAL';
 
 const AppContent: React.FC = () => {
   // Navigation State
   const [appState, setAppState] = useState<AppState>('WELCOME');
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
   const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
   const { data: session, isPending } = useSession();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!isPending) {
+    const checkOnboarding = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('hasSeenOnboarding');
+        if (seen !== 'true' && !session) {
+          setAppState('ONBOARDING');
+        }
+        setHasCheckedOnboarding(true);
+      } catch (e) {
+        setHasCheckedOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, [session]);
+
+  useEffect(() => {
+    if (!isPending && hasCheckedOnboarding) {
       if (session) {
         setAppState('MAIN');
       } else if (appState === 'MAIN') {
         setAppState('WELCOME');
       }
     }
-  }, [session, isPending]);
+  }, [session, isPending, hasCheckedOnboarding]);
+
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+    setAppState('WELCOME');
+  };
 
   const handleAuthenticated = () => {
     setAppState('MAIN');
@@ -130,6 +153,13 @@ const AppContent: React.FC = () => {
           </View>
         ) : (
           <>
+            {appState === 'ONBOARDING' && (
+              <OnboardingScreen
+                onComplete={completeOnboarding}
+                onSkip={completeOnboarding}
+              />
+            )}
+
             {appState === 'WELCOME' && (
               <WelcomeScreen
                 onGetStarted={() => setAppState('AUTH_SIGNUP')}

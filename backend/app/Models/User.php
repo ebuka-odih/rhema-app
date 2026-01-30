@@ -78,4 +78,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(BibleHighlight::class);
     }
+
+    public function fastingSessions()
+    {
+        return $this->hasMany(FastingSession.class);
+    }
+
+    public function fastingGroups()
+    {
+        return $this->belongsToMany(FastingGroup::class, 'fasting_group_users')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
 }

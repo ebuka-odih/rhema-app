@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\ReflectionController;
 use App\Http\Controllers\Api\PrayerController;
 use App\Http\Controllers\Api\BibleHighlightController;
 use App\Http\Controllers\Api\TranscriptionController;
+use App\Http\Controllers\Api\FastingController;
+use App\Http\Controllers\Api\GroupController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -50,6 +52,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
     Route::post('/bible/daily-verse/interact', [BibleController::class, 'interact']);
     Route::post('/transcribe', [TranscriptionController::class, 'transcribe']);
+
+    // Fasting
+    Route::get('/fasting', [FastingController::class, 'index']);
+    Route::get('/fasting/active', [FastingController::class, 'active']);
+    Route::post('/fasting', [FastingController::class, 'store']);
+    Route::patch('/fasting/{fastingSession}', [FastingController::class, 'update']);
+
+    // Groups
+    Route::get('/groups', [GroupController::class, 'index']);
+    Route::get('/groups/all', [GroupController::class, 'all']);
+    Route::post('/groups', [GroupController::class, 'store']);
+    Route::post('/groups/join', [GroupController::class, 'join']);
+    Route::get('/groups/{group}', [GroupController::class, 'show']);
+    Route::post('/groups/{group}/leave', [GroupController::class, 'leave']);
 });
 
 // Bible Routes (Public or Optionally Authenticated)

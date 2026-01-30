@@ -20,237 +20,24 @@ class BibleController extends Controller
     }
 
     protected $curatedEntries = [
-        [
-            'theme' => 'Faith',
-            'reference' => 'Hebrews 11:1',
-            'text' => 'Now faith is the substance of things hoped for, the evidence of things not seen.',
-            'version' => 'NKJV',
-            'affirmation' => 'I walk by faith and not by sight, trusting in God\'s promises for my life.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Romans 10:17',
-            'text' => 'So then faith comes by hearing, and hearing by the word of God.',
-            'version' => 'NKJV',
-            'affirmation' => 'My faith is strengthened as I listen to and meditate on the Word of God daily.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Matthew 21:22',
-            'text' => 'And whatever things you ask in prayer, believing, you will receive.',
-            'version' => 'NKJV',
-            'affirmation' => 'I believe that whatever I ask in prayer, I shall receive according to God\'s will.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Mark 9:23',
-            'text' => 'Jesus said to him, "If you can believe, all things are possible to him who believes."',
-            'version' => 'NKJV',
-            'affirmation' => 'All things are possible for me because I believe in the power of Christ within me.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Ephesians 2:8',
-            'text' => 'For by grace you have been saved through faith, and that not of yourselves; it is the gift of God.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am saved by grace through faith; my trust is in God\'s unfailing love and gift.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => '2 Corinthians 5:7',
-            'text' => 'For we walk by faith, not by sight.',
-            'version' => 'NKJV',
-            'affirmation' => 'Today, I choose to walk by faith, confident in God\'s guidance even when I cannot see the path.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 Corinthians 13:4-5',
-            'text' => 'Love suffers long and is kind; love does not envy; love does not parade itself, is not puffed up; does not behave rudely, does not seek its own, is not provoked, thinks no evil.',
-            'version' => 'NKJV',
-            'affirmation' => 'I choose to love others with patience and kindness, reflecting God\'s character in my interactions.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 John 4:8',
-            'text' => 'He who does not love does not know God, for God is love.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am a child of God, and because God is love, I have the capacity to love others unconditionally.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 John 4:18',
-            'text' => 'There is no fear in love; but perfect love casts out fear, because fear involves torment.',
-            'version' => 'NKJV',
-            'affirmation' => 'Perfect love casts out all my fears; I am secure in the overwhelming love of God.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'John 13:34',
-            'text' => 'A new commandment I give to you, that you love one another; as I have loved you, that you also love one another.',
-            'version' => 'NKJV',
-            'affirmation' => 'I love others just as Christ has loved me, bringing light and hope to the world.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'Romans 8:38-39',
-            'text' => 'For I am persuaded that neither death nor life... shall be able to separate us from the love of God which is in Christ Jesus our Lord.',
-            'version' => 'NKJV',
-            'affirmation' => 'Nothing can separate me from the love of God which is in Christ Jesus my Lord.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 Corinthians 16:14',
-            'text' => 'Let all that you do be done with love.',
-            'version' => 'NKJV',
-            'affirmation' => 'Everything I do today will be done in love, for the glory of God.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Philippians 4:13',
-            'text' => 'I can do all things through Christ who strengthens me.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am capable of overcoming any challenge because Christ strengthens me from within.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'John 3:16',
-            'text' => 'For God so loved the world that He gave His only begotten Son, that whoever believes in Him should not perish but have everlasting life.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am deeply loved by God, and through faith in His Son, I have eternal life.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'James 1:6',
-            'text' => 'But let him ask in faith, with no doubting, for he who doubts is like a wave of the sea driven and tossed by the wind.',
-            'version' => 'NKJV',
-            'affirmation' => 'I ask in faith without wavering, knowing that God is faithful to His Word.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'Colossians 3:14',
-            'text' => 'But above all these things put on love, which is the bond of perfection.',
-            'version' => 'NKJV',
-            'affirmation' => 'I put on love today, which binds everything together in perfect harmony.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Proverbs 3:5-6',
-            'text' => 'Trust in the LORD with all your heart, And lean not on your own understanding; In all your ways acknowledge Him, And He shall direct your paths.',
-            'version' => 'NKJV',
-            'affirmation' => 'I trust God with all my heart, knowing He directs my path and makes my way straight.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Isaiah 40:31',
-            'text' => 'But those who wait on the LORD Shall renew their strength; They shall mount up with wings like eagles, They shall run and not be weary, They shall walk and not faint.',
-            'version' => 'NKJV',
-            'affirmation' => 'As I wait on the Lord, my strength is renewed and I soar above every challenge.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Joshua 1:9',
-            'text' => 'Have I not commanded you? Be strong and of good courage; do not be afraid, nor be dismayed, for the LORD your God is with you wherever you go.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am strong and courageous because God is with me everywhere I go today.'
-        ],
-        [
-            'theme' => 'Faith',
-            'reference' => 'Romans 8:28',
-            'text' => 'And we know that all things work together for good to those who love God, to those who are the called according to His purpose.',
-            'version' => 'NKJV',
-            'affirmation' => 'I believe that everything is working together for my good because I love God and follow His purpose.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'Ephesians 3:17-19',
-            'text' => '...that you, being rooted and grounded in love, may be able to comprehend... the width and length and depth and height— to know the love of Christ which passes knowledge;',
-            'version' => 'NKJV',
-            'affirmation' => 'I am rooted and grounded in God\'s love, which is deeper and wider than I can ever imagine.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 Peter 4:8',
-            'text' => 'And above all things have fervent love for one another, for "love will cover a multitude of sins."',
-            'version' => 'NKJV',
-            'affirmation' => 'I choose to walk in fervent love, extending grace and forgiveness to everyone I meet.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => '1 John 3:1',
-            'text' => 'Behold what manner of love the Father has bestowed on us, that we should be called children of God!',
-            'version' => 'NKJV',
-            'affirmation' => 'I am a beloved child of God, honored by the Father\'s incredible love for me.'
-        ],
-        [
-            'theme' => 'Love',
-            'reference' => 'Zephaniah 3:17',
-            'text' => 'The LORD your God in your midst, The Mighty One, will save; He will rejoice over you with gladness, He will quiet you with His love.',
-            'version' => 'NKJV',
-            'affirmation' => 'God is in my midst, rejoicing over me with singing and quieting my soul with His love.'
-        ],
-        [
-            'theme' => 'Peace',
-            'reference' => 'Philippians 4:6-7',
-            'text' => 'Be anxious for nothing, but in everything by prayer and supplication... the peace of God, which surpasses all understanding, will guard your hearts and minds through Christ Jesus.',
-            'version' => 'NKJV',
-            'affirmation' => 'I release all anxiety to God and receive His peace that guards my heart and mind today.'
-        ],
-        [
-            'theme' => 'Peace',
-            'reference' => 'John 14:27',
-            'text' => 'Peace I leave with you, My peace I give to you; not as the world gives do I give to you. Let not your heart be troubled, neither let it be afraid.',
-            'version' => 'NKJV',
-            'affirmation' => 'I have the very peace of Jesus within me; I refuse to let my heart be troubled or afraid.'
-        ],
-        [
-            'theme' => 'Strength',
-            'reference' => 'Isaiah 41:10',
-            'text' => 'Fear not, for I am with you; be not dismayed, for I am your God. I will strengthen you, yes, I will help you, I will uphold you with My righteous right hand.',
-            'version' => 'NKJV',
-            'affirmation' => 'I am not afraid because God is with me, strengthening me and upholding me with His power.'
-        ],
-        [
-            'theme' => 'Guidance',
-            'reference' => 'Psalm 32:8',
-            'text' => 'I will instruct you and teach you in the way you should go; I will guide you with My eye.',
-            'version' => 'NKJV',
-            'affirmation' => 'God is teaching me and guiding me in the best way for my life. I am sensitive to His leading.'
-        ],
-        [
-            'theme' => 'Guidance',
-            'reference' => 'Isaiah 30:21',
-            'text' => 'Your ears shall hear a word behind you, saying, "This is the way, walk in it," whenever you turn to the right hand or whenever you turn to the left.',
-            'version' => 'NKJV',
-            'affirmation' => 'I hear the voice of the Spirit clearly, showing me exactly which path to take.'
-        ],
-        [
-            'theme' => 'Provision',
-            'reference' => 'Philippians 4:19',
-            'text' => 'And my God shall supply all your need according to His riches in glory by Christ Jesus.',
-            'version' => 'NKJV',
-            'affirmation' => 'All my needs are met according to God\'s unlimited riches. I lack no good thing.'
-        ],
-        [
-            'theme' => 'Provision',
-            'reference' => 'Psalm 34:10',
-            'text' => 'The young lions lack and suffer hunger; but those who seek the LORD shall not lack any good thing.',
-            'version' => 'NKJV',
-            'affirmation' => 'Because I seek the Lord, I will never lack the resources or good things I need.'
-        ],
-        [
-            'theme' => 'Healing',
-            'reference' => '1 Peter 2:24',
-            'text' => '...who Himself bore our sins in His own body on the tree, that we, having died to sins, might live for righteousness—by whose stripes you were healed.',
-            'version' => 'NKJV',
-            'affirmation' => 'By the stripes of Jesus, I was healed. Health and vitality flow through my body today.'
-        ],
-        [
-            'theme' => 'Healing',
-            'reference' => 'Psalm 103:2-3',
-            'text' => 'Bless the LORD, O my soul, and forget not all His benefits: Who forgives all your iniquities, Who heals all your diseases.',
-            'version' => 'NKJV',
-            'affirmation' => 'I celebrate the benefits of God today: my sins are forgiven and my body is healed.'
-        ]
+        ['theme' => 'Faith', 'reference' => 'Hebrews 11:1', 'text' => 'Now faith is the substance of things hoped for, the evidence of things not seen.', 'version' => 'NKJV', 'affirmation' => 'I walk by faith and not by sight, trusting in God\'s promises.'],
+        ['theme' => 'Faith', 'reference' => 'Romans 10:17', 'text' => 'So then faith comes by hearing, and hearing by the word of God.', 'version' => 'NKJV', 'affirmation' => 'My faith grows as I immerse myself in the Word of God daily.'],
+        ['theme' => 'Faith', 'reference' => 'Matthew 21:22', 'text' => 'And whatever things you ask in prayer, believing, you will receive.', 'version' => 'NKJV', 'affirmation' => 'I pray with confidence, knowing God hears and answers my faith.'],
+        ['theme' => 'Healing', 'reference' => 'Psalm 103:2-3', 'text' => 'Bless the LORD, O my soul, and forget not all His benefits: Who forgives all your iniquities, Who heals all your diseases.', 'version' => 'NKJV', 'affirmation' => 'I am blessed; my sins are forgiven and my body is restored by God.'],
+        ['theme' => 'Healing', 'reference' => '1 Peter 2:24', 'text' => '...by whose stripes you were healed.', 'version' => 'NKJV', 'affirmation' => 'By the stripes of Jesus, I walk in divine health and wholeness.'],
+        ['theme' => 'Healing', 'reference' => 'Jeremiah 17:14', 'text' => 'Heal me, O Lord, and I shall be healed; Save me, and I shall be saved, For You are my praise.', 'version' => 'NKJV', 'affirmation' => 'God is my healer; His saving power restores my strength today.'],
+        ['theme' => 'Healing', 'reference' => 'Exodus 15:26', 'text' => '...For I am the Lord who heals you.', 'version' => 'NKJV', 'affirmation' => 'The Lord is my personal healer; His life flows through my body.'],
+        ['theme' => 'Healing', 'reference' => 'Psalm 147:3', 'text' => 'He heals the brokenhearted And binds up their wounds.', 'version' => 'NKJV', 'affirmation' => 'God heals my heart and brings peace to my soul.'],
+        ['theme' => 'Healing', 'reference' => 'Matthew 8:17', 'text' => 'He Himself took our infirmities And bore our sicknesses.', 'version' => 'NKJV', 'affirmation' => 'Jesus carried my pain so I could live in His freedom and health.'],
+        ['theme' => 'Peace', 'reference' => 'Philippians 4:6-7', 'text' => 'Be anxious for nothing... the peace of God will guard your hearts.', 'version' => 'NKJV', 'affirmation' => 'I release my worries and receive God\'s peace that guards my mind.'],
+        ['theme' => 'Peace', 'reference' => 'John 14:27', 'text' => 'Peace I leave with you, My peace I give to you...', 'version' => 'NKJV', 'affirmation' => 'I have the peace of Christ; my heart is calm and untroubled.'],
+        ['theme' => 'Peace', 'reference' => 'Isaiah 26:3', 'text' => 'You will keep him in perfect peace, Whose mind is stayed on You.', 'version' => 'NKJV', 'affirmation' => 'My mind is fixed on God, and I walk in perfect peace today.'],
+        ['theme' => 'Strength', 'reference' => 'Isaiah 41:10', 'text' => 'Fear not, for I am with you... I will strengthen you, Yes, I will help you.', 'version' => 'NKJV', 'affirmation' => 'I am strong and courageous because God is my helper and strength.'],
+        ['theme' => 'Strength', 'reference' => 'Philippians 4:13', 'text' => 'I can do all things through Christ who strengthens me.', 'version' => 'NKJV', 'affirmation' => 'There is no task too great for me, for Christ empowers me.'],
+        ['theme' => 'Provision', 'reference' => 'Philippians 4:19', 'text' => 'And my God shall supply all your need according to His riches in glory.', 'version' => 'NKJV', 'affirmation' => 'All my needs are met by God\'s abundant and unlimited riches.'],
+        ['theme' => 'Love', 'reference' => '1 John 4:19', 'text' => 'We love Him because He first loved us.', 'version' => 'NKJV', 'affirmation' => 'I am deeply loved by God, and I share that love with everyone.'],
+        ['theme' => 'Love', 'reference' => 'John 15:13', 'text' => 'Greater love has no one than this, than to lay down one’s life for his friends.', 'version' => 'NKJV', 'affirmation' => 'I walk in the selfless, sacrificial love of Christ.'],
+        ['theme' => 'Guidance', 'reference' => 'Proverbs 3:5-6', 'text' => 'Trust in the Lord with all your heart... He shall direct your paths.', 'version' => 'NKJV', 'affirmation' => 'God leads my steps; I trust His wisdom more than my own.'],
     ];
 
     public function dailyVerse(Request $request)
@@ -258,147 +45,98 @@ class BibleController extends Controller
         try {
             $user = auth('sanctum')->user();
             $userId = $user ? $user->id : null;
-            // Allow client to specify date (for timezone consistency)
-            $today = $request->query('date') ? $request->query('date') : Carbon::today()->toDateString();
+            $today = $request->query('date') ?: Carbon::today()->toDateString();
             
-            // Check if we already have a verse for today for this user
+            // 1. Return existing if already generated for today
             $verse = DailyVerse::where('date', $today)
                 ->where('user_id', $userId)
                 ->first();
             
             if ($verse) {
-                // If the verse exists but is missing a background image (old data), generate one
-                if (!$verse->background_image) {
-                    $userSeed = $userId ? (string)$userId : 'guest';
-                    // Deterministic seed based on date and user
-                    $seed = abs(crc32($today . $userSeed));
-                    $themeImages = [
-                        'Peace' => 'nature,calm,zen',
-                        'Strength' => 'mountain,peak,climb',
-                        'Guidance' => 'light,forest,path',
-                        'Provision' => 'harvest,sunrise,field',
-                        'Healing' => 'water,flower,garden',
-                        'Faith' => 'prayer,cross,clouds',
-                        'Love' => 'family,heart,warmth'
-                    ];
-                    $keywords = $themeImages[$verse->theme] ?? 'spiritual,landscape';
-                    $verse->background_image = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
+                // Fix broken images on the fly
+                if (!$verse->background_image || str_contains($verse->background_image, 'source.unsplash.com')) {
+                    $verse->background_image = $this->generateBackgroundImage($verse->theme, $today, $userId);
                     $verse->save();
                 }
 
-                if ($userId) {
-                    $verse->user_liked = $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists();
-                } else {
-                    $verse->user_liked = false;
-                }
+                $verse->user_liked = $userId ? $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists() : false;
                 return response()->json($verse);
             }
 
-            // --- "I SEE YOU" LOGIC ---
-            $suggestedTheme = null;
-            if ($user && $userId) {
-                // Analyze recent prayers and reflections
-                $prayers = \App\Models\Prayer::where('user_id', $userId)
-                    ->orderBy('created_at', 'desc')
-                    ->limit(5)
-                    ->pluck('request')
-                    ->join(' ');
-                    
-                $reflections = \App\Models\Reflection::where('user_id', $userId)
-                    ->orderBy('created_at', 'desc')
-                    ->limit(3)
-                    ->get()
-                    ->map(fn($r) => $r->title . ' ' . $r->content)
-                    ->join(' ');
+            // 2. Identify Theme (I See You Logic)
+            $suggestedTheme = $this->detectTheme($userId);
 
-                $combinedText = strtolower($prayers . ' ' . $reflections);
-                
-                // Map keywords to themes
-                $themeKeywords = [
-                    'Peace' => ['anxiety', 'worried', 'stress', 'fear', 'scared', 'trouble', 'peace', 'calm', 'rest'],
-                    'Strength' => ['weak', 'tired', 'weary', 'battle', 'struggle', 'hard', 'difficult', 'overcome', 'strength'],
-                    'Guidance' => ['direction', 'choice', 'decision', 'confused', 'way', 'path', 'lead', 'guide', 'future', 'what to do'],
-                    'Provision' => ['money', 'finance', 'job', 'need', 'lack', 'bill', 'rent', 'business', 'provide', 'supply'],
-                    'Healing' => ['sick', 'pain', 'disease', 'illness', 'body', 'health', 'hospital', 'doctor', 'heal', 'stripe'],
-                    'Faith' => ['believe', 'trust', 'doubt', 'faith', 'promise', 'hope'],
-                    'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected']
-                ];
+            // 3. Selection Logic (Rotation-friendly)
+            $possibleEntries = array_filter($this->curatedEntries, fn($e) => !$suggestedTheme || $e['theme'] === $suggestedTheme);
+            if (empty($possibleEntries)) $possibleEntries = $this->curatedEntries;
 
-                foreach ($themeKeywords as $theme => $keywords) {
-                    foreach ($keywords as $keyword) {
-                        if (str_contains($combinedText, $keyword)) {
-                            $suggestedTheme = $theme;
-                            break 2;
-                        }
-                    }
-                }
-            }
-
-            // Filter curated entries by theme if found
-            $possibleEntries = $suggestedTheme 
-                ? array_filter($this->curatedEntries, fn($e) => $e['theme'] === $suggestedTheme)
-                : $this->curatedEntries;
-
-            // If no entries for that theme, fallback to all
-            if (empty($possibleEntries)) {
-                $possibleEntries = $this->curatedEntries;
-            }
-
-            // Pick one based on day of year + user id for consistency
-            $userSeed = $userId ? (string)$userId : 'guest';
-            $seed = abs(crc32($today . $userSeed));
-            
-            $entriesCount = count($possibleEntries);
-            $index = $entriesCount > 0 ? ($seed % $entriesCount) : 0;
+            $seed = abs(crc32($today . ($userId ?: 'guest')));
+            $index = $seed % count($possibleEntries);
             $entry = array_values($possibleEntries)[$index];
 
-            // Define themed background keywords
-            $themeImages = [
-                'Peace' => 'nature,calm,zen',
-                'Strength' => 'mountain,peak,climb',
-                'Guidance' => 'light,forest,path',
-                'Provision' => 'harvest,sunrise,field',
-                'Healing' => 'water,flower,garden',
-                'Faith' => 'prayer,cross,clouds',
-                'Love' => 'family,heart,warmth'
-            ];
-
-            $keywords = $themeImages[$entry['theme']] ?? 'spiritual,landscape';
-            $bgImage = "https://source.unsplash.com/featured/800x1100?{$keywords}&sig={$seed}";
-
-            // Store it so it stays the same for 24h for this user
-            try {
-                $verse = DailyVerse::create([
-                    'user_id' => $userId,
-                    'date' => $today,
-                    'reference' => $entry['reference'],
-                    'text' => $entry['text'],
-                    'version' => $entry['version'] ?? 'NKJV',
-                    'affirmation' => $entry['affirmation'],
-                    'theme' => $entry['theme'],
-                    'background_image' => $bgImage
-                ]);
-                $verse->user_liked = false;
-            } catch (\Illuminate\Database\QueryException $e) {
-                if ($e->getCode() == 23000) {
-                    $verse = DailyVerse::where('date', $today)
-                        ->where('user_id', $userId)
-                        ->firstOrFail();
-
-                     if ($userId) {
-                        $verse->user_liked = $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists();
-                    } else {
-                        $verse->user_liked = false;
-                    }
-                } else {
-                    throw $e;
-                }
-            }
+            // 4. Create and Return
+            $verse = DailyVerse::create([
+                'user_id' => $userId,
+                'date' => $today,
+                'reference' => $entry['reference'],
+                'text' => $entry['text'],
+                'version' => $entry['version'] ?? 'NKJV',
+                'affirmation' => $entry['affirmation'],
+                'theme' => $entry['theme'],
+                'background_image' => $this->generateBackgroundImage($entry['theme'], $today, $userId)
+            ]);
+            
+            $verse->user_liked = false;
             return response()->json($verse);
+
         } catch (\Exception $e) {
-            \Log::error("Error in dailyVerse: " . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            \Log::error("dailyVerse Error: " . $e->getMessage());
+            return response()->json(['error' => 'Sync failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    protected function detectTheme($userId)
+    {
+        if (!$userId) return null;
+
+        $combinedText = strtolower(
+            \App\Models\Prayer::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(5)->pluck('request')->join(' ') . ' ' .
+            \App\Models\Reflection::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(3)->get()->map(fn($r) => $r->title . ' ' . $r->content)->join(' ')
+        );
+
+        $keywords = [
+            'Peace' => ['anxiety', 'worried', 'stress', 'fear', 'scared', 'trouble', 'peace', 'calm', 'rest'],
+            'Strength' => ['weak', 'tired', 'weary', 'battle', 'struggle', 'hard', 'difficult', 'overcome', 'strength'],
+            'Guidance' => ['direction', 'choice', 'decision', 'confused', 'way', 'path', 'lead', 'guide', 'future', 'what to do'],
+            'Provision' => ['money', 'finance', 'job', 'need', 'lack', 'bill', 'rent', 'business', 'provide', 'supply'],
+            'Healing' => ['sick', 'pain', 'disease', 'illness', 'body', 'health', 'hospital', 'doctor', 'heal', 'stripe'],
+            'Faith' => ['believe', 'trust', 'doubt', 'faith', 'promise', 'hope'],
+            'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected']
+        ];
+
+        foreach ($keywords as $theme => $list) {
+            foreach ($list as $word) if (str_contains($combinedText, $word)) return $theme;
+        }
+        return null;
+    }
+
+    protected function generateBackgroundImage($theme, $date, $userId)
+    {
+        $themeImages = [
+            'Peace' => ['1501854140801-50d01698950b', '1499346030926-f4f4daac6ce5', '1470252649378-9c29740c9fa8'],
+            'Strength' => ['1464822759023-fed622ff2c3b', '1448375240586-dfd8d395ea6c', '1506905911220-21f8e025812b'],
+            'Guidance' => ['1441974231531-c6227db76b6e', '1471922638179-380be51719a4', '1501854140801-50d01698950b'],
+            'Provision' => ['1500382017468-9049fed747ef', '1470071459604-3b5ec3a7fe05', '1472214103451-9374bd1c798e'],
+            'Healing' => ['1505118380757-91f5f5631fc0', '1469474968028-56623f02e42e', '1518495973542-4542c06a5843'],
+            'Faith' => ['1439405326854-01517489c73b', '1501854140801-50d01698950b', '1519681393784-d120267933ba'],
+            'Love' => ['1518131149504-115eab4eca3a', '1476514525535-07fb3b4ae5f1', '1431733303041-1c39c85b42d4']
+        ];
+        
+        $ids = $themeImages[$theme] ?? $themeImages['Faith'];
+        $seed = abs(crc32($date . $userId));
+        $id = $ids[$seed % count($ids)];
+        
+        return "https://images.unsplash.com/photo-{$id}?auto=format&fit=crop&w=800&q=80";
     }
 
     public function interact(Request $request)
