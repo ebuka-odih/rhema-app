@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('fasting_groups', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('created_by')->constrained('users')->onDelete('cascade');
             $table->string('code')->unique();
             $table->timestamps();
         });
