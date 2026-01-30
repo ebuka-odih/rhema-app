@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use App\Models\FastingSession;
 use Carbon\Carbon;
 
+class FastingController extends Controller
+{
     protected $fastingVerses = [
         ['text' => 'But when you fast, put oil on your head and wash your face, so that it will not be obvious to others that you are fasting, but only to your Father, who is unseen; and your Father, who sees what is done in secret, will reward you.', 'ref' => 'Matthew 6:17-18'],
         ['text' => 'Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke, to set the oppressed free and break every yoke?', 'ref' => 'Isaiah 58:6'],

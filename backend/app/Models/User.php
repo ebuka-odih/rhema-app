@@ -81,7 +81,7 @@ class User extends Authenticatable
 
     public function fastingSessions()
     {
-        return $this->hasMany(FastingSession.class);
+        return $this->hasMany(FastingSession::class);
     }
 
     public function fastingGroups()

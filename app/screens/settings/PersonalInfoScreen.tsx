@@ -81,7 +81,10 @@ const PersonalInfoScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <View style={styles.avatarContainer}>
                             <Text style={styles.avatarText}>{name.charAt(0) || 'U'}</Text>
                         </View>
-                        <TouchableOpacity style={styles.editBadge}>
+                        <TouchableOpacity
+                            style={styles.editBadge}
+                            onPress={() => Alert.alert("Coming Soon", "Changing profile photo will be available soon.")}
+                        >
                             <IconEdit size={16} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>

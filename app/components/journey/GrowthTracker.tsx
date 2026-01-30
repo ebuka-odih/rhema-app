@@ -12,7 +12,7 @@ export const GrowthTracker: React.FC<GrowthTrackerProps> = ({ onBack }) => (
             <TouchableOpacity onPress={onBack} style={styles.backButton}>
                 <IconArrowLeft size={20} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text style={styles.viewTitle}>Growth Tracker</Text>
+            <Text style={styles.viewTitle}>Growth Tracker (Coming Soon)</Text>
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -23,7 +23,7 @@ export const GrowthTracker: React.FC<GrowthTrackerProps> = ({ onBack }) => (
                         <Text style={styles.metricLabel}>CURRENT STREAK</Text>
                         <IconFire size={16} color="#F97316" />
                     </View>
-                    <Text style={styles.metricValue}>12 <Text style={styles.metricUnit}>days</Text></Text>
+                    <Text style={styles.metricValue}>-- <Text style={styles.metricUnit}>days</Text></Text>
                 </View>
 
                 <View style={styles.metricCard}>
@@ -31,7 +31,7 @@ export const GrowthTracker: React.FC<GrowthTrackerProps> = ({ onBack }) => (
                         <Text style={styles.metricLabel}>PRAYER TIME</Text>
                         <IconActivity size={16} color="#3B82F6" />
                     </View>
-                    <Text style={styles.metricValue}>45 <Text style={styles.metricUnit}>min</Text></Text>
+                    <Text style={styles.metricValue}>-- <Text style={styles.metricUnit}>min</Text></Text>
                 </View>
             </View>
 
@@ -43,8 +43,8 @@ export const GrowthTracker: React.FC<GrowthTrackerProps> = ({ onBack }) => (
                         <IconCheck size={20} color="#FFFFFF" />
                     </View>
                     <View style={styles.milestoneInfo}>
-                        <Text style={styles.milestoneTitle}>7 Day Streak</Text>
-                        <Text style={styles.milestoneDate}>Achieved Oct 24</Text>
+                        <Text style={styles.milestoneTitle}>No Milestones Yet</Text>
+                        <Text style={styles.milestoneDate}>Start your journey to earn badges</Text>
                     </View>
                 </View>
             </View>

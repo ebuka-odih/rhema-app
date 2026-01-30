@@ -7,7 +7,7 @@ const FastingScreen: React.FC = () => {
       <Text style={styles.title}>Fasting</Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Fasting Timer</Text>
+        <Text style={styles.cardTitle}>Fasting Timer (Coming Soon)</Text>
         <Text style={styles.cardText}>
           Track your fasting journey with a custom timer and join community groups for support.
         </Text>

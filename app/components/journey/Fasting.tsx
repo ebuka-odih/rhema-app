@@ -263,7 +263,10 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     const renderFeedContent = () => (
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent}>
-            <TouchableOpacity style={styles.postInput}>
+            <TouchableOpacity
+                style={styles.postInput}
+                onPress={() => Alert.alert("Coming Soon", "The community feed for sharing encouragement will be available soon!")}
+            >
                 <View style={styles.avatarMini} />
                 <Text style={styles.postInputText}>Share encouragement...</Text>
             </TouchableOpacity>

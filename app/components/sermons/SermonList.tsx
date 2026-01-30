@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Sermon } from '../../types/sermon';
 import { IconSearch } from '../Icons';
 import { SermonCard } from './SermonCard';
@@ -15,7 +15,10 @@ export const SermonList: React.FC<SermonListProps> = ({ sermons, onSelectSermon,
     <View style={styles.viewContainer}>
         <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Sermons</Text>
-            <TouchableOpacity style={styles.searchButton}>
+            <TouchableOpacity
+                style={styles.searchButton}
+                onPress={() => Alert.alert("Coming Soon", "Search functionality for sermons will be available soon.")}
+            >
                 <IconSearch size={20} color="#FFFFFF" />
             </TouchableOpacity>
         </View>

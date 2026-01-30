@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { IconArrowLeft, IconHelp, IconMessage, IconStar, IconChevronRight } from '../../components/Icons';
 
 const SupportItem: React.FC<{
@@ -7,7 +7,10 @@ const SupportItem: React.FC<{
     title: string;
     description: string;
 }> = ({ icon, title, description }) => (
-    <TouchableOpacity style={styles.supportItem}>
+    <TouchableOpacity
+        style={styles.supportItem}
+        onPress={() => Alert.alert("Coming Soon", `Support for ${title} will be available in a future update.`)}
+    >
         <View style={styles.supportLeft}>
             <View style={styles.supportIconContainer}>{icon}</View>
             <View style={styles.supportTextContainer}>
@@ -65,15 +68,24 @@ const HelpSupportScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 <Text style={styles.sectionHeader}>Important Articles</Text>
                 <View style={styles.card}>
-                    <TouchableOpacity style={styles.articleItem}>
+                    <TouchableOpacity
+                        style={styles.articleItem}
+                        onPress={() => Alert.alert("Coming Soon", "Help articles are being prepared.")}
+                    >
                         <Text style={styles.articleTitle}>Getting started with New Wine</Text>
                     </TouchableOpacity>
                     <View style={styles.divider} />
-                    <TouchableOpacity style={styles.articleItem}>
+                    <TouchableOpacity
+                        style={styles.articleItem}
+                        onPress={() => Alert.alert("Coming Soon", "Help articles are being prepared.")}
+                    >
                         <Text style={styles.articleTitle}>Managing your Pro subscription</Text>
                     </TouchableOpacity>
                     <View style={styles.divider} />
-                    <TouchableOpacity style={styles.articleItem}>
+                    <TouchableOpacity
+                        style={styles.articleItem}
+                        onPress={() => Alert.alert("Coming Soon", "Help articles are being prepared.")}
+                    >
                         <Text style={styles.articleTitle}>How to use the Sermon Recorder</Text>
                     </TouchableOpacity>
                 </View>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 
 interface Devotional {
     id: string;
@@ -20,7 +20,11 @@ export const DevotionalList: React.FC<DevotionalListProps> = ({ devotionals }) =
             contentContainerStyle={styles.devotionalsList}
         >
             {devotionals.map((devotional) => (
-                <TouchableOpacity key={devotional.id} style={styles.devotionalCard}>
+                <TouchableOpacity
+                    key={devotional.id}
+                    style={styles.devotionalCard}
+                    onPress={() => Alert.alert("Coming Soon", `${devotional.title} will be available soon!`)}
+                >
                     <View style={styles.devotionalIcon} />
                     <View style={styles.devotionalInfo}>
                         <Text style={styles.devotionalTitle}>{devotional.title}</Text>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Sermon } from '../../types/sermon';
 import { IconArrowLeft, IconTrash, IconPlay, IconDownload } from '../Icons';
 import { TabNavigator } from './TabNavigator';
@@ -47,7 +47,10 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
                 </TouchableOpacity>
                 <Text style={styles.detailTitle} numberOfLines={1}>{sermon.title}</Text>
                 <View style={styles.detailActions}>
-                    <TouchableOpacity style={styles.detailAction}>
+                    <TouchableOpacity
+                        style={styles.detailAction}
+                        onPress={() => Alert.alert("Coming Soon", "Downloading sermon audio will be available in the future.")}
+                    >
                         <IconDownload size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={onDelete} style={styles.detailAction}>
@@ -62,7 +65,10 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
                         <Text style={styles.playerDate}>{sermon.date}</Text>
                         <Text style={styles.playerDuration}>{sermon.duration}</Text>
                     </View>
-                    <TouchableOpacity style={styles.playButton}>
+                    <TouchableOpacity
+                        style={styles.playButton}
+                        onPress={() => Alert.alert("Coming Soon", "Audio playback for recorded sermons is coming soon!")}
+                    >
                         <IconPlay size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>

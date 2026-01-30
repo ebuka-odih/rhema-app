@@ -11,6 +11,8 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         new: '',
         confirm: '',
     });
+    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [biometricEnabled, setBiometricEnabled] = useState(true);
 
     const handleChangePassword = async () => {
         if (passwords.new !== passwords.confirm) {
@@ -125,7 +127,11 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <Switch
                             trackColor={{ false: '#333333', true: '#E8503A' }}
                             thumbColor="#FFFFFF"
-                            value={false}
+                            value={twoFactorEnabled}
+                            onValueChange={(val) => {
+                                setTwoFactorEnabled(val);
+                                if (val) Alert.alert("Coming Soon", "Two-Factor authentication setup will be available in a future update.");
+                            }}
                         />
                     </View>
                     <View style={styles.divider} />
@@ -140,7 +146,8 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <Switch
                             trackColor={{ false: '#333333', true: '#E8503A' }}
                             thumbColor="#FFFFFF"
-                            value={true}
+                            value={biometricEnabled}
+                            onValueChange={setBiometricEnabled}
                         />
                     </View>
                 </View>
@@ -158,7 +165,13 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.logoutAllButton}>
+                <TouchableOpacity
+                    style={styles.logoutAllButton}
+                    onPress={() => Alert.alert("Confirm Logout", "Are you sure you want to sign out of all other devices?", [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Sign Out", style: "destructive", onPress: () => Alert.alert("Success", "You have been signed out of all other devices.") }
+                    ])}
+                >
                     <Text style={styles.logoutAllButtonText}>Sign Out of All Devices</Text>
                 </TouchableOpacity>
             </ScrollView>

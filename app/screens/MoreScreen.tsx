@@ -162,6 +162,7 @@ const MoreScreen: React.FC = () => {
             <SettingsItem
               icon={<IconStar size={20} color="#FFFFFF" />}
               label="About New Wine"
+              onPress={() => Alert.alert("Coming Soon", "The About section will be available in a future update.")}
             />
           </View>
         </View>
