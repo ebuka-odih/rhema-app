@@ -391,9 +391,10 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       <BibleSearchModal
         visible={showSearchModal}
         currentVersion={version.name}
-        onSelectVerse={(b, c) => {
+        onSelectVerse={(b, c, v) => {
           setBook(b);
           setChapter(c);
+          setSelectedVerses([v]);
           setShowSearchModal(false);
         }}
         onClose={() => setShowSearchModal(false)}

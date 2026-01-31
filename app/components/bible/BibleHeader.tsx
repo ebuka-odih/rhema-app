@@ -23,6 +23,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
     onOpenSearch
 }) => {
     const handlePress = (callback: () => void) => {
+        if (typeof callback !== 'function') return;
         if (Platform.OS !== 'web') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
