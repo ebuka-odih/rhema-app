@@ -157,6 +157,10 @@ const AppContent: React.FC = () => {
                                 }
                             }
                         }}
+                        onNavigateToBible={(book, chapter) => {
+                            setBibleNavState({ book, chapter });
+                            setActiveTab(Tab.BIBLE);
+                        }}
                     />
                 );
                 case Tab.MORE: return <MoreScreen />;

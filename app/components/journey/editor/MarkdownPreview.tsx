@@ -11,7 +11,16 @@ interface MarkdownPreviewProps {
     onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
-export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, interimText, onPress }) => {
+export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, interimText, onPress, onNavigateToBible }) => {
+    const handleReferencePress = (reference: string) => {
+        if (!onNavigateToBible) return;
+        const parts = reference.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+        if (parts) {
+            const [_, book, chapter] = parts;
+            onNavigateToBible(book, parseInt(chapter));
+        }
+    };
+
     if (!content && !interimText) {
         return (
             <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={styles.previewContainer}>
@@ -35,12 +44,15 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, inter
 
                 const isLastLine = i === content.split('\n').length - 1;
                 return (
-                    <Text key={i} style={styles.previewBody}>
-                        {line || ' '}
+                    <View key={i} style={{ marginBottom: 4 }}>
+                        <BibleReferenceHandler
+                            text={line || ' '}
+                            onReferencePress={handleReferencePress}
+                        />
                         {isLastLine && interimText ? (
                             <Text style={styles.interimPreviewText}> {interimText}</Text>
                         ) : null}
-                    </Text>
+                    </View>
                 );
             })}
         </TouchableOpacity>
