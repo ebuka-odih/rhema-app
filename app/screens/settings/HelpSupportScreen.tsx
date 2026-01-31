@@ -62,7 +62,7 @@ const HelpSupportScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <SupportItem
                         icon={<IconStar size={20} color="#FFFFFF" />}
                         title="Submit Feedback"
-                        description="Help us improve New Wine"
+                        description="Help us improve Rhema Daily"
                     />
                 </View>
 
@@ -72,7 +72,7 @@ const HelpSupportScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         style={styles.articleItem}
                         onPress={() => Alert.alert("Coming Soon", "Help articles are being prepared.")}
                     >
-                        <Text style={styles.articleTitle}>Getting started with New Wine</Text>
+                        <Text style={styles.articleTitle}>Getting started with Rhema Daily</Text>
                     </TouchableOpacity>
                     <View style={styles.divider} />
                     <TouchableOpacity

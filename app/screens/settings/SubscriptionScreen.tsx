@@ -39,7 +39,7 @@ const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <View style={styles.proCard}>
                     <View style={styles.cardHeader}>
                         <View>
-                            <Text style={styles.planName}>New Wine Pro</Text>
+                            <Text style={styles.planName}>Rhema Daily Pro</Text>
                             <Text style={styles.planPrice}>$9.99<Text style={styles.planPeriod}> / month</Text></Text>
                         </View>
                         <View style={styles.proLabel}>

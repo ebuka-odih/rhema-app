@@ -89,6 +89,7 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     const [isJoining, setIsJoining] = useState(false);
     const [isGroupPrivate, setIsGroupPrivate] = useState(false);
     const [isCreatingSession, setIsCreatingSession] = useState(false);
+    const [fastSummary, setFastSummary] = useState<{ duration: number, goal: number } | null>(null);
 
     // Data Fetching
     const loadData = useCallback(async () => {
@@ -184,6 +185,14 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
         if (!activeSession) return;
         try {
             await fastingService.endFast(activeSession.id, 'completed');
+
+            // Store results for summary modal before clearing
+            const finalElapsed = elapsedSeconds;
+            setFastSummary({
+                duration: finalElapsed,
+                goal: activeSession.duration_hours
+            });
+
             setIsFasting(false);
             setActiveSession(null);
             setElapsedSeconds(0);
@@ -630,6 +639,57 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                     </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={!!fastSummary}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => {
+                    setFastSummary(null);
+                    loadData();
+                    setMainTab('history');
+                }}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { alignItems: 'center', paddingVertical: 40 }]}>
+                        <View style={styles.summaryIconContainer}>
+                            <IconCheck size={40} color="#FFF" />
+                        </View>
+
+                        <Text style={[styles.modalTitle, { marginBottom: 10 }]}>Fast Completed!</Text>
+                        <Text style={styles.summarySubtext}>Well done! Your spirit is strengthened.</Text>
+
+                        <View style={styles.summaryStatsBox}>
+                            <View style={styles.summaryStat}>
+                                <Text style={styles.summaryStatLabel}>Actual Time</Text>
+                                <Text style={styles.summaryStatValue}>
+                                    {Math.floor((fastSummary?.duration || 0) / 3600)}h {Math.floor(((fastSummary?.duration || 0) % 3600) / 60)}m
+                                </Text>
+                            </View>
+                            <View style={styles.summaryDividerVertical} />
+                            <View style={styles.summaryStat}>
+                                <Text style={styles.summaryStatLabel}>Goal</Text>
+                                <Text style={styles.summaryStatValue}>{fastSummary?.goal}h</Text>
+                            </View>
+                        </View>
+
+                        <Text style={styles.summaryQuote}>
+                            "Man shall not live by bread alone, but by every word that proceeds from the mouth of God."
+                        </Text>
+
+                        <TouchableOpacity
+                            style={[styles.modalButton, { width: '100%', marginTop: 20 }]}
+                            onPress={() => {
+                                setFastSummary(null);
+                                loadData();
+                                setMainTab('history');
+                            }}
+                        >
+                            <Text style={styles.modalButtonText}>View History</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 
@@ -747,4 +807,12 @@ const styles = StyleSheet.create({
     privacyNote: { color: '#666', fontSize: 11, fontStyle: 'italic', marginTop: 8 },
     codeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#333', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, marginTop: 15, gap: 10, alignSelf: 'flex-start' },
     codeBadgeText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 2 },
+    summaryIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8503A', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    summarySubtext: { color: '#888', marginBottom: 30, textAlign: 'center' },
+    summaryStatsBox: { flexDirection: 'row', backgroundColor: '#0D0D0D', borderRadius: 20, padding: 20, width: '100%', marginBottom: 30, alignItems: 'center' },
+    summaryStat: { flex: 1, alignItems: 'center' },
+    summaryStatLabel: { color: '#555', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 5 },
+    summaryStatValue: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+    summaryDividerVertical: { width: 1, height: 30, backgroundColor: '#222' },
+    summaryQuote: { color: '#666', fontStyle: 'italic', textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
 });

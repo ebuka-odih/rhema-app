@@ -14,6 +14,9 @@ import SubscriptionScreen from './settings/SubscriptionScreen';
 import NotificationSettingsScreen from './settings/NotificationSettingsScreen';
 import PrivacyScreen from './settings/PrivacyScreen';
 import HelpSupportScreen from './settings/HelpSupportScreen';
+import AboutScreen from './settings/AboutScreen';
+import TermsOfServiceScreen from './settings/TermsOfServiceScreen';
+import PrivacyPolicyScreen from './settings/PrivacyPolicyScreen';
 
 const SettingsItem: React.FC<{
   icon: React.ReactNode;
@@ -41,12 +44,18 @@ const SettingsItem: React.FC<{
   </TouchableOpacity>
 );
 
-type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'HELP' | 'QR_CODE';
+type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'HELP' | 'ABOUT' | 'QR_CODE' | 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY';
 
 const MoreScreen: React.FC = () => {
   const { data: session } = useSession();
   const user = session?.user;
   const [currentView, setCurrentView] = React.useState<SettingsView>('MAIN');
+  const [previousView, setPreviousView] = React.useState<SettingsView>('MAIN');
+
+  const navigateTo = (view: SettingsView) => {
+    setPreviousView(currentView);
+    setCurrentView(view);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -63,8 +72,11 @@ const MoreScreen: React.FC = () => {
   if (currentView === 'SECURITY') return <SecurityScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'SUBSCRIPTION') return <SubscriptionScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'NOTIFICATIONS') return <NotificationSettingsScreen onBack={() => setCurrentView('MAIN')} />;
-  if (currentView === 'PRIVACY') return <PrivacyScreen onBack={() => setCurrentView('MAIN')} />;
+  if (currentView === 'PRIVACY') return <PrivacyScreen onBack={() => setCurrentView('MAIN')} onToS={() => navigateTo('TERMS_OF_SERVICE')} onPrivacy={() => navigateTo('PRIVACY_POLICY')} />;
   if (currentView === 'HELP') return <HelpSupportScreen onBack={() => setCurrentView('MAIN')} />;
+  if (currentView === 'ABOUT') return <AboutScreen onBack={() => setCurrentView('MAIN')} onToS={() => navigateTo('TERMS_OF_SERVICE')} onPrivacy={() => navigateTo('PRIVACY_POLICY')} />;
+  if (currentView === 'TERMS_OF_SERVICE') return <TermsOfServiceScreen onBack={() => setCurrentView(previousView)} />;
+  if (currentView === 'PRIVACY_POLICY') return <PrivacyPolicyScreen onBack={() => setCurrentView(previousView)} />;
   if (currentView === 'QR_CODE') return <QRCodeScreen onBack={() => setCurrentView('MAIN')} />;
 
   return (
@@ -107,20 +119,20 @@ const MoreScreen: React.FC = () => {
             <SettingsItem
               icon={<IconUser size={20} color="#FFFFFF" />}
               label="Personal Information"
-              onPress={() => setCurrentView('PERSONAL_INFO')}
+              onPress={() => navigateTo('PERSONAL_INFO')}
             />
             <View style={styles.divider} />
             <SettingsItem
               icon={<IconLock size={20} color="#FFFFFF" />}
               label="Password & Security"
-              onPress={() => setCurrentView('SECURITY')}
+              onPress={() => navigateTo('SECURITY')}
             />
             <View style={styles.divider} />
             <SettingsItem
               icon={<IconStar size={20} color="#FFFFFF" />}
               label="Subscription Plan"
               value={user?.is_pro ? 'Monthly Pro' : 'Free'}
-              onPress={() => setCurrentView('SUBSCRIPTION')}
+              onPress={() => navigateTo('SUBSCRIPTION')}
             />
           </View>
         </View>
@@ -132,13 +144,13 @@ const MoreScreen: React.FC = () => {
             <SettingsItem
               icon={<IconBell size={20} color="#FFFFFF" />}
               label="Notifications"
-              onPress={() => setCurrentView('NOTIFICATIONS')}
+              onPress={() => navigateTo('NOTIFICATIONS')}
             />
             <View style={styles.divider} />
             <SettingsItem
               icon={<IconShield size={20} color="#FFFFFF" />}
               label="Privacy & Permissions"
-              onPress={() => setCurrentView('PRIVACY')}
+              onPress={() => navigateTo('PRIVACY')}
             />
           </View>
         </View>
@@ -150,19 +162,19 @@ const MoreScreen: React.FC = () => {
             <SettingsItem
               icon={<IconShare size={20} color="#FFFFFF" />}
               label="Share App"
-              onPress={() => setCurrentView('QR_CODE')}
+              onPress={() => navigateTo('QR_CODE')}
             />
             <View style={styles.divider} />
             <SettingsItem
               icon={<IconHelp size={20} color="#FFFFFF" />}
               label="Help Center"
-              onPress={() => setCurrentView('HELP')}
+              onPress={() => navigateTo('HELP')}
             />
             <View style={styles.divider} />
             <SettingsItem
               icon={<IconStar size={20} color="#FFFFFF" />}
-              label="About New Wine"
-              onPress={() => Alert.alert("Coming Soon", "The About section will be available in a future update.")}
+              label="About Rhema Daily"
+              onPress={() => navigateTo('ABOUT')}
             />
           </View>
         </View>

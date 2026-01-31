@@ -3,7 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Ac
 import { IconArrowLeft, IconShield, IconLock } from '../../components/Icons';
 import { useSession, authService } from '../../services/auth';
 
-const PrivacyScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const PrivacyScreen: React.FC<{
+    onBack: () => void;
+    onToS?: () => void;
+    onPrivacy?: () => void;
+}> = ({ onBack, onToS, onPrivacy }) => {
     const { data: session } = useSession();
     const user = session?.user;
 
@@ -110,10 +114,10 @@ const PrivacyScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </View>
 
                 <View style={styles.footer}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={onPrivacy}>
                         <Text style={styles.linkText}>Privacy Policy</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={onToS}>
                         <Text style={styles.linkText}>Terms of Service</Text>
                     </TouchableOpacity>
                 </View>
