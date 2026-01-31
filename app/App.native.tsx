@@ -212,7 +212,7 @@ const AppContent: React.FC = () => {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.appContainer}>
-                {isPending ? (
+                {isPending || !hasCheckedOnboarding ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <ActivityIndicator size="large" color="#E8503A" />
                     </View>
