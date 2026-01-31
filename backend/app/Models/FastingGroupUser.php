@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class FastingGroupUser extends Model
+class FastingGroupUser extends Pivot
 {
     use HasUuids;
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $table = 'fasting_group_users';
     protected $fillable = [
         'fasting_group_id',
         'user_id',

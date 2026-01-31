@@ -87,6 +87,7 @@ class User extends Authenticatable
     public function fastingGroups()
     {
         return $this->belongsToMany(FastingGroup::class, 'fasting_group_users')
+            ->using(FastingGroupUser::class)
             ->withPivot('role')
             ->withTimestamps();
     }

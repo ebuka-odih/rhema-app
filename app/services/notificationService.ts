@@ -89,27 +89,6 @@ export const notificationService = {
         });
     },
 
-    async sendImmediateDailyAffirmation(scripture: string, affirmation: string) {
-        // Use a random identifier to force a NEW notification every time for testing
-        const identifier = `test-affirmation-${Date.now()}`;
-
-        await Notifications.scheduleNotificationAsync({
-            identifier,
-            content: {
-                title: "🕊️ Daily Affirmation",
-                body: `${affirmation}\n\n${scripture}`,
-                data: { screen: 'HOME' },
-                priority: Notifications.AndroidNotificationPriority.HIGH,
-                sound: true, // Force sound
-            },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                seconds: 2,
-                repeats: false,
-            },
-        });
-    },
-
     async sendImmediateNotification(title: string, body: string) {
         await Notifications.scheduleNotificationAsync({
             content: {

@@ -80,8 +80,8 @@ export const fastingService = {
                     id: g.id.toString(),
                     name: g.name,
                     description: g.description,
-                    members: g.members_count || 0,
-                    joined: false, // Will be updated if we check user's groups
+                    members: g.members_count ?? (g.members?.length || 0),
+                    joined: false,
                     code: g.code
                 }));
             }
@@ -106,7 +106,7 @@ export const fastingService = {
                     id: g.id.toString(),
                     name: g.name,
                     description: g.description,
-                    members: g.members_count || 0,
+                    members: g.members_count ?? (g.members?.length || 0),
                     joined: true,
                     code: g.code
                 }));
@@ -139,7 +139,7 @@ export const fastingService = {
             id: g.id.toString(),
             name: g.name,
             description: g.description,
-            members: 1,
+            members: g.members_count ?? (g.members?.length || 1),
             joined: true,
             code: g.code
         };
@@ -167,7 +167,7 @@ export const fastingService = {
             id: g.id.toString(),
             name: g.name,
             description: g.description,
-            members: g.members_count || 0,
+            members: g.members_count ?? (g.members?.length || 0),
             joined: true,
             code: g.code
         };

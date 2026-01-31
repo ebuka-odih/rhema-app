@@ -96,11 +96,13 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                 fastingService.getUserGroups()
             ]);
 
-            if (session) {
+            if (session && session.start_time) {
                 setActiveSession(session);
                 setIsFasting(true);
-                const start = new Date(session.start_time).getTime();
-                setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+                // Robust date parsing to avoid NaN on some platforms
+                const startTimeStr = session.start_time.includes(' ') ? session.start_time.replace(' ', 'T') : session.start_time;
+                const start = new Date(startTimeStr).getTime();
+                setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
             }
 
             const merged = allGroups.map(g => ({
@@ -121,11 +123,12 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     const fetchActiveFast = useCallback(async () => {
         const session = await fastingService.getActiveSession();
-        if (session) {
+        if (session && session.start_time) {
             setActiveSession(session);
             setIsFasting(true);
-            const start = new Date(session.start_time).getTime();
-            setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+            const startTimeStr = session.start_time.includes(' ') ? session.start_time.replace(' ', 'T') : session.start_time;
+            const start = new Date(startTimeStr).getTime();
+            setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
         }
     }, []);
 
