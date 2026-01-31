@@ -100,7 +100,8 @@ export const fastingService = {
                     description: g.description,
                     members: g.members_count ?? (g.members?.length || 0),
                     joined: false,
-                    code: g.code
+                    code: g.code,
+                    is_admin: g.is_admin || false
                 }));
             }
         } catch (e) {
@@ -126,7 +127,8 @@ export const fastingService = {
                     description: g.description,
                     members: g.members_count ?? (g.members?.length || 0),
                     joined: true,
-                    code: g.code
+                    code: g.code,
+                    is_admin: g.is_admin || false
                 }));
             }
         } catch (e) {
@@ -159,7 +161,8 @@ export const fastingService = {
             description: g.description,
             members: g.members_count ?? (g.members?.length || 1),
             joined: true,
-            code: g.code
+            code: g.code,
+            is_admin: true
         };
     },
 
@@ -187,7 +190,8 @@ export const fastingService = {
             description: g.description,
             members: g.members_count ?? (g.members?.length || 0),
             joined: true,
-            code: g.code
+            code: g.code,
+            is_admin: g.is_admin || false
         };
     },
 
@@ -203,6 +207,22 @@ export const fastingService = {
 
         if (!response.ok) {
             throw new Error('Failed to leave group');
+        }
+    },
+
+    async deleteGroup(groupId: string): Promise<void> {
+        const token = await authService.getToken();
+        const response = await fetch(`${API_BASE_URL}groups/${groupId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to delete group');
         }
     }
 };

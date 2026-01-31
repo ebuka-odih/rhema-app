@@ -79,6 +79,11 @@ class User extends Authenticatable
         return $this->hasMany(BibleHighlight::class);
     }
 
+    public function bibleBookmarks()
+    {
+        return $this->hasMany(BibleBookmark::class);
+    }
+
     public function fastingSessions()
     {
         return $this->hasMany(FastingSession::class);

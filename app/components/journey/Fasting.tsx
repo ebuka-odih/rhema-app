@@ -254,6 +254,17 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
         }
     };
 
+    const handleDeleteGroup = async (groupId: string) => {
+        try {
+            await fastingService.deleteGroup(groupId);
+            setSelectedGroup(null);
+            loadData();
+            Alert.alert('Success', 'Group deleted permanently');
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
     const formatTime = (totalSeconds: number) => {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -264,17 +275,7 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     const timerDisplay = formatTime(elapsedSeconds);
 
     // Mock Feed
-    const groupFeed: FeedItem[] = [
-        {
-            id: '1',
-            user: { name: 'Sarah Jenkins', avatar_color: '#A855F7' },
-            type: 'scripture',
-            content: '“Is not this the kind of fasting I have chosen: to loose the chains of injustice and untie the cords of the yoke...”',
-            meta: 'Isaiah 58:6',
-            time: '2h ago',
-            likes: 24
-        }
-    ];
+    const groupFeed: FeedItem[] = [];
 
     // --- Render Functions ---
 
@@ -308,15 +309,31 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                 <Text style={styles.infoText}>Manage member roles, group privacy, and community guidelines (Coming Soon).</Text>
             </View>
 
-            <TouchableOpacity
-                style={styles.leaveButton}
-                onPress={() => Alert.alert('Leave Group', 'Are you sure?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Leave', style: 'destructive', onPress: () => handleLeaveGroup(group.id) }
-                ])}
-            >
-                <Text style={styles.leaveButtonText}>Leave Group</Text>
-            </TouchableOpacity>
+            {group.is_admin ? (
+                <TouchableOpacity
+                    style={[styles.leaveButton, { borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                    onPress={() => Alert.alert(
+                        'Delete Group',
+                        'Are you sure? This action is permanent and will remove all members.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete permanently', style: 'destructive', onPress: () => handleDeleteGroup(group.id) }
+                        ]
+                    )}
+                >
+                    <Text style={styles.leaveButtonText}>Delete Group</Text>
+                </TouchableOpacity>
+            ) : (
+                <TouchableOpacity
+                    style={styles.leaveButton}
+                    onPress={() => Alert.alert('Leave Group', 'Are you sure?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Leave', style: 'destructive', onPress: () => handleLeaveGroup(group.id) }
+                    ])}
+                >
+                    <Text style={styles.leaveButtonText}>Leave Group</Text>
+                </TouchableOpacity>
+            )}
         </ScrollView>
     );
 

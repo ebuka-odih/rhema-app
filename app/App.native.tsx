@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
     const [previousTab, setPreviousTab] = useState<Tab | null>(null);
     const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
     const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
+    const [journalInitialData, setJournalInitialData] = useState<{ title: string; content: string } | null>(null);
 
     const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
@@ -117,10 +118,19 @@ const AppContent: React.FC = () => {
                     <BibleScreen
                         initialBook={bibleNavState.book}
                         initialChapter={bibleNavState.chapter}
-                        onNavigateNote={() => {
+                        onNavigateNote={(content) => {
                             setPreviousTab(Tab.BIBLE);
                             setActiveTab(Tab.JOURNEY);
                             setIsJournalEditorOpen(true);
+                            if (content) {
+                                // We need a way to pass this to JourneyScreen. 
+                                // Since JourneyScreen manages its own editor state, 
+                                // we'll use states in AppContent and pass them.
+                                setJournalInitialData({
+                                    title: 'Bible Study Note',
+                                    content: content
+                                });
+                            }
                         }}
                     />
                 );
@@ -136,11 +146,15 @@ const AppContent: React.FC = () => {
                     <JourneyScreen
                         onNavigateGlobal={(screen) => setActiveTab(screen as Tab)}
                         initialView={isJournalEditorOpen ? 'journal_editor' : 'home'}
+                        initialData={journalInitialData}
                         onEditorStateChange={(isOpen) => {
                             setIsJournalEditorOpen(isOpen);
-                            if (!isOpen && previousTab === Tab.BIBLE) {
-                                setActiveTab(Tab.BIBLE);
-                                setPreviousTab(null);
+                            if (!isOpen) {
+                                setJournalInitialData(null);
+                                if (previousTab === Tab.BIBLE) {
+                                    setActiveTab(Tab.BIBLE);
+                                    setPreviousTab(null);
+                                }
                             }
                         }}
                     />

@@ -18,6 +18,7 @@ interface JourneyHomeProps {
   onRemovePrayer: (id: string) => void;
   journalEntries: JournalEntry[];
   activePrayers: Prayer[];
+  bookmarks: any[];
 }
 
 const SwipeablePrayerItem: React.FC<{
@@ -149,9 +150,10 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   onTogglePrayerStatus,
   onRemovePrayer,
   journalEntries,
-  activePrayers
+  activePrayers,
+  bookmarks
 }) => {
-  const [activeTab, setActiveTab] = React.useState<'prayers' | 'reflections'>('reflections');
+  const [activeTab, setActiveTab] = React.useState<'prayers' | 'reflections' | 'bookmarks'>('reflections');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -250,9 +252,16 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
           <Text style={[styles.tabText, activeTab === 'prayers' && styles.activeTabText]}>Prayers</Text>
           {activeTab === 'prayers' && <View style={styles.activeTabIndicator} />}
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'bookmarks' && styles.activeTab]}
+          onPress={() => setActiveTab('bookmarks')}
+        >
+          <Text style={[styles.tabText, activeTab === 'bookmarks' && styles.activeTabText]}>Bookmarks</Text>
+          {activeTab === 'bookmarks' && <View style={styles.activeTabIndicator} />}
+        </TouchableOpacity>
       </View>
 
-      {activeTab === 'prayers' ? (
+      {activeTab === 'prayers' && (
         <View style={styles.tabContent}>
           {/* Active Prayers (Todo Style) */}
           <View style={styles.prayerListContainer}>
@@ -280,7 +289,9 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
             )}
           </View>
         </View>
-      ) : (
+      )}
+
+      {activeTab === 'reflections' && (
         <View style={styles.tabContent}>
           {/* Recent Reflections */}
           <View style={styles.section}>
@@ -315,6 +326,43 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
                       </Text>
                     </View>
                   </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {activeTab === 'bookmarks' && (
+        <View style={styles.tabContent}>
+          {/* Bookmarked Verses */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Bookmarked Verses</Text>
+            </View>
+
+            {bookmarks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <IconBell size={32} color="rgba(255, 255, 255, 0.1)" />
+                <Text style={styles.emptyText}>No bookmarked verses yet</Text>
+              </View>
+            ) : (
+              <View style={styles.entriesList}>
+                {bookmarks.map((bookmark, idx) => (
+                  <View
+                    key={bookmark.id || idx}
+                    style={[
+                      styles.entryItem,
+                      idx === bookmarks.length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                  >
+                    <Text style={styles.entryTitle}>
+                      {bookmark.book} {bookmark.chapter}:{bookmark.verse}
+                    </Text>
+                    <Text style={[styles.entryPreview, { marginTop: 4 }]} numberOfLines={3}>
+                      {bookmark.text || 'Loading verse text...'}
+                    </Text>
+                  </View>
                 ))}
               </View>
             )}

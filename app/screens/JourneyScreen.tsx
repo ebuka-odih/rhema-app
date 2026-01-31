@@ -19,12 +19,16 @@ interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
   onEditorStateChange?: (isOpen: boolean) => void;
   initialView?: JourneyView;
+  initialData?: { title: string; content: string } | null;
+  onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
 const JourneyScreen: React.FC<JourneyScreenProps> = ({
   onNavigateGlobal,
   onEditorStateChange,
-  initialView = 'home'
+  initialView = 'home',
+  initialData,
+  onNavigateToBible
 }) => {
   const [currentView, setCurrentView] = useState<JourneyView>(initialView);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
@@ -37,12 +41,22 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
 
   const [reflections, setReflections] = useState<JournalEntry[]>([]);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Notify parent when editor opens/closes
   useEffect(() => {
     onEditorStateChange?.(currentView === 'journal_editor');
   }, [currentView, onEditorStateChange]);
+
+  // Handle initialData for editor
+  useEffect(() => {
+    if (initialData) {
+      setJournalTitle(initialData.title);
+      setJournalContent(initialData.content);
+      setCurrentView('journal_editor');
+    }
+  }, [initialData]);
 
   // Fetch Data
   useEffect(() => {
@@ -53,7 +67,8 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
     setIsLoading(true);
     await Promise.all([
       fetchReflections(),
-      fetchPrayers()
+      fetchPrayers(),
+      fetchBookmarks()
     ]);
     setIsLoading(false);
   };
@@ -112,6 +127,16 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
   };
 
 
+
+  const fetchBookmarks = async () => {
+    try {
+      const { bibleService } = await import('../services/bibleService');
+      const data = await bibleService.getBookmarks();
+      setBookmarks(data);
+    } catch (err) {
+      console.error('Fetch bookmarks error:', err);
+    }
+  };
 
   const handleSelectEntry = (entry: JournalEntry) => {
     setSelectedEntry(entry);
@@ -395,6 +420,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
           onRemovePrayer={handleRemovePrayer}
           journalEntries={reflections}
           activePrayers={prayers}
+          bookmarks={bookmarks}
         />
       )}
 
@@ -417,6 +443,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
           setTitle={setJournalTitle}
           content={journalContent}
           setContent={setJournalContent}
+          onNavigateToBible={onNavigateToBible}
         />
       )}
 

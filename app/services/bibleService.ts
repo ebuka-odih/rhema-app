@@ -316,5 +316,66 @@ export const bibleService = {
             console.error('getHighlightsForChapter error:', err);
             return [];
         }
+    },
+
+    // Bookmarks
+    async getBookmarks() {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}bible/bookmarks`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                }
+            });
+            if (!response.ok) throw new Error('Failed to fetch bookmarks');
+            return await response.json();
+        } catch (err) {
+            console.error('getBookmarks error:', err);
+            return [];
+        }
+    },
+
+    async toggleBookmark(bookmark: { version_id: string; book: string; chapter: number; verse: number; text?: string }) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}bible/bookmarks/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bookmark),
+            });
+            if (!response.ok) throw new Error('Failed to toggle bookmark');
+            return await response.json();
+        } catch (err) {
+            console.error('toggleBookmark error:', err);
+            return null;
+        }
+    },
+
+    async getBookmarksForChapter(version_id: string, book: string, chapter: number) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(
+                `${API_BASE_URL}bible/bookmarks/chapter?version_id=${encodeURIComponent(version_id)}&book=${encodeURIComponent(book)}&chapter=${chapter}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    }
+                }
+            );
+            if (!response.ok) throw new Error('Failed to fetch bookmarks');
+            return await response.json();
+        } catch (err) {
+            console.error('getBookmarksForChapter error:', err);
+            return [];
+        }
     }
 };

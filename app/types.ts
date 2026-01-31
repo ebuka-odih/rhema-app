@@ -20,6 +20,7 @@ export interface FastingGroup {
   joined: boolean;
   code?: string;
   created_by?: string;
+  is_admin?: boolean;
 }
 
 export interface FastingSession {
@@ -72,6 +73,17 @@ export interface BibleHighlight {
   verse: number;
   color: string;
   note?: string;
+}
+
+export interface BibleBookmark {
+  id?: string;
+  user_id?: string;
+  version_id: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  text?: string;
+  created_at?: string;
 }
 
 export interface ActivityItem {

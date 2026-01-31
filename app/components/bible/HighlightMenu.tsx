@@ -14,14 +14,20 @@ export const HIGHLIGHT_COLORS = [
 
 interface HighlightMenuProps {
     visible: boolean;
+    isBookmarked: boolean;
     onSelectColor: (color: string) => void;
+    onBookmark: () => void;
+    onComment: () => void;
     onRemove: () => void;
     onClose: () => void;
 }
 
 export const HighlightMenu: React.FC<HighlightMenuProps> = ({
     visible,
+    isBookmarked,
     onSelectColor,
+    onBookmark,
+    onComment,
     onRemove,
     onClose
 }) => {
@@ -101,12 +107,19 @@ export const HighlightMenu: React.FC<HighlightMenuProps> = ({
                         <IconShare size={20} color="#FFFFFF" />
                     </Pressable>
                     <Pressable
-                        style={({ pressed }) => [styles.actionButton, pressed && styles.pressedAction]}
-                        onPress={() => handleAction(() => onSelectColor('#E8503A'), Haptics.ImpactFeedbackStyle.Medium)}
+                        style={({ pressed }) => [
+                            styles.actionButton,
+                            isBookmarked && styles.activeActionButton,
+                            pressed && styles.pressedAction
+                        ]}
+                        onPress={() => handleAction(onBookmark, Haptics.ImpactFeedbackStyle.Medium)}
                     >
-                        <IconStar size={20} color="#FFFFFF" />
+                        <IconStar size={20} color={isBookmarked ? '#FDE047' : '#FFFFFF'} />
                     </Pressable>
-                    <Pressable style={({ pressed }) => [styles.actionButton, pressed && styles.pressedAction]}>
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, pressed && styles.pressedAction]}
+                        onPress={() => handleAction(onComment, Haptics.ImpactFeedbackStyle.Medium)}
+                    >
                         <IconComment size={20} color="#FFFFFF" />
                     </Pressable>
                 </View>
@@ -188,5 +201,9 @@ const styles = StyleSheet.create({
     pressedAction: {
         backgroundColor: '#333333',
         transform: [{ scale: 0.95 }],
+    },
+    activeActionButton: {
+        borderColor: '#FDE047',
+        backgroundColor: 'rgba(253, 224, 71, 0.1)',
     },
 });

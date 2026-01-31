@@ -14,12 +14,12 @@ import { FloatingControls } from '../components/bible/FloatingControls';
 import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
 import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { useSession } from '../services/auth';
-import { BibleHighlight } from '../types';
+import { BibleHighlight, BibleBookmark } from '../types';
 
 interface BibleScreenProps {
   initialBook?: string;
   initialChapter?: number;
-  onNavigateNote?: () => void;
+  onNavigateNote?: (content?: string) => void;
 }
 
 const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, onNavigateNote }) => {
@@ -48,6 +48,7 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
 
   // Highlighting State
   const [highlights, setHighlights] = useState<BibleHighlight[]>([]);
+  const [bookmarks, setBookmarks] = useState<BibleBookmark[]>([]);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
 
   // Persistence Key
@@ -109,6 +110,11 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           setCurrentBookData(bookData);
           setBibleData(initialData);
           setHighlights(initialHighlights || []);
+
+          // Fetch bookmarks in background
+          bibleService.getBookmarksForChapter(initialVersion.id, currentBook, currentChapterNum)
+            .then(setBookmarks);
+
           setLoading(false);
         }
       } catch (e) {
@@ -153,12 +159,14 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         setHighlights(chapterHighlights || []);
       } else {
         setLoading(true);
-        const [chapterData, chapterHighlights] = await Promise.all([
+        const [chapterData, chapterHighlights, chapterBookmarks] = await Promise.all([
           bibleService.getChapter(version.id, book, chapter),
-          bibleService.getHighlightsForChapter(version.id, book, chapter)
+          bibleService.getHighlightsForChapter(version.id, book, chapter),
+          bibleService.getBookmarksForChapter(version.id, book, chapter)
         ]);
         setBibleData(chapterData);
         setHighlights(chapterHighlights || []);
+        setBookmarks(chapterBookmarks || []);
         setLoading(false);
       }
       setSelectedVerses([]); // Clear selection
@@ -298,6 +306,74 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
     }
   };
 
+  const handleBookmark = async () => {
+    if (selectedVerses.length === 0) return;
+
+    const versesToToggle = [...selectedVerses];
+
+    // Toggle state optimistically
+    // We'll just toggle the first one for simplicity of UI state if multiple selected, 
+    // or toggle all to "bookmarked" if any are unbookmarked.
+    const anyUnbookmarked = versesToToggle.some(v => !bookmarks.some(b => b.verse === v));
+
+    setBookmarks(prev => {
+      if (anyUnbookmarked) {
+        const newBookmarks = versesToToggle
+          .filter(v => !prev.some(b => b.verse === v))
+          .map(v => ({
+            version_id: version.id,
+            book,
+            chapter,
+            verse: v,
+            text: bibleData?.verses[v.toString()] || ''
+          }));
+        return [...prev, ...newBookmarks];
+      } else {
+        return prev.filter(b => !versesToToggle.includes(b.verse));
+      }
+    });
+
+    try {
+      await Promise.all(versesToToggle.map(v =>
+        bibleService.toggleBookmark({
+          version_id: version.id,
+          book,
+          chapter,
+          verse: v,
+          text: bibleData?.verses[v.toString()] || ''
+        })
+      ));
+
+      const freshBookmarks = await bibleService.getBookmarksForChapter(version.id, book, chapter);
+      setBookmarks(freshBookmarks);
+      setSelectedVerses([]);
+    } catch (err) {
+      console.error('Bookmark toggle error:', err);
+    }
+  };
+
+  const handleComment = () => {
+    if (selectedVerses.length === 0 || !onNavigateNote) return;
+
+    const sorted = [...selectedVerses].sort((a, b) => a - b);
+    let reference = '';
+
+    if (sorted.length === 1) {
+      reference = `${book} ${chapter}:${sorted[0]}`;
+    } else {
+      // Check if contiguous
+      const isContiguous = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+      if (isContiguous) {
+        reference = `${book} ${chapter}:${sorted[0]}-${sorted[sorted.length - 1]}`;
+      } else {
+        reference = `${book} ${chapter}:${sorted.join(', ')}`;
+      }
+    }
+
+    onNavigateNote(reference);
+    setSelectedVerses([]);
+  };
+
   return (
     <View style={styles.container}>
       <BibleHeader
@@ -345,7 +421,10 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
 
       <HighlightMenu
         visible={selectedVerses.length > 0}
+        isBookmarked={selectedVerses.length > 0 && selectedVerses.every(v => bookmarks.some(b => b.verse === v))}
         onSelectColor={handleHighlight}
+        onBookmark={handleBookmark}
+        onComment={handleComment}
         onRemove={handleRemoveHighlight}
         onClose={() => setSelectedVerses([])}
       />

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\BibleHighlightController;
 use App\Http\Controllers\Api\TranscriptionController;
 use App\Http\Controllers\Api\FastingController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\BibleBookmarkController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -50,6 +51,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bible/highlights', [BibleHighlightController::class, 'store']);
     Route::delete('/bible/highlights/{id}', [BibleHighlightController::class, 'destroy']);
     Route::post('/bible/highlights/remove', [BibleHighlightController::class, 'deleteByVerse']);
+    
+    // Bible Bookmarks
+    Route::get('/bible/bookmarks', [BibleBookmarkController::class, 'index']);
+    Route::get('/bible/bookmarks/chapter', [BibleBookmarkController::class, 'getForChapter']);
+    Route::post('/bible/bookmarks/toggle', [BibleBookmarkController::class, 'toggle']);
+
     Route::post('/bible/daily-verse/interact', [BibleController::class, 'interact']);
     Route::post('/transcribe', [TranscriptionController::class, 'transcribe']);
 

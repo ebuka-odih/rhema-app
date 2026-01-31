@@ -2,10 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { styles } from '../JournalEditor.styles';
 
+import { BibleReferenceHandler } from '../../bible/BibleReferenceHandler';
+
 interface MarkdownPreviewProps {
     content: string;
     interimText?: string;
     onPress: () => void;
+    onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
 export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, interimText, onPress }) => {

@@ -23,6 +23,7 @@ interface JournalEditorProps {
     setTitle: (title: string) => void;
     content: string;
     setContent: (content: string | ((prev: string) => string)) => void;
+    onNavigateToBible?: (book: string, chapter: number) => void;
 }
 
 const CATEGORIES = ['Reflections', 'Prayers', 'Bible Study', 'Gratitude', 'Sermon Notes', 'Others'];
@@ -36,6 +37,7 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
     setTitle,
     content,
     setContent,
+    onNavigateToBible
 }) => {
     const [activeCategory, setActiveCategory] = useState(selectedEntry?.category || 'Reflections');
     const [isEditing, setIsEditing] = useState(!selectedEntry);
@@ -154,6 +156,7 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                             content={content}
                             interimText={interimText}
                             onPress={() => setIsEditing(true)}
+                            onNavigateToBible={onNavigateToBible}
                         />
                     ) : (
                         <View style={{ flex: 1 }}>
