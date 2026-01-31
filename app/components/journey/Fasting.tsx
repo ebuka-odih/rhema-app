@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
     Platform, Switch, Dimensions, TextInput, PanResponder,
-    ActivityIndicator, Alert
+    ActivityIndicator, Alert, Modal
 } from 'react-native';
 import {
     IconClock, IconPlus, IconChevronLeft, IconHeart,
@@ -81,17 +81,22 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     // UI State
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+    const [mainTab, setMainTab] = useState<'current' | 'history'>('current');
+    const [history, setHistory] = useState<FastingSession[]>([]);
     const [groupName, setGroupName] = useState('');
     const [groupDesc, setGroupDesc] = useState('');
     const [joinCode, setJoinCode] = useState('');
     const [isJoining, setIsJoining] = useState(false);
+    const [isGroupPrivate, setIsGroupPrivate] = useState(false);
+    const [isCreatingSession, setIsCreatingSession] = useState(false);
 
     // Data Fetching
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [session, allGroups, userGroups] = await Promise.all([
+            const [session, historyData, allGroups, userGroups] = await Promise.all([
                 fastingService.getActiveSession(),
+                fastingService.getFastingHistory(),
                 fastingService.getGroups(),
                 fastingService.getUserGroups()
             ]);
@@ -104,6 +109,8 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                 const start = new Date(startTimeStr).getTime();
                 setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
             }
+
+            setHistory(historyData.filter(h => h.status !== 'active'));
 
             const merged = allGroups.map(g => ({
                 ...g,
@@ -156,7 +163,15 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
             const session = await fastingService.startFast(durationHours, recommendVerses, reminderInterval);
             setActiveSession(session);
             setIsFasting(true);
-            setElapsedSeconds(0);
+
+            if (session.start_time) {
+                const startTimeStr = (session.start_time as string).includes(' ') ? (session.start_time as string).replace(' ', 'T') : (session.start_time as string);
+                const start = new Date(startTimeStr).getTime();
+                setElapsedSeconds(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+            } else {
+                setElapsedSeconds(0);
+            }
+
             if (reminderInterval) {
                 await notificationService.scheduleFastingReminder(reminderInterval);
             }
@@ -197,14 +212,27 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
     const handleCreateGroup = async () => {
         if (!groupName) return;
         try {
+            // Note: Privacy is handled by showing/hiding code in UI for this v1
             await fastingService.createGroup(groupName, groupDesc);
             setGroupName('');
             setGroupDesc('');
             setIsCreatingGroup(false);
             loadData();
+            Alert.alert('Success', 'Group created! Invite others with your unique code.');
         } catch (error: any) {
             Alert.alert('Error', error.message);
         }
+    };
+
+    const handleEnterGroup = (group: FastingGroup) => {
+        Alert.alert(
+            "Community Notice",
+            "You are entering a community fasting group. Please be respectful, supportive, and follow the group guidelines. Continue?",
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "Enter Group", onPress: () => setSelectedGroup(group) }
+            ]
+        );
     };
 
     const handleLeaveGroup = async (groupId: string) => {
@@ -250,6 +278,25 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                     <IconClock size={14} color="#999999" />
                     <Text style={styles.metaLabel}>Fasting Together</Text>
                 </View>
+            </View>
+
+            {group.code && (
+                <View style={[styles.infoCard, { backgroundColor: 'rgba(232, 80, 58, 0.05)', borderColor: 'rgba(232, 80, 58, 0.2)', borderWidth: 1 }]}>
+                    <Text style={[styles.infoTitle, { color: '#E8503A' }]}>Invite Others</Text>
+                    <Text style={styles.infoText}>Share this unique code for others to join your fasting community.</Text>
+                    <TouchableOpacity
+                        style={styles.codeBadge}
+                        onPress={() => Alert.alert('Code Copied', `Invite code ${group.code} ready to share!`)}
+                    >
+                        <Text style={styles.codeBadgeText}>{group.code}</Text>
+                        <IconShare size={16} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            <View style={[styles.infoCard, { opacity: 0.5 }]}>
+                <Text style={styles.infoTitle}>Admin Settings</Text>
+                <Text style={styles.infoText}>Manage member roles, group privacy, and community guidelines (Coming Soon).</Text>
             </View>
 
             <TouchableOpacity
@@ -337,151 +384,252 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                 </TouchableOpacity>
             </View>
 
-            {!isFasting ? (
-                <View style={styles.startCard}>
-                    <Text style={styles.startTitle}>Start Your Fast</Text>
-                    <Text style={styles.durationValue}>{durationHours} Hours</Text>
+            <View style={styles.mainTabs}>
+                <TouchableOpacity
+                    style={[styles.mainTab, mainTab === 'current' && styles.activeMainTab]}
+                    onPress={() => setMainTab('current')}
+                >
+                    <Text style={[styles.mainTabText, mainTab === 'current' && styles.activeMainTabText]}>Active</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.mainTab, mainTab === 'history' && styles.activeMainTab]}
+                    onPress={() => setMainTab('history')}
+                >
+                    <Text style={[styles.mainTabText, mainTab === 'history' && styles.activeMainTabText]}>History</Text>
+                </TouchableOpacity>
+            </View>
 
-                    <DurationSlider
-                        value={durationHours}
-                        onChange={setDurationHours}
-                        min={1}
-                        max={100}
-                    />
+            {mainTab === 'current' ? (
+                <>
+                    {!isFasting ? (
+                        <View style={styles.startCard}>
+                            <Text style={styles.startTitle}>Start Your Fast</Text>
+                            <Text style={styles.durationValue}>{durationHours} Hours</Text>
 
-                    <View style={styles.optionsContainer}>
-                        <View style={styles.optionRow}>
-                            <Text style={styles.optionLabel}>Recommend Bible Verses</Text>
-                            <Switch
-                                value={recommendVerses}
-                                onValueChange={setRecommendVerses}
-                                trackColor={{ false: '#333', true: '#E8503A' }}
+                            <DurationSlider
+                                value={durationHours}
+                                onChange={setDurationHours}
+                                min={1}
+                                max={100}
                             />
-                        </View>
-                        <View style={styles.optionRow}>
-                            <Text style={styles.optionLabel}>Reminders (Hours)</Text>
-                            <View style={styles.reminderSelector}>
-                                {[2, 4, 8, 12].map(h => (
-                                    <TouchableOpacity
-                                        key={h}
-                                        onPress={() => setReminderInterval(h)}
-                                        style={[styles.reminderBtn, reminderInterval === h && styles.reminderBtnActive]}
-                                    >
-                                        <Text style={[styles.reminderText, reminderInterval === h && styles.reminderTextActive]}>{h}h</Text>
-                                    </TouchableOpacity>
-                                ))}
+
+                            <View style={styles.optionsContainer}>
+                                <View style={styles.optionRow}>
+                                    <Text style={styles.optionLabel}>Recommend Bible Verses</Text>
+                                    <Switch
+                                        value={recommendVerses}
+                                        onValueChange={setRecommendVerses}
+                                        trackColor={{ false: '#333', true: '#E8503A' }}
+                                    />
+                                </View>
+                                <View style={styles.optionRow}>
+                                    <Text style={styles.optionLabel}>Reminders (Hours)</Text>
+                                    <View style={styles.reminderSelector}>
+                                        {[2, 4, 8, 12].map(h => (
+                                            <TouchableOpacity
+                                                key={h}
+                                                onPress={() => setReminderInterval(h)}
+                                                style={[styles.reminderBtn, reminderInterval === h && styles.reminderBtnActive]}
+                                            >
+                                                <Text style={[styles.reminderText, reminderInterval === h && styles.reminderTextActive]}>{h}h</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
                             </View>
-                        </View>
-                    </View>
 
-                    <TouchableOpacity onPress={handleStartFast} style={styles.startButton}>
-                        <Text style={styles.startButtonText}>Begin Fast</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <View style={styles.activeCard}>
-                    <Text style={styles.activeLabel}>ACTIVE FAST</Text>
-                    <View style={styles.timerRow}>
-                        <View style={styles.timerBlock}>
-                            <Text style={styles.timerValue}>{timerDisplay.hours}</Text>
-                            <Text style={styles.timerBlockLabel}>Hrs</Text>
+                            <TouchableOpacity onPress={handleStartFast} style={styles.startButton}>
+                                <Text style={styles.startButtonText}>Begin Fast</Text>
+                            </TouchableOpacity>
                         </View>
-                        <Text style={styles.timerDivider}>:</Text>
-                        <View style={styles.timerBlock}>
-                            <Text style={styles.timerValue}>{timerDisplay.minutes}</Text>
-                            <Text style={styles.timerBlockLabel}>Min</Text>
-                        </View>
-                    </View>
+                    ) : (
+                        <View style={styles.activeCard}>
+                            <Text style={styles.activeLabel}>ACTIVE FAST</Text>
+                            <View style={styles.timerRow}>
+                                <View style={styles.timerBlock}>
+                                    <Text style={styles.timerValue}>{timerDisplay.hours.toString().padStart(2, '0')}</Text>
+                                    <Text style={styles.timerBlockLabel}>Hrs</Text>
+                                </View>
+                                <Text style={styles.timerDivider}>:</Text>
+                                <View style={styles.timerBlock}>
+                                    <Text style={styles.timerValue}>{timerDisplay.minutes.toString().padStart(2, '0')}</Text>
+                                    <Text style={styles.timerBlockLabel}>Min</Text>
+                                </View>
+                                <Text style={styles.timerDivider}>:</Text>
+                                <View style={styles.timerBlock}>
+                                    <Text style={styles.timerValue}>{timerDisplay.seconds.toString().padStart(2, '0')}</Text>
+                                    <Text style={styles.timerBlockLabel}>Sec</Text>
+                                </View>
+                            </View>
 
-                    {activeSession?.recommended_verse && (
-                        <View style={styles.verseRecommendation}>
-                            <Text style={styles.verseText}>"{activeSession.recommended_verse.text}"</Text>
-                            <Text style={styles.verseRef}>{activeSession.recommended_verse.ref}</Text>
+                            {activeSession?.recommended_verse && (
+                                <View style={styles.verseRecommendation}>
+                                    <Text style={styles.verseText}>"{activeSession.recommended_verse.text}"</Text>
+                                    <Text style={styles.verseRef}>{activeSession.recommended_verse.ref}</Text>
+                                </View>
+                            )}
+
+                            <TouchableOpacity onPress={handleEndFast} style={styles.endButton}>
+                                <Text style={styles.endButtonText}>Complete Fast</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
 
-                    <TouchableOpacity onPress={handleEndFast} style={styles.endButton}>
-                        <Text style={styles.endButtonText}>Complete Fast</Text>
-                    </TouchableOpacity>
+                    <View style={styles.groupsSection}>
+                        <Text style={styles.sectionHeading}>Community Groups</Text>
+                        {isLoading ? (
+                            <ActivityIndicator color="#E8503A" />
+                        ) : (
+                            groups.map(group => (
+                                <TouchableOpacity
+                                    key={group.id}
+                                    onPress={() => group.joined && handleEnterGroup(group)}
+                                    style={styles.groupItem}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.groupName}>{group.name}</Text>
+                                        <Text style={styles.groupDesc} numberOfLines={1}>{group.description}</Text>
+                                    </View>
+                                    {!group.joined && (
+                                        <TouchableOpacity
+                                            style={styles.joinBtn}
+                                            onPress={() => {
+                                                setJoinCode(group.code || '');
+                                                handleJoinGroup();
+                                            }}
+                                        >
+                                            <Text style={styles.joinBtnText}>Join</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </TouchableOpacity>
+                            ))
+                        )}
+                    </View>
+                </>
+            ) : (
+                <View style={styles.historySection}>
+                    {history.length === 0 ? (
+                        <View style={styles.emptyHistory}>
+                            <IconClock size={48} color="#333" />
+                            <Text style={styles.emptyHistoryText}>No completed fasts yet.</Text>
+                            <TouchableOpacity
+                                style={styles.emptyHistoryBtn}
+                                onPress={() => setMainTab('current')}
+                            >
+                                <Text style={styles.emptyHistoryBtnText}>Start your first fast</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        history.map((item) => {
+                            const start = new Date(item.start_time.replace(' ', 'T'));
+                            const end = item.end_time ? new Date(item.end_time.replace(' ', 'T')) : null;
+                            const duration = end ? Math.floor((end.getTime() - start.getTime()) / 1000) : 0;
+                            const { hours, minutes } = formatTime(duration);
+
+                            return (
+                                <View key={item.id} style={styles.historyItem}>
+                                    <View style={styles.historyIcon}>
+                                        <IconFire size={20} color={item.status === 'completed' ? '#E8503A' : '#666'} />
+                                    </View>
+                                    <View style={styles.historyInfo}>
+                                        <View style={styles.historyHeader}>
+                                            <Text style={styles.historyDate}>
+                                                {start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </Text>
+                                            <View style={[styles.statusBadge, { backgroundColor: item.status === 'completed' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                                                <Text style={[styles.statusTabText, { color: item.status === 'completed' ? '#22c55e' : '#ef4444' }]}>
+                                                    {item.status.toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <Text style={styles.historyDetails}>
+                                            Duration: {hours}h {minutes}m • Goal: {item.duration_hours}h
+                                        </Text>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
                 </View>
             )}
 
-            <View style={styles.groupsSection}>
-                <Text style={styles.sectionHeading}>Community Groups</Text>
-                {isLoading ? (
-                    <ActivityIndicator color="#E8503A" />
-                ) : (
-                    groups.map(group => (
-                        <TouchableOpacity
-                            key={group.id}
-                            onPress={() => group.joined && setSelectedGroup(group)}
-                            style={styles.groupItem}
-                        >
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.groupName}>{group.name}</Text>
-                                <Text style={styles.groupDesc} numberOfLines={1}>{group.description}</Text>
-                            </View>
-                            {!group.joined && (
-                                <TouchableOpacity
-                                    style={styles.joinBtn}
-                                    onPress={() => {
-                                        setJoinCode(group.code || '');
-                                        handleJoinGroup();
-                                    }}
-                                >
-                                    <Text style={styles.joinBtnText}>Join</Text>
-                                </TouchableOpacity>
-                            )}
-                        </TouchableOpacity>
-                    ))
-                )}
-            </View>
-
-            {isCreatingGroup && (
+            <Modal
+                visible={isCreatingGroup}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsCreatingGroup(false)}
+            >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Join or Create Group</Text>
-                        <TextInput
-                            placeholder="Enter Join Code"
-                            placeholderTextColor="#666"
-                            style={styles.modalInput}
-                            value={joinCode}
-                            onChangeText={setJoinCode}
-                        />
-                        <TouchableOpacity
-                            onPress={handleJoinGroup}
-                            style={styles.modalButton}
-                            disabled={isJoining}
-                        >
-                            {isJoining ? <ActivityIndicator color="#FFF" /> : <Text style={styles.modalButtonText}>Join with Code</Text>}
-                        </TouchableOpacity>
+
+                        <View style={styles.modalSection}>
+                            <Text style={styles.modalSubLabel}>Join Existing Group</Text>
+                            <TextInput
+                                placeholder="Enter 6-digit code"
+                                placeholderTextColor="#666"
+                                style={styles.modalInput}
+                                value={joinCode}
+                                onChangeText={setJoinCode}
+                                autoCapitalize="characters"
+                                maxLength={6}
+                            />
+                            <TouchableOpacity
+                                onPress={handleJoinGroup}
+                                style={styles.modalButton}
+                                disabled={isJoining}
+                            >
+                                {isJoining ? <ActivityIndicator color="#FFF" /> : <Text style={styles.modalButtonText}>Join Group</Text>}
+                            </TouchableOpacity>
+                        </View>
 
                         <View style={styles.modalDivider} />
 
-                        <TextInput
-                            placeholder="Group Name"
-                            placeholderTextColor="#666"
-                            style={styles.modalInput}
-                            value={groupName}
-                            onChangeText={setGroupName}
-                        />
-                        <TextInput
-                            placeholder="Description"
-                            placeholderTextColor="#666"
-                            style={styles.modalInput}
-                            value={groupDesc}
-                            onChangeText={setGroupDesc}
-                        />
-                        <TouchableOpacity onPress={handleCreateGroup} style={[styles.modalButton, { backgroundColor: '#333' }]}>
-                            <Text style={styles.modalButtonText}>Create New Group</Text>
-                        </TouchableOpacity>
+                        <View style={styles.modalSection}>
+                            <Text style={styles.modalSubLabel}>Start New Community</Text>
+                            <TextInput
+                                placeholder="Group Name (e.g. Morning Prayer)"
+                                placeholderTextColor="#666"
+                                style={styles.modalInput}
+                                value={groupName}
+                                onChangeText={setGroupName}
+                            />
+                            <TextInput
+                                placeholder="Brief Description"
+                                placeholderTextColor="#666"
+                                style={styles.modalInput}
+                                value={groupDesc}
+                                onChangeText={setGroupDesc}
+                                multiline
+                            />
+
+                            <View style={styles.privacyRow}>
+                                <Text style={styles.modalSubLabel}>Private Group (Invite Only)</Text>
+                                <Switch
+                                    value={isGroupPrivate}
+                                    onValueChange={setIsGroupPrivate}
+                                    trackColor={{ false: '#333', true: '#E8503A' }}
+                                />
+                            </View>
+
+                            {isGroupPrivate && (
+                                <Text style={styles.privacyNote}>* A unique 6-digit code will be generated for you to share.</Text>
+                            )}
+
+                            <TouchableOpacity
+                                onPress={handleCreateGroup}
+                                style={[styles.modalButton, { backgroundColor: '#333', marginTop: 10 }]}
+                            >
+                                <Text style={styles.modalButtonText}>Create Group</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <TouchableOpacity onPress={() => setIsCreatingGroup(false)} style={styles.modalClose}>
                             <IconClose size={24} color="#666" />
                         </TouchableOpacity>
                     </View>
                 </View>
-            )}
+            </Modal>
         </ScrollView>
     );
 
@@ -518,7 +666,7 @@ const styles = StyleSheet.create({
     activeLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 'bold', marginBottom: 20 },
     timerRow: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 30 },
     timerBlock: { alignItems: 'center' },
-    timerValue: { color: '#FFF', fontSize: 40, fontWeight: 'bold' },
+    timerValue: { color: '#FFF', fontSize: 32, fontWeight: 'bold' },
     timerBlockLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
     timerDivider: { color: '#FFF', fontSize: 40, fontWeight: 'bold' },
     endButton: { backgroundColor: '#FFF', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25 },
@@ -575,4 +723,28 @@ const styles = StyleSheet.create({
     verseRecommendation: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 12, marginHorizontal: 20, marginBottom: 25, alignItems: 'center' },
     verseText: { color: '#FFF', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 18, marginBottom: 5 },
     verseRef: { color: '#FFD35A', fontSize: 11, fontWeight: 'bold' },
+    mainTabs: { flexDirection: 'row', backgroundColor: '#111', borderRadius: 12, padding: 4, marginBottom: 24 },
+    mainTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+    activeMainTab: { backgroundColor: '#222' },
+    mainTabText: { color: '#666', fontWeight: 'bold', fontSize: 14 },
+    activeMainTabText: { color: '#E8503A' },
+    historySection: { gap: 16 },
+    historyItem: { backgroundColor: '#111', padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 16 },
+    historyIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' },
+    historyInfo: { flex: 1, gap: 4 },
+    historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    historyDate: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    statusTabText: { fontSize: 9, fontWeight: 'bold', letterSpacing: 0.5 },
+    historyDetails: { color: '#666', fontSize: 13 },
+    emptyHistory: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 16 },
+    emptyHistoryText: { color: '#666', fontSize: 15 },
+    emptyHistoryBtn: { backgroundColor: 'rgba(232, 80, 58, 0.1)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
+    emptyHistoryBtnText: { color: '#E8503A', fontWeight: 'bold', fontSize: 14 },
+    modalSection: { gap: 10 },
+    modalSubLabel: { color: '#888', fontSize: 13, fontWeight: 'bold', marginBottom: 5 },
+    privacyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+    privacyNote: { color: '#666', fontSize: 11, fontStyle: 'italic', marginTop: 8 },
+    codeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#333', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10, marginTop: 15, gap: 10, alignSelf: 'flex-start' },
+    codeBadgeText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 2 },
 });

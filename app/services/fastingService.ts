@@ -65,6 +65,24 @@ export const fastingService = {
         return await response.json();
     },
 
+    async getFastingHistory(): Promise<FastingSession[]> {
+        const token = await authService.getToken();
+        try {
+            const response = await fetch(`${API_BASE_URL}fasting`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+            });
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (e) {
+            console.error('Fetch fasting history error:', e);
+        }
+        return [];
+    },
+
     async getGroups(): Promise<FastingGroup[]> {
         const token = await authService.getToken();
         try {

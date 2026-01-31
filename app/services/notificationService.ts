@@ -131,26 +131,62 @@ export const notificationService = {
     },
 
     async scheduleFastingReminder(intervalHours: number) {
-        // Cancel existing first
+        // 1. Cancel existing fasting notifications first
         await this.cancelFastingReminder();
 
+        // 2. Send Immediate "Start" Notification
         await Notifications.scheduleNotificationAsync({
-            identifier: 'fasting-reminder',
+            identifier: 'fasting-start',
             content: {
-                title: "⏳ Fasting Journey",
-                body: "Don't forget to check in on your fast and stay hydrated! God is with you.",
+                title: "🔥 Fasting Journey Started",
+                body: "Your fast has officially begun. May this be a time of deep spiritual strength and focus. God is with you!",
                 priority: Notifications.AndroidNotificationPriority.HIGH,
                 sound: true,
             },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                seconds: intervalHours * 3600,
-                repeats: true,
-            },
+            trigger: null, // Send immediately
         });
+
+        // 3. Define Predefined Messages for intervals
+        const messages = [
+            "Stay strong. Each moment of hunger is an invitation to prayer. 💪",
+            "God is your sustainer. Remember to stay hydrated and focused on Him. 💧",
+            "Your spirit is being strengthened through this sacrifice. Keep going! ✨",
+            "You are more than a conqueror. The Lord is with you in this journey. 🕊️",
+            "A time of fasting is a time of renewal. Peace be with you. 🌿",
+            "In your weakness, His strength is made perfect. Trust in Him. 🛡️"
+        ];
+
+        // 4. Schedule multiple unique reminders for the next 48 hours
+        const totalHours = 48;
+        const count = Math.floor(totalHours / intervalHours);
+
+        for (let i = 1; i <= count; i++) {
+            const message = messages[(i - 1) % messages.length];
+            await Notifications.scheduleNotificationAsync({
+                identifier: `fasting-interval-${i}`,
+                content: {
+                    title: "⏳ Fasting Check-in",
+                    body: message,
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    sound: true,
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                    seconds: i * intervalHours * 3600,
+                    repeats: false,
+                },
+            });
+        }
     },
 
     async cancelFastingReminder() {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const notif of scheduled) {
+            if (notif.identifier === 'fasting-start' || notif.identifier.startsWith('fasting-interval-')) {
+                await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+            }
+        }
+        // Also cancel the old legacy identifier if it exists
         await Notifications.cancelScheduledNotificationAsync('fasting-reminder');
     }
 };

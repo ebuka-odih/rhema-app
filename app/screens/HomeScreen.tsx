@@ -12,6 +12,9 @@ import { useSession, authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
 import { Tab, JournalEntry, Prayer } from '../types';
 import { notificationService } from '../services/notificationService';
+import { fastingService } from '../services/fastingService';
+import { ActiveFastCard } from '../components/home/ActiveFastCard';
+import { FastingSession } from '../types';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -45,6 +48,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const [prayers, setPrayers] = React.useState<Prayer[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isVerseLoading, setIsVerseLoading] = React.useState(true);
+  const [activeFast, setActiveFast] = React.useState<FastingSession | null>(null);
 
   const lastFetchDate = React.useRef<string>('');
 
@@ -186,6 +190,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           const data = await prayersRes.json();
           setPrayers(data.slice(0, 3));
         }
+
+        // Fetch Active Fast
+        const fast = await fastingService.getActiveSession();
+        if (fast && fast.status === 'active') {
+          setActiveFast(fast);
+        } else {
+          setActiveFast(null);
+        }
       } catch (err) {
         console.error('Home fetchData error:', err);
       } finally {
@@ -244,6 +256,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         prayers={prayers}
         onViewAll={() => onNavigate(Tab.JOURNEY)}
       />
+
+      {activeFast && (
+        <ActiveFastCard
+          session={activeFast}
+          onPress={() => onNavigate(Tab.JOURNEY)}
+        />
+      )}
 
 
 
