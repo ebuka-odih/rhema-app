@@ -37,6 +37,11 @@ class BibleBookmarkController extends Controller
 
     public function store(Request $request)
     {
+        \Log::info('Bookmark Store Request', [
+            'user' => $request->user()->id,
+            'data' => $request->all()
+        ]);
+
         $validated = $request->validate([
             'version_id' => 'required|string',
             'book' => 'required|string',
@@ -57,11 +62,18 @@ class BibleBookmarkController extends Controller
             ]
         );
 
+        \Log::info('Bookmark Saved', ['id' => $bookmark->id]);
+
         return response()->json($bookmark);
     }
 
     public function deleteByVerse(Request $request)
     {
+        \Log::info('Bookmark Remove Request', [
+            'user' => $request->user()->id,
+            'data' => $request->all()
+        ]);
+
         $validated = $request->validate([
             'version_id' => 'required|string',
             'book' => 'required|string',
@@ -69,12 +81,14 @@ class BibleBookmarkController extends Controller
             'verse' => 'required|integer',
         ]);
 
-        $request->user()->bibleBookmarks()
+        $deleted = $request->user()->bibleBookmarks()
             ->where('version_id', $validated['version_id'])
             ->where('book', $validated['book'])
             ->where('chapter', $validated['chapter'])
             ->where('verse', $validated['verse'])
             ->delete();
+
+        \Log::info('Bookmark Removed', ['count' => $deleted]);
 
         return response()->json(['message' => 'Bookmark removed']);
     }

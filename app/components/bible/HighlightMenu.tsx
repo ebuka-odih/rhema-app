@@ -18,6 +18,7 @@ interface HighlightMenuProps {
     onSelectColor: (color: string) => void;
     onBookmark: () => void;
     onComment: () => void;
+    onShare: () => void;
     onRemove: () => void;
     onClose: () => void;
 }
@@ -28,6 +29,7 @@ export const HighlightMenu: React.FC<HighlightMenuProps> = ({
     onSelectColor,
     onBookmark,
     onComment,
+    onShare,
     onRemove,
     onClose
 }) => {
@@ -103,7 +105,10 @@ export const HighlightMenu: React.FC<HighlightMenuProps> = ({
                 </View>
 
                 <View style={styles.actionRow}>
-                    <Pressable style={({ pressed }) => [styles.actionButton, pressed && styles.pressedAction]}>
+                    <Pressable
+                        style={({ pressed }) => [styles.actionButton, pressed && styles.pressedAction]}
+                        onPress={() => handleAction(onShare, Haptics.ImpactFeedbackStyle.Medium)}
+                    >
                         <IconShare size={20} color="#FFFFFF" />
                     </Pressable>
                     <Pressable

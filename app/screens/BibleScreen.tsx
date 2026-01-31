@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, Share } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import { bibleService, BibleVersion, BibleChapter, BibleBook } from '../services/bibleService';
@@ -311,10 +311,11 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
 
     const versesToToggle = [...selectedVerses];
     const anyUnbookmarked = versesToToggle.some(v => !bookmarks.some(b => b.verse === v));
-
-    // If any are unbookmarked, our goal is to bookmark ALL selected verses.
-    // If all are already bookmarked, our goal is to REMOVE all bookmarks for selected verses.
     const targetAction = anyUnbookmarked ? 'add' : 'remove';
+
+    console.log('--- Bookmark Action Start ---');
+    console.log('Target Action:', targetAction);
+    console.log('Verses to Process:', versesToToggle);
 
     // Optimistic Update
     setBookmarks(prev => {
@@ -328,16 +329,18 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
             verse: v,
             text: bibleData?.verses[v.toString()] || ''
           }));
+        console.log('Optimistic Add:', newOnes.map(n => n.verse));
         return [...prev, ...newOnes];
       } else {
+        console.log('Optimistic Remove:', versesToToggle);
         return prev.filter(b => !versesToToggle.includes(b.verse));
       }
     });
 
     try {
-      // Logic: Only send requests for verses that need to change to reach the target state
       if (targetAction === 'add') {
         const versesToSave = versesToToggle.filter(v => !bookmarks.some(b => b.verse === v));
+        console.log('Sending Save Requests for:', versesToSave);
         if (versesToSave.length > 0) {
           await Promise.all(versesToSave.map(v =>
             bibleService.saveBookmark({
@@ -350,16 +353,53 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           ));
         }
       } else {
+        console.log('Sending Remove Requests for:', versesToToggle);
         await Promise.all(versesToToggle.map(v =>
           bibleService.removeBookmark(version.id, book, chapter, v)
         ));
       }
 
-      // Secondary fetch to ensure consistency with backend (IDs etc)
+      console.log('Fetching fresh bookmarks...');
       const freshBookmarks = await bibleService.getBookmarksForChapter(version.id, book, chapter);
+      console.log('Fresh Bookmarks Count:', freshBookmarks.length);
       setBookmarks(freshBookmarks);
+      console.log('--- Bookmark Action Success ---');
     } catch (err) {
-      console.error('Bookmark error:', err);
+      console.error('--- Bookmark Action Error ---');
+      console.error(err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (selectedVerses.length === 0 || !bibleData) return;
+
+    const sorted = [...selectedVerses].sort((a, b) => a - b);
+    let reference = '';
+    let text = '';
+
+    if (sorted.length === 1) {
+      reference = `${book} ${chapter}:${sorted[0]}`;
+      text = bibleData.verses[sorted[0].toString()];
+    } else {
+      const isContiguous = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+      if (isContiguous) {
+        reference = `${book} ${chapter}:${sorted[0]}-${sorted[sorted.length - 1]}`;
+      } else {
+        reference = `${book} ${chapter}:${sorted.join(', ')}`;
+      }
+      text = sorted.map(v => `${v}. ${bibleData.verses[v.toString()]}`).join('\n');
+    }
+
+    const shareMessage = `"${text}"\n\n— ${reference} (${version.short_name})\n\nShared via Rhema App`;
+
+    try {
+      await Share.share({
+        message: shareMessage,
+        title: reference,
+      });
+      setSelectedVerses([]);
+    } catch (error) {
+      console.error('Share error:', error);
     }
   };
 
@@ -449,6 +489,7 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         onSelectColor={handleHighlight}
         onBookmark={handleBookmark}
         onComment={handleComment}
+        onShare={handleShare}
         onRemove={handleRemoveHighlight}
         onClose={() => setSelectedVerses([])}
       />
