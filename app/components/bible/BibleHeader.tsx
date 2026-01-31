@@ -10,6 +10,7 @@ interface BibleHeaderProps {
     onOpenBookSelector: () => void;
     onOpenVersionSelector: () => void;
     onToggleFontMenu: () => void;
+    onOpenSearch: () => void;
 }
 
 export const BibleHeader: React.FC<BibleHeaderProps> = ({
@@ -18,7 +19,8 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
     shortVersion,
     onOpenBookSelector,
     onOpenVersionSelector,
-    onToggleFontMenu
+    onToggleFontMenu,
+    onOpenSearch
 }) => {
     const handlePress = (callback: () => void) => {
         if (Platform.OS !== 'web') {
@@ -34,7 +36,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
                     style={({ pressed }) => [styles.bookSelector, pressed && styles.pressedSelector]}
                     onPress={() => handlePress(onOpenBookSelector)}
                 >
-                    <Text style={styles.bookHeader}>{book} {chapter}</Text>
+                    <Text style={styles.bookHeader} numberOfLines={1} ellipsizeMode="tail">{book} {chapter}</Text>
                 </Pressable>
                 <View style={styles.divider} />
                 <Pressable
@@ -53,6 +55,7 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
                     <IconFont size={24} color="#FFFFFF" />
                 </Pressable>
                 <Pressable
+                    onPress={() => handlePress(onOpenSearch)}
                     style={({ pressed }) => [styles.navIcon, pressed && styles.pressedIcon]}
                 >
                     <IconSearch size={24} color="#FFFFFF" />
@@ -74,6 +77,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#0D0D0D',
     },
     selectorGroup: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#1A1A1A',
@@ -81,14 +85,16 @@ const styles = StyleSheet.create({
         padding: 4,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.05)',
+        marginRight: 12,
     },
     bookSelector: {
-        paddingHorizontal: 16,
+        flex: 1,
+        paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
     },
     versionBadge: {
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: 12,
     },
@@ -108,17 +114,17 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     versionLabel: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#E8503A',
         fontWeight: '800', // Extra bold for badge
         letterSpacing: 0.5,
     },
     navIcons: {
         flexDirection: 'row',
-        gap: 16,
+        gap: 8,
     },
     navIcon: {
-        padding: 8,
+        padding: 6,
         borderRadius: 20,
     },
     pressedIcon: {

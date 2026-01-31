@@ -13,6 +13,7 @@ import { ReaderView } from '../components/bible/ReaderView';
 import { FloatingControls } from '../components/bible/FloatingControls';
 import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
 import { HighlightMenu } from '../components/bible/HighlightMenu';
+import { BibleSearchModal } from '../components/bible/BibleSearchModal';
 import { useSession } from '../services/auth';
 import { BibleHighlight, BibleBookmark } from '../types';
 
@@ -38,6 +39,7 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
   const [showFontMenu, setShowFontMenu] = useState(false);
   const [showVersionMenu, setShowVersionMenu] = useState(false);
   const [showBookModal, setShowBookModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   const [versions, setVersions] = useState<BibleVersion[]>([]);
   const [books, setBooks] = useState<BibleBook[]>([]);
@@ -383,6 +385,18 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         onOpenBookSelector={() => setShowBookModal(true)}
         onOpenVersionSelector={() => setShowVersionMenu(true)}
         onToggleFontMenu={() => setShowFontMenu(!showFontMenu)}
+        onOpenSearch={() => setShowSearchModal(true)}
+      />
+
+      <BibleSearchModal
+        visible={showSearchModal}
+        currentVersion={version.name}
+        onSelectVerse={(b, c) => {
+          setBook(b);
+          setChapter(c);
+          setShowSearchModal(false);
+        }}
+        onClose={() => setShowSearchModal(false)}
       />
 
       <FontSettingsMenu

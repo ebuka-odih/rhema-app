@@ -377,5 +377,37 @@ export const bibleService = {
             console.error('getBookmarksForChapter error:', err);
             return [];
         }
+    },
+
+    async searchBible(query: string, options: {
+        version?: string;
+        testament?: 'all' | 'old' | 'new';
+        book?: string;
+        page?: number;
+        limit?: number;
+    } = {}) {
+        try {
+            const params = new URLSearchParams({
+                query,
+                version: options.version || 'NEW KING JAMES VERSION',
+                testament: options.testament || 'all',
+                page: (options.page || 1).toString(),
+                limit: (options.limit || 50).toString(),
+            });
+
+            if (options.book) params.append('book', options.book);
+
+            const response = await fetch(`${API_BASE_URL}bible/search?${params.toString()}`, {
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
+
+            if (!response.ok) throw new Error('Search failed');
+            return await response.json();
+        } catch (err) {
+            console.error('searchBible error:', err);
+            return { results: [], total: 0 };
+        }
     }
 };

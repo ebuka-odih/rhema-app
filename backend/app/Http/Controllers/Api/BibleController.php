@@ -12,11 +12,86 @@ use Illuminate\Support\Facades\DB;
 
 class BibleController extends Controller
 {
-    protected $data_path;
+    protected $ot_books = [
+        "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel", 
+        "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs", 
+        "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", 
+        "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zechariah", "Malachi"
+    ];
+
+    protected $nt_books = [
+        "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", 
+        "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", 
+        "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation"
+    ];
 
     public function __construct()
     {
         $this->data_path = database_path('data');
+    }
+
+    public function search(Request $request)
+    {
+        $query = strtolower($request->query('query', ''));
+        $version = $request->query('version', 'NEW KING JAMES VERSION');
+        $testament = $request->query('testament', 'all'); // all, old, new
+        $bookFilter = $request->query('book');
+        $limit = $request->query('limit', 50);
+        $page = $request->query('page', 1);
+
+        if (strlen($query) < 2 && !$bookFilter) {
+            return response()->json(['results' => [], 'total' => 0]);
+        }
+
+        $path = $this->data_path . '/' . $version . '.json';
+        if (!File::exists($path)) {
+            return response()->json(['error' => 'Version not found'], 404);
+        }
+
+        $content = json_decode(File::get($path), true);
+        $results = [];
+        
+        $booksToSearch = array_keys($content);
+        
+        if ($testament === 'old') {
+            $booksToSearch = array_intersect($booksToSearch, $this->ot_books);
+        } elseif ($testament === 'new') {
+            $booksToSearch = array_intersect($booksToSearch, $this->nt_books);
+        }
+
+        if ($bookFilter) {
+            $booksToSearch = array_intersect($booksToSearch, [$bookFilter]);
+        }
+
+        foreach ($booksToSearch as $book) {
+            foreach ($content[$book] as $chapter => $verses) {
+                foreach ($verses as $verseNum => $text) {
+                    $ref = "$book $chapter:$verseNum";
+                    if (str_contains(strtolower($text), $query) || str_contains(strtolower($ref), $query)) {
+                        $results[] = [
+                            'book' => $book,
+                            'chapter' => (int)$chapter,
+                            'verse' => (int)$verseNum,
+                            'text' => $text,
+                            'reference' => $ref
+                        ];
+                        
+                        if (count($results) >= 500) break 3; // Hard limit for safety
+                    }
+                }
+            }
+        }
+
+        $total = count($results);
+        $offset = ($page - 1) * $limit;
+        $paginatedResults = array_slice($results, $offset, $limit);
+
+        return response()->json([
+            'results' => $paginatedResults,
+            'total' => $total,
+            'page' => (int)$page,
+            'limit' => (int)$limit
+        ]);
     }
 
     protected $curatedEntries = [
