@@ -35,7 +35,7 @@ class BibleBookmarkController extends Controller
         return response()->json($bookmarks);
     }
 
-    public function toggle(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'version_id' => 'required|string',
@@ -45,19 +45,37 @@ class BibleBookmarkController extends Controller
             'text' => 'nullable|string',
         ]);
 
-        $existing = $request->user()->bibleBookmarks()
+        $bookmark = $request->user()->bibleBookmarks()->updateOrCreate(
+            [
+                'version_id' => $validated['version_id'],
+                'book' => $validated['book'],
+                'chapter' => $validated['chapter'],
+                'verse' => $validated['verse'],
+            ],
+            [
+                'text' => $validated['text'] ?? null,
+            ]
+        );
+
+        return response()->json($bookmark);
+    }
+
+    public function deleteByVerse(Request $request)
+    {
+        $validated = $request->validate([
+            'version_id' => 'required|string',
+            'book' => 'required|string',
+            'chapter' => 'required|integer',
+            'verse' => 'required|integer',
+        ]);
+
+        $request->user()->bibleBookmarks()
             ->where('version_id', $validated['version_id'])
             ->where('book', $validated['book'])
             ->where('chapter', $validated['chapter'])
             ->where('verse', $validated['verse'])
-            ->first();
+            ->delete();
 
-        if ($existing) {
-            $existing->delete();
-            return response()->json(['message' => 'Bookmark removed', 'bookmarked' => false]);
-        } else {
-            $bookmark = $request->user()->bibleBookmarks()->create($validated);
-            return response()->json($bookmark);
-        }
+        return response()->json(['message' => 'Bookmark removed']);
     }
 }

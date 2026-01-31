@@ -55,7 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Bible Bookmarks
     Route::get('/bible/bookmarks', [BibleBookmarkController::class, 'index']);
     Route::get('/bible/bookmarks/chapter', [BibleBookmarkController::class, 'getForChapter']);
-    Route::post('/bible/bookmarks/toggle', [BibleBookmarkController::class, 'toggle']);
+    Route::post('/bible/bookmarks', [BibleBookmarkController::class, 'store']);
+    Route::post('/bible/bookmarks/remove', [BibleBookmarkController::class, 'deleteByVerse']);
 
     Route::post('/bible/daily-verse/interact', [BibleController::class, 'interact']);
     Route::post('/transcribe', [TranscriptionController::class, 'transcribe']);

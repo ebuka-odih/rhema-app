@@ -337,11 +337,11 @@ export const bibleService = {
         }
     },
 
-    async toggleBookmark(bookmark: { version_id: string; book: string; chapter: number; verse: number; text?: string }) {
+    async saveBookmark(bookmark: { version_id: string; book: string; chapter: number; verse: number; text?: string }) {
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
-            const response = await fetch(`${API_BASE_URL}bible/bookmarks/toggle`, {
+            const response = await fetch(`${API_BASE_URL}bible/bookmarks`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -350,11 +350,32 @@ export const bibleService = {
                 },
                 body: JSON.stringify(bookmark),
             });
-            if (!response.ok) throw new Error('Failed to toggle bookmark');
+            if (!response.ok) throw new Error('Failed to save bookmark');
             return await response.json();
         } catch (err) {
-            console.error('toggleBookmark error:', err);
-            return null;
+            console.error('saveBookmark error:', err);
+            throw err;
+        }
+    },
+
+    async removeBookmark(version_id: string, book: string, chapter: number, verse: number) {
+        try {
+            const { authService } = await import('./auth');
+            const token = await authService.getToken();
+            const response = await fetch(`${API_BASE_URL}bible/bookmarks/remove`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ version_id, book, chapter, verse }),
+            });
+            if (!response.ok) throw new Error('Failed to remove bookmark');
+            return await response.json();
+        } catch (err) {
+            console.error('removeBookmark error:', err);
+            throw err;
         }
     },
 

@@ -265,7 +265,6 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       const filtered = prev.filter(h => !selectedVerses.includes(h.verse));
       return [...filtered, ...newHighlightsToAdd];
     });
-    setSelectedVerses([]);
 
     try {
       await Promise.all(selectedVerses.map(v =>
@@ -293,7 +292,6 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
 
     // Optimistic Update
     setHighlights(prev => prev.filter(h => !versesToRemove.includes(h.verse)));
-    setSelectedVerses([]);
 
     try {
       await Promise.all(versesToRemove.map(v =>
@@ -312,15 +310,16 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
     if (selectedVerses.length === 0) return;
 
     const versesToToggle = [...selectedVerses];
-
-    // Toggle state optimistically
-    // We'll just toggle the first one for simplicity of UI state if multiple selected, 
-    // or toggle all to "bookmarked" if any are unbookmarked.
     const anyUnbookmarked = versesToToggle.some(v => !bookmarks.some(b => b.verse === v));
 
+    // If any are unbookmarked, our goal is to bookmark ALL selected verses.
+    // If all are already bookmarked, our goal is to REMOVE all bookmarks for selected verses.
+    const targetAction = anyUnbookmarked ? 'add' : 'remove';
+
+    // Optimistic Update
     setBookmarks(prev => {
-      if (anyUnbookmarked) {
-        const newBookmarks = versesToToggle
+      if (targetAction === 'add') {
+        const newOnes = versesToToggle
           .filter(v => !prev.some(b => b.verse === v))
           .map(v => ({
             version_id: version.id,
@@ -329,28 +328,38 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
             verse: v,
             text: bibleData?.verses[v.toString()] || ''
           }));
-        return [...prev, ...newBookmarks];
+        return [...prev, ...newOnes];
       } else {
         return prev.filter(b => !versesToToggle.includes(b.verse));
       }
     });
 
     try {
-      await Promise.all(versesToToggle.map(v =>
-        bibleService.toggleBookmark({
-          version_id: version.id,
-          book,
-          chapter,
-          verse: v,
-          text: bibleData?.verses[v.toString()] || ''
-        })
-      ));
+      // Logic: Only send requests for verses that need to change to reach the target state
+      if (targetAction === 'add') {
+        const versesToSave = versesToToggle.filter(v => !bookmarks.some(b => b.verse === v));
+        if (versesToSave.length > 0) {
+          await Promise.all(versesToSave.map(v =>
+            bibleService.saveBookmark({
+              version_id: version.id,
+              book,
+              chapter,
+              verse: v,
+              text: bibleData?.verses[v.toString()] || ''
+            })
+          ));
+        }
+      } else {
+        await Promise.all(versesToToggle.map(v =>
+          bibleService.removeBookmark(version.id, book, chapter, v)
+        ));
+      }
 
+      // Secondary fetch to ensure consistency with backend (IDs etc)
       const freshBookmarks = await bibleService.getBookmarksForChapter(version.id, book, chapter);
       setBookmarks(freshBookmarks);
-      setSelectedVerses([]);
     } catch (err) {
-      console.error('Bookmark toggle error:', err);
+      console.error('Bookmark error:', err);
     }
   };
 
