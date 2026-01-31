@@ -64,23 +64,55 @@ class BibleController extends Controller
         }
 
         foreach ($booksToSearch as $book) {
+            $lowBook = strtolower($book);
             foreach ($content[$book] as $chapter => $verses) {
                 foreach ($verses as $verseNum => $text) {
                     $ref = "$book $chapter:$verseNum";
-                    if (str_contains(strtolower($text), $query) || str_contains(strtolower($ref), $query)) {
+                    $lowRef = strtolower($ref);
+                    $lowText = strtolower($text);
+                    
+                    $score = 0;
+                    $matched = false;
+
+                    // 1. Reference matches (Highest priority)
+                    if (str_starts_with($lowRef, $query)) {
+                        $score += 100;
+                        $matched = true;
+                    } elseif (str_contains($lowRef, $query)) {
+                        $score += 50;
+                        $matched = true;
+                    }
+
+                    // 2. Text matches
+                    if (str_contains($lowText, $query)) {
+                        $score += 20;
+                        // Boost for whole word matches
+                        if (preg_match("/\b" . preg_quote($query, '/') . "\b/i", $text)) {
+                            $score += 10;
+                        }
+                        $matched = true;
+                    }
+
+                    if ($matched) {
                         $results[] = [
                             'book' => $book,
                             'chapter' => (int)$chapter,
                             'verse' => (int)$verseNum,
                             'text' => $text,
-                            'reference' => $ref
+                            'reference' => $ref,
+                            'score' => $score
                         ];
                         
-                        if (count($results) >= 500) break 3; // Hard limit for safety
+                        if (count($results) >= 1000) break 3; // Hard limit for safety
                     }
                 }
             }
         }
+
+        // Sort by score descending
+        usort($results, function ($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
 
         $total = count($results);
         $offset = ($page - 1) * $limit;
