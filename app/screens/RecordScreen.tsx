@@ -35,7 +35,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     setIsNewRecording
   } = useRecording();
 
-  const [view, setView] = useState<ViewState>('LIST');
+  const [view, setView] = useState<ViewState>(isRecording ? 'RECORD' : 'LIST');
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
 
   // Limits
@@ -52,6 +52,13 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
 
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [isLoadingSermons, setIsLoadingSermons] = useState(false);
+
+  // Sync view with global recording state
+  useEffect(() => {
+    if (isRecording && view === 'LIST') {
+      setView('RECORD');
+    }
+  }, [isRecording]);
 
   // Fetch sermons from backend
   useEffect(() => {
