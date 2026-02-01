@@ -227,7 +227,10 @@ class AuthController extends Controller
         // Update password
         $user->forceFill([
             'password' => Hash::make($request->password)
-        ])->setRememberToken(\Illuminate\Support\Str::random(60))->save();
+        ]);
+        
+        $user->setRememberToken(\Illuminate\Support\Str::random(60));
+        $user->save();
 
         // Delete the token
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();
