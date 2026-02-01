@@ -247,6 +247,33 @@ export const authService = {
         } catch (error: any) {
             return { data: null, error };
         }
+    },
+
+    async resetPassword(creds: any) {
+        try {
+            const response = await fetch(`${API_BASE_URL}password/reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: creds.email,
+                    token: creds.code,
+                    password: creds.password,
+                    password_confirmation: creds.password_confirmation
+                }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to reset password');
+            }
+
+            return { data, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
     }
 };
 
@@ -296,7 +323,8 @@ export const useSession = () => {
 export const signIn = {
     email: (creds: any) => authService.login(creds),
     google: (token: string) => authService.googleLogin(token),
-    forgotPassword: (email: string) => authService.forgotPassword(email)
+    forgotPassword: (email: string) => authService.forgotPassword(email),
+    resetPassword: (creds: any) => authService.resetPassword(creds)
 };
 
 export const signUp = {

@@ -16,9 +16,11 @@ interface AuthScreenProps {
 }
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, onBack }) => {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset_password'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -100,13 +102,52 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
         Alert.alert('Error', error.message || 'Failed to send reset email. Please try again later.');
       } else {
         Alert.alert(
-          'Reset Password',
-          `An email with instructions to reset your password has been sent to ${email}. Please check your inbox and spam folder.`,
-          [{ text: 'OK' }]
+          'Reset Code Sent',
+          `A 6-digit reset code has been sent to ${email}. Please enter it on the next screen to reset your password.`,
+          [{
+            text: 'OK',
+            onPress: () => setMode('reset_password')
+          }]
         );
       }
     } catch (err: any) {
       Alert.alert('Error', 'An unexpected error occurred. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetCode || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await signIn.resetPassword({
+        email,
+        code: resetCode,
+        password,
+        password_confirmation: confirmPassword
+      });
+
+      if (error) {
+        Alert.alert('Reset Error', error.message || 'Invalid or expired code');
+      } else {
+        Alert.alert(
+          'Success',
+          'Your password has been reset successfully. You can now log in with your new password.',
+          [{ text: 'Great', onPress: () => setMode('login') }]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -193,12 +234,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
 
         <View style={styles.titleContainer}>
           <Text style={styles.title}>
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+            {mode === 'login' && 'Welcome Back'}
+            {mode === 'signup' && 'Create Account'}
+            {mode === 'reset_password' && 'Reset Password'}
           </Text>
           <Text style={styles.subtitle}>
-            {mode === 'login'
-              ? 'Sign in to continue your spiritual journey'
-              : 'Begin your journey of faith and growth'}
+            {mode === 'login' && 'Sign in to continue your spiritual journey'}
+            {mode === 'signup' && 'Begin your journey of faith and growth'}
+            {mode === 'reset_password' && 'Enter the 6-digit code sent to your email and your new password.'}
           </Text>
         </View>
 
@@ -221,16 +264,39 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={mode !== 'reset_password'}
           />
 
+          {mode === 'reset_password' && (
+            <AuthInput
+              label="Reset Code"
+              placeholder="Enter 6-digit code"
+              value={resetCode}
+              onChangeText={setResetCode}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+          )}
+
           <AuthInput
-            label="Password"
-            placeholder="Enter your password"
+            label={mode === 'reset_password' ? "New Password" : "Password"}
+            placeholder={mode === 'reset_password' ? "Set new password" : "Enter your password"}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
           />
+
+          {mode === 'reset_password' && (
+            <AuthInput
+              label="Confirm New Password"
+              placeholder="Repeat your new password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          )}
 
           {mode === 'login' && (
             <TouchableOpacity
@@ -243,14 +309,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
 
           <TouchableOpacity
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
+            onPress={mode === 'reset_password' ? handleResetPassword : handleSubmit}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.submitButtonText}>
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
+                {mode === 'login' && 'Sign In'}
+                {mode === 'signup' && 'Create Account'}
+                {mode === 'reset_password' && 'Update Password'}
               </Text>
             )}
           </TouchableOpacity>
@@ -261,13 +329,18 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
 
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleText}>
-              {mode === 'login'
-                ? "Don't have an account? "
-                : "Already have an account? "}
+              {mode === 'login' && "Don't have an account? "}
+              {mode === 'signup' && "Already have an account? "}
+              {mode === 'reset_password' && "Remembered your password? "}
             </Text>
-            <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+            <TouchableOpacity onPress={() => {
+              if (mode === 'reset_password') setMode('login');
+              else setMode(mode === 'login' ? 'signup' : 'login');
+            }}>
               <Text style={styles.toggleLink}>
-                {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                {mode === 'login' && 'Sign Up'}
+                {mode === 'signup' && 'Sign In'}
+                {mode === 'reset_password' && 'Back to Login'}
               </Text>
             </TouchableOpacity>
           </View>

@@ -7,7 +7,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Notifications\PasswordResetOtp;
 
 class AuthController extends Controller
 {
@@ -166,40 +168,70 @@ class AuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink($request->only('email'));
+        $user = User::where('email', $request->email)->first();
 
-        if ($status == Password::RESET_LINK_SENT) {
-            return response()->json(['message' => __($status)]);
+        if (!$user) {
+            // We return success even if user not found for security reasons
+            return response()->json(['message' => 'If your email is in our system, you will receive a reset code shortly.']);
         }
 
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
-        ]);
+        // Generate 6-digit OTP
+        $otp = sprintf("%06d", mt_rand(1, 999999));
+
+        // Store OTP in password_reset_tokens table (hashed for security, just like normal tokens)
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => Hash::make($otp),
+                'created_at' => now()
+            ]
+        );
+
+        // Send Custom OTP Notification
+        $user->notify(new PasswordResetOtp($otp));
+
+        return response()->json(['message' => 'Reset code sent successfully.']);
     }
 
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'token' => 'required',
+            'token' => 'required|string|size:6', // This is now the 6-digit OTP
             'email' => 'required|email',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password)
-                ])->setRememberToken(\Illuminate\Support\Str::random(60))->save();
-            }
-        );
+        $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
 
-        if ($status == Password::PASSWORD_RESET) {
-            return response()->json(['message' => __($status)]);
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            throw ValidationException::withMessages([
+                'token' => ['The reset code is invalid.'],
+            ]);
         }
 
-        throw ValidationException::withMessages([
-            'email' => [__($status)],
-        ]);
+        // Check expiry (60 minutes)
+        if (now()->parse($record->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            throw ValidationException::withMessages([
+                'token' => ['The reset code has expired.'],
+            ]);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'email' => ['User not found.'],
+            ]);
+        }
+
+        // Update password
+        $user->forceFill([
+            'password' => Hash::make($request->password)
+        ])->setRememberToken(\Illuminate\Support\Str::random(60))->save();
+
+        // Delete the token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Your password has been reset successfully.']);
     }
 }
