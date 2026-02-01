@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Platform, Alert } from 'react-native';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync, AudioRecorder } from 'expo-audio';
-import { notificationService } from './services/notificationService';
+import { notificationService } from '../services/notificationService';
 import { useKeepAwake } from 'expo-keep-awake';
+import { useSession } from '../services/auth';
 
 interface RecordingContextType {
     recorder: AudioRecorder;
@@ -19,6 +20,10 @@ interface RecordingContextType {
 const RecordingContext = createContext<RecordingContextType | undefined>(undefined);
 
 export const RecordingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const { data: session } = useSession();
+    const isPro = session?.user?.is_pro || false;
+    const MAX_DURATION = isPro ? 3000 : 600;
+
     const recorder = useAudioRecorder({
         ...RecordingPresets.HIGH_QUALITY,
         isMeteringEnabled: true,
@@ -45,6 +50,17 @@ export const RecordingProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
         }
     }, [recorderState.durationMillis, recorderState.isRecording, recorderState.metering]);
+
+    // Global Limit Enforcement
+    useEffect(() => {
+        if (recorderState.isRecording && duration >= MAX_DURATION) {
+            stopRecording();
+            Alert.alert(
+                'Limit Reached',
+                `Your recording has reached the ${MAX_DURATION / 60} minute limit for your account.`
+            );
+        }
+    }, [duration, recorderState.isRecording, MAX_DURATION]);
 
     const startRecording = async () => {
         try {

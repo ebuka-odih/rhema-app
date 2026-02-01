@@ -140,10 +140,10 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                                 style={[styles.processButton, isProcessing && styles.processButtonDisabled]}
                             >
                                 {isProcessing ? (
-                                    <Text style={styles.processButtonText}>Processing...</Text>
+                                    <Text style={styles.processButtonText}>Analyzing...</Text>
                                 ) : (
                                     <>
-                                        <IconCheck size={20} color="#FFFFFF" />
+                                        <IconCheck size={16} color="#FFFFFF" />
                                         <Text style={styles.processButtonText}>Analyze Sermon</Text>
                                     </>
                                 )}
@@ -354,31 +354,34 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     deleteButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#222222',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     processButton: {
         flex: 1,
-        height: 64,
-        borderRadius: 32,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#E8503A',
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 24,
+        gap: 8,
+        paddingHorizontal: 20,
     },
     processButtonDisabled: {
         opacity: 0.6,
     },
     processButtonText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
+        letterSpacing: 0.3,
     },
 
     errorCard: {

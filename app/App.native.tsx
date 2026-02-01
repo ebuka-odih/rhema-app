@@ -21,6 +21,8 @@ import * as Haptics from 'expo-haptics';
 import { useSession } from './services/auth';
 import { notificationService } from './services/notificationService';
 import { bibleService } from './services/bibleService';
+import { RecordingProvider } from './context/RecordingContext';
+import { GlobalRecordingBar } from './components/sermons/GlobalRecordingBar';
 
 type AppState = 'ONBOARDING' | 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
 
@@ -176,6 +178,10 @@ const AppContent: React.FC = () => {
                     {renderScreen()}
                 </View>
 
+                {activeTab !== Tab.RECORD && (
+                    <GlobalRecordingBar onPress={() => setActiveTab(Tab.RECORD)} />
+                )}
+
                 {/* Bottom Navigation - Hidden when journal editor is open */}
                 {!isJournalEditorOpen && (
                     <View style={[
@@ -271,7 +277,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
     return (
         <SafeAreaProvider>
-            <AppContent />
+            <RecordingProvider>
+                <AppContent />
+            </RecordingProvider>
         </SafeAreaProvider>
     );
 };
