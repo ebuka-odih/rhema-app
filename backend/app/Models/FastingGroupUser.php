@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class FastingGroupUser extends Pivot
 {
     use HasUuids;
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $table = 'fasting_group_users';
+
     protected $fillable = [
         'fasting_group_id',
         'user_id',

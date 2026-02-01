@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FastingGroup extends Model
 {
     use HasUuids;
+
     protected $fillable = [
         'name',
         'description',

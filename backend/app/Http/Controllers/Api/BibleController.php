@@ -3,26 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use App\Models\DailyVerse;
 use App\Models\DailyVerseInteraction;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class BibleController extends Controller
 {
     protected $ot_books = [
-        "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel", 
-        "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job", "Psalms", "Proverbs", 
-        "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", 
-        "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zechariah", "Malachi"
+        'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
+        '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra', 'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs',
+        'Ecclesiastes', 'Song of Solomon', 'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel',
+        'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zechariah', 'Malachi',
     ];
 
     protected $nt_books = [
-        "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", 
-        "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", 
-        "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation"
+        'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
+        'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon',
+        'Hebrews', 'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation',
     ];
 
     public function __construct()
@@ -39,20 +39,20 @@ class BibleController extends Controller
         $limit = $request->query('limit', 50);
         $page = $request->query('page', 1);
 
-        if (strlen($query) < 2 && !$bookFilter) {
+        if (strlen($query) < 2 && ! $bookFilter) {
             return response()->json(['results' => [], 'total' => 0]);
         }
 
-        $path = $this->data_path . '/' . $version . '.json';
-        if (!File::exists($path)) {
+        $path = $this->data_path.'/'.$version.'.json';
+        if (! File::exists($path)) {
             return response()->json(['error' => 'Version not found'], 404);
         }
 
         $content = json_decode(File::get($path), true);
         $results = [];
-        
+
         $booksToSearch = array_keys($content);
-        
+
         if ($testament === 'old') {
             $booksToSearch = array_intersect($booksToSearch, $this->ot_books);
         } elseif ($testament === 'new') {
@@ -70,7 +70,7 @@ class BibleController extends Controller
                     $ref = "$book $chapter:$verseNum";
                     $lowRef = strtolower($ref);
                     $lowText = strtolower($text);
-                    
+
                     $score = 0;
                     $matched = false;
 
@@ -87,7 +87,7 @@ class BibleController extends Controller
                     if (str_contains($lowText, $query)) {
                         $score += 20;
                         // Boost for whole word matches
-                        if (preg_match("/\b" . preg_quote($query, '/') . "\b/i", $text)) {
+                        if (preg_match("/\b".preg_quote($query, '/')."\b/i", $text)) {
                             $score += 10;
                         }
                         $matched = true;
@@ -96,14 +96,16 @@ class BibleController extends Controller
                     if ($matched) {
                         $results[] = [
                             'book' => $book,
-                            'chapter' => (int)$chapter,
-                            'verse' => (int)$verseNum,
+                            'chapter' => (int) $chapter,
+                            'verse' => (int) $verseNum,
                             'text' => $text,
                             'reference' => $ref,
-                            'score' => $score
+                            'score' => $score,
                         ];
-                        
-                        if (count($results) >= 1000) break 3; // Hard limit for safety
+
+                        if (count($results) >= 1000) {
+                            break 3;
+                        } // Hard limit for safety
                     }
                 }
             }
@@ -121,8 +123,8 @@ class BibleController extends Controller
         return response()->json([
             'results' => $paginatedResults,
             'total' => $total,
-            'page' => (int)$page,
-            'limit' => (int)$limit
+            'page' => (int) $page,
+            'limit' => (int) $limit,
         ]);
     }
 
@@ -153,20 +155,21 @@ class BibleController extends Controller
             $user = auth('sanctum')->user();
             $userId = $user ? $user->id : null;
             $today = $request->query('date') ?: Carbon::today()->toDateString();
-            
+
             // 1. Return existing if already generated for today
             $verse = DailyVerse::where('date', $today)
                 ->where('user_id', $userId)
                 ->first();
-            
+
             if ($verse) {
                 // Fix broken images on the fly
-                if (!$verse->background_image || str_contains($verse->background_image, 'source.unsplash.com')) {
+                if (! $verse->background_image || str_contains($verse->background_image, 'source.unsplash.com')) {
                     $verse->background_image = $this->generateBackgroundImage($verse->theme, $today, $userId);
                     $verse->save();
                 }
 
                 $verse->user_liked = $userId ? $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists() : false;
+
                 return response()->json($verse);
             }
 
@@ -174,10 +177,12 @@ class BibleController extends Controller
             $suggestedTheme = $this->detectTheme($userId);
 
             // 3. Selection Logic (Rotation-friendly)
-            $possibleEntries = array_filter($this->curatedEntries, fn($e) => !$suggestedTheme || $e['theme'] === $suggestedTheme);
-            if (empty($possibleEntries)) $possibleEntries = $this->curatedEntries;
+            $possibleEntries = array_filter($this->curatedEntries, fn ($e) => ! $suggestedTheme || $e['theme'] === $suggestedTheme);
+            if (empty($possibleEntries)) {
+                $possibleEntries = $this->curatedEntries;
+            }
 
-            $seed = abs(crc32($today . ($userId ?: 'guest')));
+            $seed = abs(crc32($today.($userId ?: 'guest')));
             $index = $seed % count($possibleEntries);
             $entry = array_values($possibleEntries)[$index];
 
@@ -190,25 +195,29 @@ class BibleController extends Controller
                 'version' => $entry['version'] ?? 'NKJV',
                 'affirmation' => $entry['affirmation'],
                 'theme' => $entry['theme'],
-                'background_image' => $this->generateBackgroundImage($entry['theme'], $today, $userId)
+                'background_image' => $this->generateBackgroundImage($entry['theme'], $today, $userId),
             ]);
-            
+
             $verse->user_liked = false;
+
             return response()->json($verse);
 
         } catch (\Exception $e) {
-            \Log::error("dailyVerse Error: " . $e->getMessage());
-            return response()->json(['error' => 'Sync failed: ' . $e->getMessage()], 500);
+            \Log::error('dailyVerse Error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Sync failed: '.$e->getMessage()], 500);
         }
     }
 
     protected function detectTheme($userId)
     {
-        if (!$userId) return null;
+        if (! $userId) {
+            return null;
+        }
 
         $combinedText = strtolower(
-            \App\Models\Prayer::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(5)->pluck('request')->join(' ') . ' ' .
-            \App\Models\Reflection::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(3)->get()->map(fn($r) => $r->title . ' ' . $r->content)->join(' ')
+            \App\Models\Prayer::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(5)->pluck('request')->join(' ').' '.
+            \App\Models\Reflection::where('user_id', $userId)->orderBy('created_at', 'desc')->limit(3)->get()->map(fn ($r) => $r->title.' '.$r->content)->join(' ')
         );
 
         $keywords = [
@@ -218,12 +227,17 @@ class BibleController extends Controller
             'Provision' => ['money', 'finance', 'job', 'need', 'lack', 'bill', 'rent', 'business', 'provide', 'supply'],
             'Healing' => ['sick', 'pain', 'disease', 'illness', 'body', 'health', 'hospital', 'doctor', 'heal', 'stripe'],
             'Faith' => ['believe', 'trust', 'doubt', 'faith', 'promise', 'hope'],
-            'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected']
+            'Love' => ['relationship', 'lonely', 'marriage', 'friend', 'family', 'love', 'hated', 'rejected'],
         ];
 
         foreach ($keywords as $theme => $list) {
-            foreach ($list as $word) if (str_contains($combinedText, $word)) return $theme;
+            foreach ($list as $word) {
+                if (str_contains($combinedText, $word)) {
+                    return $theme;
+                }
+            }
         }
+
         return null;
     }
 
@@ -236,13 +250,13 @@ class BibleController extends Controller
             'Provision' => ['1500382017468-9049fed747ef', '1470071459604-3b5ec3a7fe05', '1472214103451-9374bd1c798e'],
             'Healing' => ['1505118380757-91f5f5631fc0', '1469474968028-56623f02e42e', '1518495973542-4542c06a5843'],
             'Faith' => ['1439405326854-01517489c73b', '1501854140801-50d01698950b', '1519681393784-d120267933ba'],
-            'Love' => ['1518131149504-115eab4eca3a', '1476514525535-07fb3b4ae5f1', '1431733303041-1c39c85b42d4']
+            'Love' => ['1518131149504-115eab4eca3a', '1476514525535-07fb3b4ae5f1', '1431733303041-1c39c85b42d4'],
         ];
-        
+
         $ids = $themeImages[$theme] ?? $themeImages['Faith'];
-        $seed = abs(crc32($date . $userId));
+        $seed = abs(crc32($date.$userId));
         $id = $ids[$seed % count($ids)];
-        
+
         return "https://images.unsplash.com/photo-{$id}?auto=format&fit=crop&w=800&q=80";
     }
 
@@ -250,13 +264,13 @@ class BibleController extends Controller
     {
         $request->validate([
             'daily_verse_id' => 'required|uuid|exists:daily_verses,id',
-            'type' => 'required|in:like,share,download'
+            'type' => 'required|in:like,share,download',
         ]);
 
         $user = auth('sanctum')->user();
         $userId = $user ? $user->id : null;
-        
-        if (!$userId) {
+
+        if (! $userId) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
@@ -281,33 +295,39 @@ class BibleController extends Controller
                         DailyVerseInteraction::create([
                             'user_id' => $userId,
                             'daily_verse_id' => $verseId,
-                            'type' => 'like'
+                            'type' => 'like',
                         ]);
                         $verse->increment('likes_count');
                         $liked = true;
                     }
+
+                    $verse->refresh();
                     return response()->json([
                         'likes_count' => $verse->likes_count,
-                        'user_liked' => $liked
+                        'user_liked' => $liked,
                     ]);
                 } else {
                     // For share/download, we just record it and increment
-                    DailyVerseInteraction::create([
+                    DailyVerseInteraction::updateOrCreate([
                         'user_id' => $userId,
                         'daily_verse_id' => $verseId,
-                        'type' => $type
+                        'type' => $type,
+                    ], [
+                        'updated_at' => now()
                     ]);
-                    
-                    $column = $type . 's_count'; // shares_count or downloads_count
+
+                    $column = $type.'s_count'; // shares_count or downloads_count
                     $verse->increment($column);
-                    
+                    $verse->refresh();
+
                     return response()->json([
-                        $column => $verse->$column
+                        $column => $verse->$column,
                     ]);
                 }
             });
         } catch (\Exception $e) {
-            \Log::error("Interaction error: " . $e->getMessage());
+            \Log::error('Interaction error: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to process interaction'], 500);
         }
     }
@@ -317,7 +337,7 @@ class BibleController extends Controller
         $user = auth('sanctum')->user();
         $userId = $user ? $user->id : null;
         $today = Carbon::today()->toDateString();
-        
+
         // Always try to get or create the daily verse first to ensure sync
         $verseResponse = $this->dailyVerse($request);
         $verse = json_decode($verseResponse->getContent());
@@ -326,17 +346,16 @@ class BibleController extends Controller
             return response()->json([
                 'affirmation' => 'I walk in God\'s grace today.',
                 'scripture' => 'Psalm 23:1',
-                'text' => 'The Lord is my shepherd; I shall not want.'
+                'text' => 'The Lord is my shepherd; I shall not want.',
             ]);
         }
-        
+
         return response()->json([
             'affirmation' => $verse->affirmation,
             'scripture' => $verse->reference,
-            'text' => $verse->text
+            'text' => $verse->text,
         ]);
     }
-
 
     public function versions()
     {
@@ -349,7 +368,7 @@ class BibleController extends Controller
                 $versions[] = [
                     'id' => $name,
                     'name' => $name,
-                    'short_name' => $this->getShortName($name)
+                    'short_name' => $this->getShortName($name),
                 ];
             }
         }
@@ -360,9 +379,9 @@ class BibleController extends Controller
     public function books(Request $request)
     {
         $version = $request->query('version', 'NEW KING JAMES VERSION');
-        $path = $this->data_path . '/' . $version . '.json';
+        $path = $this->data_path.'/'.$version.'.json';
 
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return response()->json(['error' => 'Version not found'], 404);
         }
 
@@ -372,7 +391,7 @@ class BibleController extends Controller
         foreach ($content as $bookName => $chapters) {
             $books[] = [
                 'name' => $bookName,
-                'chapters' => count($chapters)
+                'chapters' => count($chapters),
             ];
         }
 
@@ -385,19 +404,19 @@ class BibleController extends Controller
         $book = $request->query('book', 'Genesis');
         $chapter = $request->query('chapter', '1');
 
-        $path = $this->data_path . '/' . $version . '.json';
+        $path = $this->data_path.'/'.$version.'.json';
 
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return response()->json(['error' => 'Version not found'], 404);
         }
 
         $content = json_decode(File::get($path), true);
 
-        if (!isset($content[$book])) {
+        if (! isset($content[$book])) {
             return response()->json(['error' => 'Book not found'], 404);
         }
 
-        if (!isset($content[$book][$chapter])) {
+        if (! isset($content[$book][$chapter])) {
             return response()->json(['error' => 'Chapter not found'], 404);
         }
 
@@ -405,7 +424,7 @@ class BibleController extends Controller
             'version' => $version,
             'book' => $book,
             'chapter' => $chapter,
-            'verses' => $content[$book][$chapter]
+            'verses' => $content[$book][$chapter],
         ]);
     }
 
@@ -413,7 +432,7 @@ class BibleController extends Controller
     {
         $mapping = [
             'NEW KING JAMES VERSION' => 'NKJV',
-            'NEW LIVING TRANSLATION' => 'NLT'
+            'NEW LIVING TRANSLATION' => 'NLT',
         ];
 
         return $mapping[$name] ?? $name;

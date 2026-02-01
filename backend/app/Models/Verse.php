@@ -8,5 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Verse extends Model
 {
     use HasUuids;
+
     protected $fillable = ['text', 'reference', 'version'];
 }

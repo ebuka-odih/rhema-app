@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -43,7 +42,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
@@ -66,13 +65,13 @@ class AuthController extends Controller
 
         $googleUser = $this->verifyGoogleToken($request->token);
 
-        if (!$googleUser) {
+        if (! $googleUser) {
             return response()->json(['message' => 'Invalid Google token'], 401);
         }
 
         $user = User::where('email', $googleUser['email'])->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::create([
                 'name' => $googleUser['name'],
                 'email' => $googleUser['email'],
@@ -93,10 +92,10 @@ class AuthController extends Controller
     private function verifyGoogleToken($token)
     {
         try {
-            $client = new \GuzzleHttp\Client();
+            $client = new \GuzzleHttp\Client;
             $response = $client->get('https://www.googleapis.com/oauth2/v3/userinfo', [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $token,
+                    'Authorization' => 'Bearer '.$token,
                 ],
             ]);
 
@@ -111,7 +110,7 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Successfully logged out'
+            'message' => 'Successfully logged out',
         ]);
     }
 
@@ -134,7 +133,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user
+            'user' => $user,
         ]);
     }
 
@@ -147,7 +146,7 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             throw ValidationException::withMessages([
                 'current_password' => ['The provided password does not match our records.'],
             ]);
@@ -158,7 +157,7 @@ class AuthController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Password updated successfully'
+            'message' => 'Password updated successfully',
         ]);
     }
 }

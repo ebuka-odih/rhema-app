@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-use App\Models\Verse;
 use App\Models\Note;
+use App\Models\Verse;
 
 class ContentController extends Controller
 {

@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
 use App\Models\FastingGroup;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class GroupController extends Controller
@@ -50,7 +49,7 @@ class GroupController extends Controller
 
         $group = FastingGroup::where('code', strtoupper($request->code))->first();
 
-        if (!$group) {
+        if (! $group) {
             return response()->json(['message' => 'Group not found.'], 404);
         }
 
@@ -71,6 +70,7 @@ class GroupController extends Controller
     public function leave(Request $request, FastingGroup $group)
     {
         $group->members()->detach($request->user()->id);
+
         return response()->json(['message' => 'Left group successfully.']);
     }
 }

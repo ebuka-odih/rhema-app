@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\BibleHighlight;
 use Illuminate\Http\Request;
 
 class BibleHighlightController extends Controller
@@ -26,7 +25,6 @@ class BibleHighlightController extends Controller
         ]);
 
         $highlights = $request->user()->bibleHighlights()
-            ->where('version_id', $request->version_id)
             ->where('book', $request->book)
             ->where('chapter', $request->chapter)
             ->get();
@@ -47,12 +45,12 @@ class BibleHighlightController extends Controller
 
         $highlight = $request->user()->bibleHighlights()->updateOrCreate(
             [
-                'version_id' => $validated['version_id'],
                 'book' => $validated['book'],
                 'chapter' => $validated['chapter'],
                 'verse' => $validated['verse'],
             ],
             [
+                'version_id' => $validated['version_id'],
                 'color' => $validated['color'],
                 'note' => $validated['note'] ?? null,
             ]
@@ -79,7 +77,6 @@ class BibleHighlightController extends Controller
         ]);
 
         $request->user()->bibleHighlights()
-            ->where('version_id', $validated['version_id'])
             ->where('book', $validated['book'])
             ->where('chapter', $validated['chapter'])
             ->where('verse', $validated['verse'])

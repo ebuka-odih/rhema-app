@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FastingSession extends Model
 {
     use HasUuids;
+
     protected $fillable = [
         'user_id',
         'duration_hours',

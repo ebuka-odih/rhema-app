@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Sermon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SermonController extends Controller
 {
@@ -25,7 +25,7 @@ class SermonController extends Controller
         ]);
 
         $user = $request->user();
-        
+
         // Limits
         $maxDailyRecordings = $user->is_pro ? 5 : 3;
         $maxDurationSeconds = $user->is_pro ? 3000 : 600; // 50 mins vs 10 mins
@@ -35,28 +35,29 @@ class SermonController extends Controller
         if ($todayCount >= $maxDailyRecordings) {
             return response()->json([
                 'error' => 'Daily limit reached',
-                'details' => "You have reached your limit of {$maxDailyRecordings} recordings per day."
+                'details' => "You have reached your limit of {$maxDailyRecordings} recordings per day.",
             ], 403);
         }
 
         // 2. Check duration
         if ($request->duration_seconds > $maxDurationSeconds) {
             $limitMins = $maxDurationSeconds / 60;
+
             return response()->json([
                 'error' => 'Recording too long',
-                'details' => "Your recording exceeds the {$limitMins} minute limit for your account."
+                'details' => "Your recording exceeds the {$limitMins} minute limit for your account.",
             ], 403);
         }
 
         $file = $request->file('audio');
-        
+
         // Save locally first
         $path = $file->store('sermons', 'public');
-        $filePath = storage_path('app/public/' . $path);
+        $filePath = storage_path('app/public/'.$path);
 
         try {
             $openaiKey = config('services.openai.key');
-            if (!$openaiKey) {
+            if (! $openaiKey) {
                 return response()->json(['error' => 'OpenAI API key not configured on server'], 500);
             }
 
@@ -69,7 +70,7 @@ class SermonController extends Controller
                 ]);
 
             if ($transcriptionResponse->failed()) {
-                Log::error('Whisper API Error: ' . $transcriptionResponse->body());
+                Log::error('Whisper API Error: '.$transcriptionResponse->body());
                 throw new \Exception('Failed to transcribe audio with Whisper');
             }
 
@@ -95,25 +96,25 @@ Format rules:
 6. Proportional Detail: 
    - For very short recordings (< 2 mins): 2-3 points with scriptures.
    - For medium recordings (2-10 mins): 5-8 points with scriptures.
-   - For long sermons (> 10 mins): 8-12 points with scriptures.'
+   - For long sermons (> 10 mins): 8-12 points with scriptures.',
                         ],
                         [
                             'role' => 'user',
-                            'content' => "Sermon Transcription:\n\n" . $transcription
-                        ]
+                            'content' => "Sermon Transcription:\n\n".$transcription,
+                        ],
                     ],
-                    'temperature' => 0.5
+                    'temperature' => 0.5,
                 ]);
 
             if ($summaryResponse->failed()) {
-                Log::error('OpenAI Chat Error: ' . $summaryResponse->body());
-                $summary = "Summary generation failed.";
+                Log::error('OpenAI Chat Error: '.$summaryResponse->body());
+                $summary = 'Summary generation failed.';
             } else {
                 $summary = $summaryResponse->json('choices.0.message.content');
             }
 
-            Log::info('Saving sermon with summary length: ' . strlen($summary ?? ''));
-            
+            Log::info('Saving sermon with summary length: '.strlen($summary ?? ''));
+
             $sermon = Sermon::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
@@ -126,8 +127,9 @@ Format rules:
             return response()->json($sermon);
 
         } catch (\Exception $e) {
-            Log::error('Sermon Processing Error: ' . $e->getMessage());
-            return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
+            Log::error('Sermon Processing Error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Internal server error: '.$e->getMessage()], 500);
         }
     }
 

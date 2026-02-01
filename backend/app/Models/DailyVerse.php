@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class DailyVerse extends Model
 {
     use HasUuids;
+
     protected $fillable = [
-        'user_id', 'date', 'reference', 'text', 'version', 
-        'affirmation', 'theme', 'background_image', 'likes_count', 'shares_count', 'downloads_count'
+        'user_id', 'date', 'reference', 'text', 'version',
+        'affirmation', 'theme', 'background_image', 'likes_count', 'shares_count', 'downloads_count',
     ];
 
     public function user()

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Reflection extends Model
 {
     use HasUuids;
+
     protected $fillable = ['user_id', 'title', 'content', 'category'];
 
     public function user()

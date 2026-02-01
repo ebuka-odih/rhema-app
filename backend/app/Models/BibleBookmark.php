@@ -12,7 +12,12 @@ class BibleBookmark extends Model
         'book',
         'chapter',
         'verse',
-        'text'
+        'text',
+    ];
+
+    protected $casts = [
+        'chapter' => 'integer',
+        'verse' => 'integer',
     ];
 
     public function user()
