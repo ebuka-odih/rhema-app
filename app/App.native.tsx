@@ -198,7 +198,7 @@ const AppContent: React.FC = () => {
                         <NavButton
                             active={activeTab === Tab.BIBLE}
                             icon={<IconBible size={24} color={activeTab === Tab.BIBLE ? '#E8503A' : '#666666'} />}
-                            label="Read"
+                            label="Bible"
                             onPress={() => handleNavPress(Tab.BIBLE)}
                         />
 
