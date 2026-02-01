@@ -168,6 +168,14 @@ class AuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
+        // 1. Throttling: Check if a token was recently created for this email (60 second cooldown)
+        $existingRecord = DB::table('password_reset_tokens')->where('email', $request->email)->first();
+        if ($existingRecord && now()->parse($existingRecord->created_at)->addSeconds(60)->isFuture()) {
+            return response()->json([
+                'message' => 'Please wait ' . now()->parse($existingRecord->created_at)->addSeconds(60)->diffInSeconds(now()) . ' seconds before requesting another code.'
+            ], 429);
+        }
+
         $user = User::where('email', $request->email)->first();
 
         if (!$user) {
