@@ -20,9 +20,6 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'googleLogin']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
-Route::get('/password/reset/{token}', function (string $token) {
-    return response()->json(['message' => 'Please use the mobile app to reset your password.', 'token' => $token]);
-})->name('password.reset');
 Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 
 // Protected Routes
