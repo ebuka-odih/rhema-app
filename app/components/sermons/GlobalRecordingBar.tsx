@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { useRecording } from '../context/RecordingContext';
+import { useRecording } from '../../context/RecordingContext';
 import { IconMic } from '../components/Icons';
 
 interface GlobalRecordingBarProps {
