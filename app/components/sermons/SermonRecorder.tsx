@@ -88,7 +88,7 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <IconArrowLeft size={20} color="#FFFFFF" />
                 </TouchableOpacity>
-                <Text style={styles.recordTitle}>New Recording</Text>
+                <Text style={styles.recordTitle}>{isRecording ? "Recording Active" : "New Recording"}</Text>
             </View>
 
             <ScrollView style={styles.recordContent} contentContainerStyle={styles.recordContentPadding} showsVerticalScrollIndicator={false}>
@@ -97,7 +97,17 @@ export const SermonRecorder: React.FC<SermonRecorderProps> = ({
                     {isRecording && <AudioVisualizer levels={levels} />}
 
                     <View style={styles.timerDisplay}>
-                        <Text style={[styles.timerText, isOverLimit && { color: '#E8503A' }]}>
+                        {isRecording && (
+                            <View style={styles.activeBadge}>
+                                <View style={styles.recordDot} />
+                                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                            </View>
+                        )}
+                        <Text style={[
+                            styles.timerText,
+                            isOverLimit && { color: '#E8503A' },
+                            isRecording && !isOverLimit && { color: '#FFFFFF' }
+                        ]}>
                             {formatTime(duration)}
                         </Text>
                         {isOverLimit && (
@@ -281,6 +291,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: 'bold',
         marginTop: 8,
+    },
+    activeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(232, 80, 58, 0.15)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        marginBottom: 16,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 80, 58, 0.3)',
+    },
+    recordDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#E8503A',
+    },
+    activeBadgeText: {
+        color: '#E8503A',
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 1.5,
     },
     recordButton: {
         width: 80,

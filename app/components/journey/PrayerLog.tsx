@@ -115,7 +115,7 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                 <Animated.View style={[styles.prayerLogCard, { transform: [{ scale: scaleAnim }] }]}>
                     <View style={styles.prayerLogHeader}>
                         <View>
-                            <Text style={styles.prayerLogTitle}>Meditate in Prayer</Text>
+                            <Text style={styles.prayerLogTitle}>Prayer Reminder</Text>
                             <Text style={styles.prayerLogSubtitle}>Bring your request to God</Text>
                         </View>
                         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
@@ -224,8 +224,10 @@ export const PrayerLog: React.FC<PrayerLogProps> = ({
                                         setStatus('done');
                                     }}
                                 >
-                                    {status === 'done' && <IconCheck size={14} color="#4CAF50" style={{ marginRight: 6 }} />}
-                                    <Text style={[styles.statusButtonText, status === 'done' && styles.statusButtonTextActiveDone]}>Done</Text>
+                                    {status === 'done' && <IconCheck size={14} color="#4CAF50" />}
+                                    <View style={status === 'done' && { marginLeft: 6 }}>
+                                        <Text style={[styles.statusButtonText, status === 'done' && styles.statusButtonTextActiveDone]}>Done</Text>
+                                    </View>
                                 </TouchableOpacity>
                             </View>
                         </View>

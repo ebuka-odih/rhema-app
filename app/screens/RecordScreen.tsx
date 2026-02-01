@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
+import { useKeepAwake } from 'expo-keep-awake';
 import { authService, useSession } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
+import { notificationService } from '../services/notificationService';
 import { IconMic, IconPlus } from '../components/Icons';
 
 // Types
@@ -14,12 +16,13 @@ import { SermonDetail } from '../components/sermons/SermonDetail';
 import { SermonRecorder } from '../components/sermons/SermonRecorder';
 
 interface RecordScreenProps {
-  onNavigateToBible?: (book: string, chapter: number) => void;
+  onNavigateToBible?: (book: string, chapter: number, verse?: number) => void;
 }
 
 const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
+  useKeepAwake(); // Keep screen on for the entire app or just this screen
 
   const [view, setView] = useState<ViewState>('LIST');
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
@@ -74,7 +77,8 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
           date: new Date(s.created_at).toLocaleDateString(),
           duration: s.duration_seconds ? formatTime(s.duration_seconds) : '0:00',
           transcription: s.transcription,
-          summary: s.summary
+          summary: s.summary,
+          status: s.status
         }));
         setSermons(mappedSermons);
       }
@@ -103,6 +107,13 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     }
   }, [recorderState.durationMillis, recorderState.isRecording, recorderState.metering]);
 
+  // Clean up notifications on unmount
+  useEffect(() => {
+    return () => {
+      notificationService.hideRecordingNotification();
+    };
+  }, []);
+
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
@@ -128,6 +139,9 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
       recorder.record();
       setDuration(0);
       setIsNewRecording(false);
+
+      // Clear screen timeout and show notification
+      await notificationService.showRecordingNotification();
     } catch (err) {
       console.error('Failed to start recording', err);
       setError('Failed to start recording. Please try again.');
@@ -138,6 +152,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     if (!recorderState.isRecording) return;
     try {
       await recorder.stop();
+      await notificationService.hideRecordingNotification();
     } catch (err) {
       console.error('Failed to stop recording', err);
     }
@@ -171,6 +186,29 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
       });
 
       const result = await response.json();
+
+      const newRecording: Sermon = {
+        id: result.id.toString(),
+        title: result.title,
+        date: new Date(result.created_at).toLocaleDateString(),
+        duration: formatTime(duration),
+        transcription: result.transcription,
+        summary: result.summary,
+        status: result.status
+      };
+
+      if (response.status === 202) {
+        // Soft failure: Saved but not processed
+        setSermons(prev => [newRecording, ...prev]);
+        Alert.alert(
+          'Processing Delayed',
+          'Your audio was saved, but the analysis is taking longer than expected. You can find it in your list and try analyzing it again later.',
+          [{ text: 'OK', onPress: () => setView('LIST') }]
+        );
+        reset();
+        return;
+      }
+
       if (!response.ok) {
         if (response.status === 403) {
           Alert.alert(result.error || 'Limit Reached', result.details);
@@ -183,14 +221,6 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
       setCurrentSermonId(result.id.toString());
       setSermonTitle(result.title);
 
-      const newRecording: Sermon = {
-        id: result.id.toString(),
-        title: result.title,
-        date: new Date(result.created_at).toLocaleDateString(),
-        duration: formatTime(duration),
-        transcription: result.transcription,
-        summary: result.summary
-      };
       setSermons(prev => [newRecording, ...prev]);
     } catch (err: any) {
       setError(err.message || 'Failed to process audio.');
@@ -326,6 +356,41 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     ]);
   };
 
+  const handleReprocess = async (id: string) => {
+    try {
+      const token = await authService.getToken();
+      const response = await fetch(`${API_BASE_URL}sermons/${id}/reprocess`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        // Update local state for the list and current detail
+        const updatedSermon: Sermon = {
+          id: result.id.toString(),
+          title: result.title,
+          date: new Date(result.created_at).toLocaleDateString(),
+          duration: formatTime(result.duration_seconds),
+          transcription: result.transcription,
+          summary: result.summary,
+          status: result.status
+        };
+
+        setSermons(prev => prev.map(s => s.id === id ? updatedSermon : s));
+        setSelectedSermon(updatedSermon);
+      } else {
+        throw new Error(result.error || 'Reprocessing failed');
+      }
+    } catch (err: any) {
+      console.error('Reprocess error:', err);
+      throw err;
+    }
+  };
+
   return (
     <View style={styles.container}>
       {view === 'LIST' && (
@@ -357,6 +422,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
           onDelete={handleDelete}
           onTabChange={setActiveTab}
           onNavigateToBible={onNavigateToBible}
+          onReprocess={handleReprocess}
         />
       )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Share } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { View, StyleSheet, TouchableOpacity, Platform, Share, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { bibleService, BibleVersion, BibleChapter, BibleBook } from '../services/bibleService';
 import { IconNote } from '../components/Icons';
@@ -14,22 +14,25 @@ import { FloatingControls } from '../components/bible/FloatingControls';
 import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
 import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { BibleSearchModal } from '../components/bible/BibleSearchModal';
+import { BibleShareModal } from '../components/bible/BibleShareModal';
 import { useSession } from '../services/auth';
 import { BibleHighlight, BibleBookmark } from '../types';
 
 interface BibleScreenProps {
   initialBook?: string;
   initialChapter?: number;
+  initialVerse?: number;
   onNavigateNote?: (content?: string) => void;
 }
 
-const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, onNavigateNote }) => {
+const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, initialVerse, onNavigateNote }) => {
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
 
   const [fontSize, setFontSize] = useState(18);
   const [chapter, setChapter] = useState(initialChapter || 1);
   const [book, setBook] = useState(initialBook || "Genesis");
+  const [targetVerse, setTargetVerse] = useState<number | null>(initialVerse || null);
   const [version, setVersion] = useState<BibleVersion>({
     id: 'NEW KING JAMES VERSION',
     name: 'NEW KING JAMES VERSION',
@@ -52,6 +55,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
   const [highlights, setHighlights] = useState<BibleHighlight[]>([]);
   const [bookmarks, setBookmarks] = useState<BibleBookmark[]>([]);
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareText, setShareText] = useState('');
+  const [shareReference, setShareReference] = useState('');
 
   // Persistence Key
   const BIBLE_STATE_KEY = 'last_read_bible_state';
@@ -59,6 +65,7 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
   // Fetch Versions and Persistence on Mount
   useEffect(() => {
     const init = async () => {
+      console.log('[BIBLE] Initializing BibleScreen...');
       try {
         // 1. Get versions (Sync if possible)
         let availableVersions = bibleService.getVersionsSync();
@@ -66,20 +73,37 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           availableVersions = await bibleService.getVersions();
         }
         setVersions(availableVersions || []);
+        console.log('[BIBLE] Versions loaded:', availableVersions?.length);
 
         // 2. Load persisted state
-        const savedState = await SecureStore.getItemAsync(BIBLE_STATE_KEY);
-        let initialVersion = availableVersions?.[0] || { id: 'NKJV', name: 'NKJV', short_name: 'NKJV' };
+        const savedState = await AsyncStorage.getItem(BIBLE_STATE_KEY);
+        console.log('[BIBLE] Saved state from storage:', savedState);
+
+        let initialVersion = availableVersions?.find(v => v.short_name === 'NKJV' || v.id.includes('KING JAMES'))
+          || availableVersions?.[0]
+          || { id: 'NEW KING JAMES VERSION', name: 'NEW KING JAMES VERSION', short_name: 'NKJV' };
+
         let currentBook = initialBook || "Genesis";
         let currentChapterNum = initialChapter || 1;
 
-        if (savedState && !initialBook && !initialChapter) {
-          const parsed = JSON.parse(savedState);
-          const versionExists = availableVersions?.find(v => v.id === parsed.versionId);
-          if (versionExists) {
-            initialVersion = versionExists;
-            currentBook = parsed.book || currentBook;
-            currentChapterNum = parsed.chapter || currentChapterNum;
+        if (savedState) {
+          try {
+            const parsed = JSON.parse(savedState);
+            const versionExists = availableVersions?.find(v => v.id === parsed.versionId);
+            if (versionExists) {
+              initialVersion = versionExists;
+              console.log('[BIBLE] Version restored from save:', initialVersion.id);
+            }
+
+            // Only use saved book/chapter if NOT provided via props
+            if (!initialBook) {
+              currentBook = parsed.book || currentBook;
+            }
+            if (!initialChapter) {
+              currentChapterNum = parsed.chapter || currentChapterNum;
+            }
+          } catch (pe) {
+            console.error('[BIBLE] Error parsing saved state:', pe);
           }
         }
 
@@ -92,14 +116,17 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         const syncChapter = bibleService.getChapterSync(initialVersion.id, currentBook, currentChapterNum);
 
         if (syncBooks && syncChapter) {
+          console.log('[BIBLE] Using sync cache for books and chapter');
           setBooks(syncBooks);
           const bookData = syncBooks.find(b => b.name === currentBook) || syncBooks[0];
           setCurrentBookData(bookData);
           setBibleData(syncChapter);
           setLoading(false);
-          // Still fetch fresh highlights in background
+          // Still fetch fresh highlights and bookmarks in background
           bibleService.getHighlightsForChapter(initialVersion.id, currentBook, currentChapterNum).then(setHighlights);
+          bibleService.getBookmarksForChapter(initialVersion.id, currentBook, currentChapterNum).then(setBookmarks);
         } else {
+          console.log('[BIBLE] Falling back to async fetch for books/chapter');
           // Fallback to Async fetch
           const [availableBooks, initialData, initialHighlights] = await Promise.all([
             bibleService.getBooks(initialVersion.id),
@@ -120,22 +147,34 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           setLoading(false);
         }
       } catch (e) {
-        console.error('Bible init error:', e);
+        console.error('[BIBLE] Bible init error:', e);
       } finally {
+        console.log('[BIBLE] Initialization complete');
         setIsInitializing(false);
       }
     };
     init();
   }, []);
 
+  // Update state when initial props change (external navigation)
+  useEffect(() => {
+    if (initialBook) setBook(initialBook);
+    if (initialChapter) setChapter(initialChapter);
+    if (initialVerse) {
+      setTargetVerse(initialVerse);
+      setSelectedVerses([initialVerse]);
+    }
+  }, [initialBook, initialChapter, initialVerse]);
+
   // Save state whenever it changes
   useEffect(() => {
-    if (!isInitializing) {
-      SecureStore.setItemAsync(BIBLE_STATE_KEY, JSON.stringify({
+    if (!isInitializing && version && book && chapter) {
+      console.log('[BIBLE] Auto-saving state:', { versionId: version.id, book, chapter });
+      AsyncStorage.setItem(BIBLE_STATE_KEY, JSON.stringify({
         versionId: version.id,
         book,
         chapter
-      }));
+      })).catch(err => console.error('[BIBLE] Save error:', err));
     }
   }, [version, book, chapter, isInitializing]);
 
@@ -156,9 +195,13 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       if (cached) {
         setBibleData(cached);
         setLoading(false);
-        // We still fetch highlights in background, but content is instant
-        const chapterHighlights = await bibleService.getHighlightsForChapter(version.id, book, chapter);
+        // Still fetch highlights and bookmarks in background
+        const [chapterHighlights, chapterBookmarks] = await Promise.all([
+          bibleService.getHighlightsForChapter(version.id, book, chapter),
+          bibleService.getBookmarksForChapter(version.id, book, chapter)
+        ]);
         setHighlights(chapterHighlights || []);
+        setBookmarks(chapterBookmarks || []);
       } else {
         setLoading(true);
         const [chapterData, chapterHighlights, chapterBookmarks] = await Promise.all([
@@ -305,7 +348,6 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       console.error('Remove highlight error:', err);
     }
   };
-
   const handleBookmark = async () => {
     if (selectedVerses.length === 0) return;
 
@@ -313,11 +355,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
     const anyUnbookmarked = versesToToggle.some(v => !bookmarks.some(b => b.verse === v));
     const targetAction = anyUnbookmarked ? 'add' : 'remove';
 
-    console.log('--- Bookmark Action Start ---');
-    console.log('Target Action:', targetAction);
-    console.log('Verses to Process:', versesToToggle);
+    console.log('[BOOKMARK] Action:', targetAction, 'Verses:', versesToToggle);
 
-    // Optimistic Update
+    // 1. Optimistic Update
     setBookmarks(prev => {
       if (targetAction === 'add') {
         const newOnes = versesToToggle
@@ -329,10 +369,8 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
             verse: v,
             text: bibleData?.verses[v.toString()] || ''
           }));
-        console.log('Optimistic Add:', newOnes.map(n => n.verse));
         return [...prev, ...newOnes];
       } else {
-        console.log('Optimistic Remove:', versesToToggle);
         return prev.filter(b => !versesToToggle.includes(b.verse));
       }
     });
@@ -340,8 +378,8 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
     try {
       if (targetAction === 'add') {
         const versesToSave = versesToToggle.filter(v => !bookmarks.some(b => b.verse === v));
-        console.log('Sending Save Requests for:', versesToSave);
         if (versesToSave.length > 0) {
+          console.log('[BOOKMARK] Saving to server:', versesToSave);
           await Promise.all(versesToSave.map(v =>
             bibleService.saveBookmark({
               version_id: version.id,
@@ -353,20 +391,24 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           ));
         }
       } else {
-        console.log('Sending Remove Requests for:', versesToToggle);
+        console.log('[BOOKMARK] Removing from server:', versesToToggle);
         await Promise.all(versesToToggle.map(v =>
           bibleService.removeBookmark(version.id, book, chapter, v)
         ));
       }
 
-      console.log('Fetching fresh bookmarks...');
+      // 2. Sync with DB
       const freshBookmarks = await bibleService.getBookmarksForChapter(version.id, book, chapter);
-      console.log('Fresh Bookmarks Count:', freshBookmarks.length);
-      setBookmarks(freshBookmarks);
-      console.log('--- Bookmark Action Success ---');
+      console.log('[BOOKMARK] Sync result:', freshBookmarks?.length || 0, 'bookmarks');
+
+      setBookmarks(freshBookmarks || []); // Sync with server result
+      console.log('[BOOKMARK] Sync success, count:', (freshBookmarks || []).length);
     } catch (err) {
-      console.error('--- Bookmark Action Error ---');
-      console.error(err);
+      console.error('[BOOKMARK] Operation failed:', err);
+      Alert.alert('Bookmark Error', 'We could not sync your bookmark to the cloud. Please check your connection.');
+      // Revert to whatever is really on the server
+      const fresh = await bibleService.getBookmarksForChapter(version.id, book, chapter);
+      if (fresh) setBookmarks(fresh);
     }
   };
 
@@ -390,17 +432,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       text = sorted.map(v => `${v}. ${bibleData.verses[v.toString()]}`).join('\n');
     }
 
-    const shareMessage = `"${text}"\n\n— ${reference} (${version.short_name})\n\nShared via Rhema App`;
-
-    try {
-      await Share.share({
-        message: shareMessage,
-        title: reference,
-      });
-      setSelectedVerses([]);
-    } catch (error) {
-      console.error('Share error:', error);
-    }
+    setShareText(text);
+    setShareReference(reference);
+    setShowShareModal(true);
   };
 
   const handleComment = () => {
@@ -479,13 +513,15 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         bibleData={bibleData}
         fontSize={fontSize}
         highlights={highlights}
+        bookmarks={bookmarks}
         selectedVerses={selectedVerses}
         onVersePress={handleVersePress}
+        targetVerse={targetVerse}
       />
 
       <HighlightMenu
         visible={selectedVerses.length > 0}
-        isBookmarked={selectedVerses.length > 0 && selectedVerses.every(v => bookmarks.some(b => b.verse === v))}
+        isBookmarked={selectedVerses.length > 0 && selectedVerses.some(v => bookmarks.some(b => b.verse === v))}
         onSelectColor={handleHighlight}
         onBookmark={handleBookmark}
         onComment={handleComment}
@@ -515,6 +551,17 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
           <IconNote size={24} color="#FFFFFF" />
         </TouchableOpacity>
       )}
+      <BibleShareModal
+        visible={showShareModal}
+        onClose={() => {
+          setShowShareModal(false);
+          setSelectedVerses([]);
+        }}
+        text={shareText}
+        reference={shareReference}
+        version={version.short_name}
+      />
+
     </View>
   );
 };

@@ -13,6 +13,7 @@ import { API_BASE_URL } from '../services/apiConfig';
 import { Tab, JournalEntry, Prayer } from '../types';
 import { notificationService } from '../services/notificationService';
 import { fastingService } from '../services/fastingService';
+import { cacheService } from '../services/cacheService';
 import { ActiveFastCard } from '../components/home/ActiveFastCard';
 import { FastingSession } from '../types';
 
@@ -31,16 +32,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   if (hours >= 17) greeting = "Good Evening";
 
   const [dailyVerse, setDailyVerse] = React.useState({
-    id: "default",
+    id: null as string | null,
     reference: "Psalms 145:18",
     text: "The Lord is near to all who call upon Him, to all who call upon Him in truth.",
     version: "NKJV",
     affirmation: "I am never alone, for the Lord is with me always.",
     theme: "Faith",
     backgroundImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=800&q=80",
-    likes: 124,
-    shares: 45,
-    downloads: 32,
+    likes: 0,
+    shares: 0,
+    downloads: 0,
     userLiked: false
   });
 
@@ -63,39 +64,37 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=800&q=80",  // Dawn
   ];
 
-  const fetchDailyVerse = React.useCallback(async () => {
+  const fetchDailyVerse = React.useCallback(async (skipCache = false) => {
     const now = new Date();
-    // Use actual local date
     const targetDateString = now.toISOString().split('T')[0];
 
-    // If we have already fetched for this date, do nothing
+    // Try cache first if not skipping
+    if (!skipCache) {
+      const cached = await cacheService.get<any>('daily_verse');
+      if (cached && cached.fetchDate === targetDateString) {
+        setDailyVerse(cached);
+        setIsVerseLoading(false);
+      }
+    }
+
     if (targetDateString === lastFetchDate.current) return;
 
-    setIsVerseLoading(true);
     try {
       const { bibleService } = await import('../services/bibleService');
-
-      // Pass the simulated date to the service
       const verse = await bibleService.getDailyVerse(targetDateString);
 
-      // Select fallback image based on day of month locally to ensure rotation
       const dayOfMonth = now.getDate();
       const fallbackImage = FALLBACK_BACKGROUNDS[dayOfMonth % FALLBACK_BACKGROUNDS.length];
 
       if (verse && verse.id) {
         lastFetchDate.current = targetDateString;
-
-        // Use backend image if available and valid URL, otherwise use client fallback
-        // Use backend image if available and valid URL (and not deprecated source.unsplash), otherwise use client fallback
         const isValidBackendImage = verse.background_image &&
           verse.background_image.startsWith('http') &&
           !verse.background_image.includes('source.unsplash.com');
 
-        const bgImage = isValidBackendImage
-          ? verse.background_image
-          : fallbackImage;
+        const bgImage = isValidBackendImage ? verse.background_image : fallbackImage;
 
-        setDailyVerse({
+        const verseData = {
           id: verse.id,
           reference: verse.reference,
           text: verse.text,
@@ -106,29 +105,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
           likes: verse.likes_count || 0,
           shares: verse.shares_count || 0,
           downloads: verse.downloads_count || 0,
-          userLiked: verse.user_liked || false
-        });
+          userLiked: verse.user_liked || false,
+          fetchDate: targetDateString
+        };
 
-        // Sync Notification for Unity
-        // Schedule/Update the daily affirmation notification to match the current daily verse
-        // This ensures that if the notification fires (e.g. tomorrow morning if app isn't opened),
-        // it matches what was last seen or fetched.
-        // We schedule it for 7:00 AM.
+        setDailyVerse(verseData);
+        await cacheService.set('daily_verse', verseData);
+
         try {
           await notificationService.scheduleDailyAffirmation(
-            7,
-            0,
+            7, 0,
             `${verse.reference} ${verse.text}`,
             verse.affirmation || "I walk in God's grace today."
           );
         } catch (notifErr) {
           console.error("Failed to schedule affirmation:", notifErr);
         }
-      } else {
-        // Handle case where API returns null/empty but we still want to show something?
-        // For now, if API fails or returns null, we stick with default state or error state.
-        // But let's at least update the image of default state if initial state is being used?
-        // The default state (lines 30-42) already has a hardcoded image.
       }
     } catch (err) {
       console.error('getDailyVerse error:', err);
@@ -164,39 +156,57 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
   React.useEffect(() => {
     const fetchData = async () => {
+      // Load Cached Data first for instant UI
+      const [cachedNotes, cachedPrayers, cachedFast] = await Promise.all([
+        cacheService.get<JournalEntry[]>('home_notes'),
+        cacheService.get<Prayer[]>('home_prayers'),
+        cacheService.get<FastingSession>('home_fast')
+      ]);
+
+      if (cachedNotes) setNotes(cachedNotes);
+      if (cachedPrayers) setPrayers(cachedPrayers);
+      if (cachedFast) setActiveFast(cachedFast);
+      if (cachedNotes || cachedPrayers) setIsLoading(false);
+
       try {
         const token = await authService.getToken();
 
-        // Fetch Notes (Reflections)
-        const notesRes = await fetch(`${API_BASE_URL}reflections`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        });
+        const [notesRes, prayersRes, fast] = await Promise.all([
+          fetch(`${API_BASE_URL}reflections`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          }),
+          fetch(`${API_BASE_URL}prayers`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          }),
+          fastingService.getActiveSession()
+        ]);
+
         if (notesRes.ok) {
           const data = await notesRes.json();
-          setNotes(data.slice(0, 3).map((item: any) => ({
+          const mappedNotes = data.slice(0, 3).map((item: any) => ({
             id: item.id.toString(),
             title: item.title,
             content: item.content,
             date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             category: item.category || 'Note'
-          })));
+          }));
+          setNotes(mappedNotes);
+          cacheService.set('home_notes', mappedNotes);
         }
 
-        // Fetch Prayers
-        const prayersRes = await fetch(`${API_BASE_URL}prayers`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        });
         if (prayersRes.ok) {
-          const data = await prayersRes.json();
-          setPrayers(data.slice(0, 3));
+          const pData = await prayersRes.json();
+          const mappedPrayers = pData.slice(0, 3);
+          setPrayers(mappedPrayers);
+          cacheService.set('home_prayers', mappedPrayers);
         }
 
-        // Fetch Active Fast
-        const fast = await fastingService.getActiveSession();
         if (fast && fast.status === 'active') {
           setActiveFast(fast);
+          cacheService.set('home_fast', fast);
         } else {
           setActiveFast(null);
+          cacheService.remove('home_fast');
         }
       } catch (err) {
         console.error('Home fetchData error:', err);

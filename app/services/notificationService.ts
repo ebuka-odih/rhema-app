@@ -188,5 +188,30 @@ export const notificationService = {
         }
         // Also cancel the old legacy identifier if it exists
         await Notifications.cancelScheduledNotificationAsync('fasting-reminder');
+    },
+
+    async showRecordingNotification() {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('recording-status', {
+                name: 'Recording Status',
+                importance: Notifications.AndroidImportance.LOW, // Use LOW to avoid sound/interruption but stay in tray
+            });
+        }
+
+        await Notifications.scheduleNotificationAsync({
+            identifier: 'active-recording',
+            content: {
+                title: "🔴 Sermon Recording Active",
+                body: "WordFlow is currently recording your sermon. Don't worry, we're capturing every word!",
+                priority: Notifications.AndroidNotificationPriority.LOW,
+                sticky: true, // Android: Prevent user from swiping away
+                autoDismiss: false,
+            },
+            trigger: null, // Immediate
+        });
+    },
+
+    async hideRecordingNotification() {
+        await Notifications.cancelScheduledNotificationAsync('active-recording');
     }
 };

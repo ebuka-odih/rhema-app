@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, View, Text, StyleSheet, Platform, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { BibleChapter } from '../../services/bibleService';
-import { BibleHighlight } from '../../types';
+import { BibleHighlight, BibleBookmark } from '../../types';
 import { isJesusSpeaking } from '../../services/redLetterService';
 
 interface ReaderViewProps {
@@ -12,8 +12,10 @@ interface ReaderViewProps {
     bibleData: BibleChapter | null;
     fontSize: number;
     highlights: BibleHighlight[];
+    bookmarks: BibleBookmark[];
     selectedVerses: number[];
     onVersePress: (verseNum: number) => void;
+    targetVerse?: number | null;
 }
 
 export const ReaderView: React.FC<ReaderViewProps> = ({
@@ -23,8 +25,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     bibleData,
     fontSize,
     highlights,
+    bookmarks,
     selectedVerses,
-    onVersePress
+    onVersePress,
+    targetVerse
 }) => {
     const scrollRef = React.useRef<ScrollView>(null);
     const { width } = useWindowDimensions();
@@ -32,11 +36,22 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     // Calculate dynamic padding based on screen width for better readability on tablets
     const horizontalPadding = width > 600 ? 40 : 24;
 
+    const versePositions = React.useRef<Record<number, number>>({});
+
     React.useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo({ y: 0, animated: false });
         }
     }, [book, chapter]);
+
+    React.useEffect(() => {
+        if (targetVerse && versePositions.current[targetVerse] !== undefined && scrollRef.current) {
+            scrollRef.current.scrollTo({
+                y: versePositions.current[targetVerse],
+                animated: true
+            });
+        }
+    }, [targetVerse, bibleData]);
 
     const handleVersePress = (num: number) => {
         if (Platform.OS !== 'web') {
@@ -77,7 +92,8 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             <View style={styles.textContainer}>
                 {bibleData && Object.entries(bibleData.verses).map(([numStr, content]) => {
                     const num = parseInt(numStr);
-                    const highlight = getVerseHighlight(num);
+                    const highlight = highlights.find(h => Number(h.verse) === num);
+                    const isBookmarked = bookmarks.some(b => Number(b.verse) === num);
                     const isSelected = selectedVerses.includes(num);
                     const jesusSpeaks = isJesusSpeaking(book, chapter, num);
 
@@ -85,11 +101,18 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                         <Pressable
                             key={numStr}
                             onPress={() => handleVersePress(num)}
+                            onLayout={(event) => {
+                                versePositions.current[num] = event.nativeEvent.layout.y;
+                            }}
                             style={({ pressed }) => [
                                 styles.verseContainer,
-                                highlight && { backgroundColor: `${highlight.color}40` }, // Less opacity for base highlight
+                                // Bookmark color (Light Orange / Brand Tint)
+                                isBookmarked && { backgroundColor: 'rgba(232, 80, 58, 0.15)' },
+                                // Manual highlight color (overrides or stacks)
+                                highlight && { backgroundColor: `${highlight.color}45` },
                                 isSelected && styles.selectedVerse,
-                                (isSelected && highlight) && { backgroundColor: `${highlight.color}60` },
+                                (isSelected && isBookmarked) && { backgroundColor: 'rgba(232, 80, 58, 0.3)' },
+                                (isSelected && highlight) && { backgroundColor: `${highlight.color}65` },
                                 pressed && !isSelected && styles.pressedVerse
                             ]}
                         >
@@ -97,12 +120,16 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                                 <Text style={[
                                     styles.verseNumber,
                                     !jesusSpeaks && styles.brandVerseNumber,
-                                    { fontSize: fontSize * 0.65 } // Dynamic verse number size
+                                    isBookmarked && { color: '#E8503A', opacity: 1 }, // Make verse num pop if bookmarked
+                                    { fontSize: fontSize * 0.65 }
                                 ]}>
                                     {numStr}
                                 </Text>
                                 <Text>  </Text>
-                                <Text style={jesusSpeaks ? styles.jesusWords : styles.textWords}>
+                                <Text style={[
+                                    jesusSpeaks ? styles.jesusWords : styles.textWords,
+                                    isBookmarked && { color: '#FFB347' } // Light Orange text color as requested
+                                ]}>
                                     {content}
                                 </Text>
                             </Text>

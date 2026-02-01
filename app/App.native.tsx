@@ -30,7 +30,7 @@ const AppContent: React.FC = () => {
     const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
     const [previousTab, setPreviousTab] = useState<Tab | null>(null);
-    const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
+    const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number; verse?: number }>({});
     const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
     const [journalInitialData, setJournalInitialData] = useState<{ title: string; content: string } | null>(null);
 
@@ -118,6 +118,7 @@ const AppContent: React.FC = () => {
                     <BibleScreen
                         initialBook={bibleNavState.book}
                         initialChapter={bibleNavState.chapter}
+                        initialVerse={bibleNavState.verse}
                         onNavigateNote={(content) => {
                             setPreviousTab(Tab.BIBLE);
                             setActiveTab(Tab.JOURNEY);
@@ -136,8 +137,8 @@ const AppContent: React.FC = () => {
                 );
                 case Tab.RECORD: return (
                     <RecordScreen
-                        onNavigateToBible={(book, chapter) => {
-                            setBibleNavState({ book, chapter });
+                        onNavigateToBible={(book, chapter, verse) => {
+                            setBibleNavState({ book, chapter, verse });
                             setActiveTab(Tab.BIBLE);
                         }}
                     />
@@ -157,8 +158,8 @@ const AppContent: React.FC = () => {
                                 }
                             }
                         }}
-                        onNavigateToBible={(book, chapter) => {
-                            setBibleNavState({ book, chapter });
+                        onNavigateToBible={(book, chapter, verse) => {
+                            setBibleNavState({ book, chapter, verse });
                             setActiveTab(Tab.BIBLE);
                         }}
                     />

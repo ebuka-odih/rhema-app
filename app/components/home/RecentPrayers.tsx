@@ -25,7 +25,7 @@ export const RecentPrayers: React.FC<RecentPrayersProps> = ({ prayers, onViewAll
     return (
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Prayer Reminders</Text>
+                <Text style={styles.sectionTitle}>Prayer Reminder</Text>
                 <TouchableOpacity onPress={onViewAll}>
                     <Text style={styles.viewAll}>View All</Text>
                 </TouchableOpacity>

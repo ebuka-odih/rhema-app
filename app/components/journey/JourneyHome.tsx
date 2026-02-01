@@ -1,9 +1,14 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
-import { IconFire, IconChevronRight, IconPen, IconMic, IconActivity, IconBell, IconClock, IconCheck, IconTrash } from '../Icons';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { JournalEntry, Prayer } from '../../types';
 
-const { width } = Dimensions.get('window');
+// Extracted Components
+import { JourneyHeader } from './JourneyHeader';
+import { DashboardSection } from './DashboardSection';
+import { QuickActionsSection } from './QuickActionsSection';
+import { ReflectionsSection } from './ReflectionsSection';
+import { PrayersSection } from './PrayersSection';
+import { BookmarksSection } from './BookmarksSection';
 
 interface JourneyHomeProps {
   onNavigateGlobal?: (tab: string) => void;
@@ -16,131 +21,14 @@ interface JourneyHomeProps {
   onSelectEntry: (entry: JournalEntry) => void;
   onTogglePrayerStatus: (id: string, currentStatus: string) => void;
   onRemovePrayer: (id: string) => void;
+  onSelectBookmark: (bookmark: any) => void;
+  onRemoveBookmark: (bookmark: any) => void;
   journalEntries: JournalEntry[];
   activePrayers: Prayer[];
   bookmarks: any[];
 }
 
-const SwipeablePrayerItem: React.FC<{
-  prayer: Prayer;
-  onToggleStatus: (id: string, status: string) => void;
-  onRemove: (id: string) => void;
-  onPress: () => void;
-}> = ({ prayer, onToggleStatus, onRemove, onPress }) => {
-  const translateX = React.useRef(new Animated.Value(0)).current;
-  const _value = React.useRef(0);
-
-  React.useEffect(() => {
-    const listener = translateX.addListener(({ value }) => {
-      _value.current = value;
-    });
-    return () => translateX.removeListener(listener);
-  }, [translateX]);
-
-  const panResponder = React.useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Detect horizontal swipe better
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-      },
-      onPanResponderGrant: () => {
-        translateX.setOffset(_value.current);
-        translateX.setValue(0);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow movement to the right (positive dx) if starting from 0
-        // Or movement to the left (negative dx) if starting from 80
-        let newX = gestureState.dx;
-        const currentPos = _value.current + newX;
-
-        if (currentPos >= 0 && currentPos <= 120) {
-          translateX.setValue(newX);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        translateX.flattenOffset();
-        const finalValue = _value.current;
-
-        if (finalValue > 50) {
-          // Snap to open
-          Animated.spring(translateX, {
-            toValue: 80,
-            useNativeDriver: true,
-            bounciness: 8,
-          }).start();
-        } else {
-          // Snap closed
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 8,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  const resetSwipe = () => {
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  return (
-    <View style={styles.swipeableContainer}>
-      {/* Delete Action Background */}
-      <TouchableOpacity
-        style={styles.deleteAction}
-        onPress={() => {
-          onRemove(prayer.id);
-          resetSwipe();
-        }}
-      >
-        <IconTrash size={20} color="#FFFFFF" />
-      </TouchableOpacity>
-
-      <Animated.View
-        style={[
-          styles.activePrayerTodo,
-          { transform: [{ translateX }] }
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <TouchableOpacity
-          style={[styles.todoCircle, prayer.status === 'done' && styles.todoCircleChecked]}
-          onPress={() => onToggleStatus(prayer.id, prayer.status)}
-        >
-          {prayer.status === 'done' ? (
-            <IconCheck size={12} color="#FFFFFF" />
-          ) : (
-            <View style={styles.todoDot} />
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.todoContent} onPress={onPress} activeOpacity={0.7}>
-          <Text style={[styles.todoText, prayer.status === 'done' && styles.todoTextDone]} numberOfLines={2}>
-            {prayer.request}
-          </Text>
-          <View style={styles.todoMeta}>
-            <IconClock size={10} color="#999999" />
-            <Text style={styles.todoTime}>{prayer.time}</Text>
-            {prayer.reminder_enabled && (
-              <View style={styles.reminderDot} />
-            )}
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.todoActionButton} onPress={onPress}>
-          <IconChevronRight size={18} color="#444444" />
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
-  );
-};
-
 export const JourneyHome: React.FC<JourneyHomeProps> = ({
-  onNavigateGlobal,
-  onViewAllReflections,
   onViewGrowth,
   onNewReflection,
   onLogPrayer,
@@ -149,226 +37,73 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   onSelectEntry,
   onTogglePrayerStatus,
   onRemovePrayer,
+  onViewAllReflections,
   journalEntries,
   activePrayers,
-  bookmarks
+  bookmarks,
+  onSelectBookmark,
+  onRemoveBookmark
 }) => {
   const [activeTab, setActiveTab] = React.useState<'prayers' | 'reflections' | 'bookmarks'>('reflections');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Grace & Peace,</Text>
-          <Text style={styles.headerTitle}>Your Journey</Text>
-        </View>
-        <TouchableOpacity style={styles.profileButton} onPress={onViewGrowth}>
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileInitial}>J</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      <JourneyHeader onViewGrowth={onViewGrowth} />
 
-      {/* Journey Dashboard */}
-      <View style={styles.dashboardContainer}>
-        <TouchableOpacity
-          style={styles.streakCard}
-          onPress={onViewGrowth}
-          activeOpacity={0.9}
-        >
-          <View style={styles.streakHeader}>
-            <View style={styles.streakHeaderLeft}>
-              <View style={styles.fireIconContainer}>
-                <IconFire size={20} color="#FFFFFF" />
-              </View>
-              <View>
-                <Text style={styles.streakTitle}>Consistency</Text>
-                <Text style={styles.streakSubtitle}>Keep your spirit active</Text>
-              </View>
-            </View>
-            <View style={styles.streakBadge}>
-              <View style={styles.pulseDot} />
-              <Text style={styles.streakBadgeText}>ON TRACK</Text>
-            </View>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>-</Text>
-              <Text style={styles.statLabel}>Days</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{journalEntries.length}</Text>
-              <Text style={styles.statLabel}>Notes</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>-</Text>
-              <Text style={styles.statLabel}>Fasts</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
+      {/* Dashboard */}
+      <DashboardSection onViewGrowth={onViewGrowth} journalEntriesCount={journalEntries.length} />
 
       {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionCard} onPress={onNewReflection}>
-          <View style={[styles.actionIconContainer, { backgroundColor: '#3B82F6' }]}>
-            <IconPen size={20} color="#FFFFFF" />
-          </View>
-          <Text style={styles.actionText}>Reflect</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionCard} onPress={onLogPrayer}>
-          <View style={[styles.actionIconContainer, { backgroundColor: '#F59E0B' }]}>
-            <IconActivity size={20} color="#FFFFFF" />
-          </View>
-          <Text style={styles.actionText}>Pray</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionCard} onPress={onViewFasting}>
-          <View style={[styles.actionIconContainer, { backgroundColor: '#EF4444' }]}>
-            <IconClock size={20} color="#FFFFFF" />
-          </View>
-          <Text style={styles.actionText}>Fasting</Text>
-        </TouchableOpacity>
-      </View>
+      <QuickActionsSection
+        onNewReflection={onNewReflection}
+        onLogPrayer={onLogPrayer}
+        onViewFasting={onViewFasting}
+      />
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'reflections' && styles.activeTab]}
-          onPress={() => setActiveTab('reflections')}
-        >
-          <Text style={[styles.tabText, activeTab === 'reflections' && styles.activeTabText]}>Reflections</Text>
-          {activeTab === 'reflections' && <View style={styles.activeTabIndicator} />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'prayers' && styles.activeTab]}
-          onPress={() => setActiveTab('prayers')}
-        >
-          <Text style={[styles.tabText, activeTab === 'prayers' && styles.activeTabText]}>Prayers</Text>
-          {activeTab === 'prayers' && <View style={styles.activeTabIndicator} />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'bookmarks' && styles.activeTab]}
-          onPress={() => setActiveTab('bookmarks')}
-        >
-          <Text style={[styles.tabText, activeTab === 'bookmarks' && styles.activeTabText]}>Bookmarks</Text>
-          {activeTab === 'bookmarks' && <View style={styles.activeTabIndicator} />}
-        </TouchableOpacity>
+        {['reflections', 'prayers', 'bookmarks'].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
+            onPress={() => setActiveTab(tab as any)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {activeTab === 'prayers' && (
-        <View style={styles.tabContent}>
-          {/* Active Prayers (Todo Style) */}
-          <View style={styles.prayerListContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Prayer List</Text>
-              <TouchableOpacity onPress={onLogPrayer}>
-                <Text style={styles.viewAll}>+ Add New</Text>
-              </TouchableOpacity>
-            </View>
-            {activePrayers.length === 0 ? (
-              <TouchableOpacity style={styles.emptyState} onPress={onLogPrayer}>
-                <IconActivity size={32} color="rgba(255, 255, 255, 0.1)" />
-                <Text style={styles.emptyText}>No active prayers</Text>
-              </TouchableOpacity>
-            ) : (
-              activePrayers.map((prayer) => (
-                <SwipeablePrayerItem
-                  key={prayer.id}
-                  prayer={prayer}
-                  onToggleStatus={onTogglePrayerStatus}
-                  onRemove={onRemovePrayer}
-                  onPress={() => onEditPrayer(prayer)}
-                />
-              ))
-            )}
-          </View>
-        </View>
-      )}
+      <View style={styles.tabContent}>
+        {activeTab === 'reflections' && (
+          <ReflectionsSection
+            journalEntries={journalEntries}
+            onViewAllReflections={onViewAllReflections}
+            onNewReflection={onNewReflection}
+            onSelectEntry={onSelectEntry}
+          />
+        )}
 
-      {activeTab === 'reflections' && (
-        <View style={styles.tabContent}>
-          {/* Recent Reflections */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Reflections</Text>
-              <TouchableOpacity onPress={onViewAllReflections}>
-                <Text style={styles.viewAll}>View All</Text>
-              </TouchableOpacity>
-            </View>
+        {activeTab === 'prayers' && (
+          <PrayersSection
+            activePrayers={activePrayers}
+            onLogPrayer={onLogPrayer}
+            onTogglePrayerStatus={onTogglePrayerStatus}
+            onRemovePrayer={onRemovePrayer}
+            onEditPrayer={onEditPrayer}
+          />
+        )}
 
-            {journalEntries.length === 0 ? (
-              <TouchableOpacity style={styles.emptyState} onPress={onNewReflection}>
-                <IconPen size={32} color="rgba(255, 255, 255, 0.1)" />
-                <Text style={styles.emptyText}>Start your first reflection</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.entriesList}>
-                {journalEntries.slice(0, 5).map((entry, idx) => (
-                  <TouchableOpacity
-                    key={entry.id}
-                    style={[
-                      styles.entryItem,
-                      idx === 4 && { borderBottomWidth: 0 }
-                    ]}
-                    onPress={() => onSelectEntry(entry)}
-                  >
-                    <Text style={styles.entryTitle} numberOfLines={1}>{entry.title || 'Untitled Reflection'}</Text>
-                    <View style={styles.entryMeta}>
-                      <Text style={styles.entryDate}>{entry.date}</Text>
-                      <Text style={styles.entryPreview} numberOfLines={1}>
-                        {entry.content || 'No additional text'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      {activeTab === 'bookmarks' && (
-        <View style={styles.tabContent}>
-          {/* Bookmarked Verses */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Bookmarked Verses</Text>
-            </View>
-
-            {bookmarks.length === 0 ? (
-              <View style={styles.emptyState}>
-                <IconBell size={32} color="rgba(255, 255, 255, 0.1)" />
-                <Text style={styles.emptyText}>No bookmarked verses yet</Text>
-              </View>
-            ) : (
-              <View style={styles.entriesList}>
-                {bookmarks.map((bookmark, idx) => (
-                  <View
-                    key={bookmark.id || idx}
-                    style={[
-                      styles.entryItem,
-                      idx === bookmarks.length - 1 && { borderBottomWidth: 0 }
-                    ]}
-                  >
-                    <Text style={styles.entryTitle}>
-                      {bookmark.book} {bookmark.chapter}:{bookmark.verse}
-                    </Text>
-                    <Text style={[styles.entryPreview, { marginTop: 4 }]} numberOfLines={3}>
-                      {bookmark.text || 'Loading verse text...'}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      )}
+        {activeTab === 'bookmarks' && (
+          <BookmarksSection
+            bookmarks={bookmarks}
+            onSelectBookmark={onSelectBookmark}
+            onRemoveBookmark={onRemoveBookmark}
+          />
+        )}
+      </View>
     </ScrollView>
   );
 };
@@ -382,302 +117,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 120,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#666666',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -1.2,
-  },
-  profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    padding: 2,
-    backgroundColor: 'rgba(232, 80, 58, 0.15)',
-  },
-  profileCircle: {
-    flex: 1,
-    borderRadius: 22,
-    backgroundColor: '#E8503A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitial: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  streakCard: {
-    backgroundColor: '#111111',
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: 32,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  streakGradient: {
-    padding: 24,
-  },
-  streakHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  streakHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingLeft: 4,
-  },
-  fireIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#E8503A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#E8503A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  streakTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  streakSubtitle: {
-    fontSize: 13,
-    color: '#666666',
-    fontWeight: '500',
-  },
-  streakBadge: {
-    backgroundColor: 'rgba(232, 80, 58, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  streakBadgeText: {
-    color: '#E8503A',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    padding: 20,
-    borderRadius: 20,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#555555',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
-    gap: 12,
-  },
-  actionCard: {
-    flex: 1,
-    backgroundColor: '#0D0D0D',
-    borderRadius: 24,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  actionIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  actionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  activePrayerTodo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0D0D0D',
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    gap: 16,
-  },
-  todoCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#E8503A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  todoDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#E8503A',
-  },
-  todoContent: {
-    flex: 1,
-  },
-  todoText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  todoMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  todoTime: {
-    fontSize: 11,
-    color: '#555555',
-    fontWeight: '600',
-  },
-  todoActionButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  prayerListContainer: {
-    marginBottom: 32,
-  },
-  todoCircleChecked: {
-    backgroundColor: '#E8503A',
-  },
-  todoTextDone: {
-    textDecorationLine: 'line-through',
-    color: '#444444',
-  },
-  reminderDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E8503A',
-    marginLeft: 4,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  viewAll: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#E8503A',
-  },
-  emptyState: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: 24,
-    padding: 40,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#555555',
-    fontWeight: '600',
-  },
-  entriesList: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  entryItem: {
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  entryTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  entryMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  entryDate: {
-    fontSize: 14,
-    color: '#666666',
-    marginRight: 10,
-  },
-  entryPreview: {
-    flex: 1,
-    fontSize: 14,
-    color: '#444444',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -706,46 +145,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  activeTabIndicator: {
-    // Hidden in this design
-  },
   tabContent: {
-    flex: 1,
-  },
-  swipeableContainer: {
-    position: 'relative',
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderRadius: 24,
-  },
-  deleteAction: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: '#EF4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 24,
-  },
-  dashboardContainer: {
-    marginBottom: 32,
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-    marginRight: 6,
-  },
-  categoryIndicator: {
-    width: 4,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 8,
-  },
-  spacer: {
     flex: 1,
   },
 });

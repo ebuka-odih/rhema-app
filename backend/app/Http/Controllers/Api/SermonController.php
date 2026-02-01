@@ -55,82 +55,108 @@ class SermonController extends Controller
         $path = $file->store('sermons', 'public');
         $filePath = storage_path('app/public/'.$path);
 
+        // 3. Create Sermon record IMMEDIATELY to preserve the audio
+        $sermon = Sermon::create([
+            'user_id' => $user->id,
+            'title' => $request->title,
+            'duration_seconds' => $request->duration_seconds,
+            'audio_path' => $path,
+            'status' => 'processing',
+        ]);
+
         try {
-            $openaiKey = config('services.openai.key');
-            if (! $openaiKey) {
-                return response()->json(['error' => 'OpenAI API key not configured on server'], 500);
-            }
+            $this->performProcessing($sermon, $filePath);
+            return response()->json($sermon->fresh());
+        } catch (\Exception $e) {
+            Log::error('Sermon Processing Error: '.$e->getMessage());
+            $sermon->update(['status' => 'failed']);
+            // Still return the sermon object so the user can retry or at least see it in their list
+            return response()->json($sermon->fresh(), 202); 
+        }
+    }
 
-            // 1. Transcription using Whisper
-            $transcriptionResponse = Http::withToken($openaiKey)
-                ->attach('file', file_get_contents($filePath), 'sermon.m4a')
-                ->post('https://api.openai.com/v1/audio/transcriptions', [
-                    'model' => 'whisper-1',
-                    'prompt' => 'A faithful and accurate transcript of a sermon, capturing the message, scripture references, and spiritual insights clearly.',
-                ]);
+    public function reprocess(Request $request, Sermon $sermon)
+    {
+        if ($sermon->user_id != $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
 
-            if ($transcriptionResponse->failed()) {
-                Log::error('Whisper API Error: '.$transcriptionResponse->body());
-                throw new \Exception('Failed to transcribe audio with Whisper');
-            }
+        $filePath = storage_path('app/public/'.$sermon->audio_path);
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'Audio file missing'], 404);
+        }
 
-            $transcription = $transcriptionResponse->json('text');
+        try {
+            $sermon->update(['status' => 'processing']);
+            $this->performProcessing($sermon, $filePath);
+            return response()->json($sermon->fresh());
+        } catch (\Exception $e) {
+            Log::error('Sermon Reprocessing Error: '.$e->getMessage());
+            $sermon->update(['status' => 'failed']);
+            return response()->json(['error' => 'Reprocessing failed: '.$e->getMessage()], 500);
+        }
+    }
 
-            // 2. Summarization using GPT-4o-mini
-            $summaryResponse = Http::withToken($openaiKey)
-                ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => 'gpt-4o-mini',
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => 'You are a helpful assistant. Provided is a sermon transcription. Create a clear, structured summary using key takeaways. 
+    protected function performProcessing(Sermon $sermon, string $filePath)
+    {
+        $openaiKey = config('services.openai.key');
+        if (!$openaiKey) {
+            throw new \Exception('OpenAI API key missing');
+        }
+
+        // 1. Transcription using Whisper (Increased timeout to 5 mins for long sermons)
+        $transcriptionResponse = Http::withToken($openaiKey)
+            ->timeout(300) 
+            ->attach('file', file_get_contents($filePath), 'sermon.m4a')
+            ->post('https://api.openai.com/v1/audio/transcriptions', [
+                'model' => 'whisper-1',
+                'prompt' => 'A faithful and accurate transcript of a sermon, capturing the message, scripture references, and spiritual insights clearly.',
+            ]);
+
+        if ($transcriptionResponse->failed()) {
+            throw new \Exception('Whisper API Error: '.$transcriptionResponse->body());
+        }
+
+        $transcription = $transcriptionResponse->json('text');
+
+        // 2. Summarization using GPT-4o-mini
+        $summaryResponse = Http::withToken($openaiKey)
+            ->timeout(120)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4o-mini',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You are a helpful assistant. Provided is a sermon transcription. Create a clear, structured summary using key takeaways. 
 
 CRITICAL PRIORITY: Identify and include EVERY Bible scripture reference mentioned (e.g., Hebrews 11, John 3:16). Ensure these references are integrated into the relevant takeaway points.
 
 Format rules:
 1. Use bullet points (e.g., - **Header**: Explanation).
 2. Each point must have a bolded header.
-3. Use SINGLE line breaks between each bullet point for readability.
+3. Use exactly ONE line break (no empty lines) between each bullet point to keep it compact.
 4. For every teaching point, explicitly mention the supporting Bible verse(s) the speaker used.
 5. Be thorough but capture every distinct key point—do not omit scripture.
 6. Proportional Detail: 
    - For very short recordings (< 2 mins): 2-3 points with scriptures.
    - For medium recordings (2-10 mins): 5-8 points with scriptures.
    - For long sermons (> 10 mins): 8-12 points with scriptures.',
-                        ],
-                        [
-                            'role' => 'user',
-                            'content' => "Sermon Transcription:\n\n".$transcription,
-                        ],
                     ],
-                    'temperature' => 0.5,
-                ]);
-
-            if ($summaryResponse->failed()) {
-                Log::error('OpenAI Chat Error: '.$summaryResponse->body());
-                $summary = 'Summary generation failed.';
-            } else {
-                $summary = $summaryResponse->json('choices.0.message.content');
-            }
-
-            Log::info('Saving sermon with summary length: '.strlen($summary ?? ''));
-
-            $sermon = Sermon::create([
-                'user_id' => $user->id,
-                'title' => $request->title,
-                'duration_seconds' => $request->duration_seconds,
-                'audio_path' => $path,
-                'transcription' => $transcription,
-                'summary' => $summary,
+                    [
+                        'role' => 'user',
+                        'content' => "Sermon Transcription:\n\n".$transcription,
+                    ],
+                ],
+                'temperature' => 0.5,
             ]);
 
-            return response()->json($sermon);
+        $summary = $summaryResponse->ok() ? $summaryResponse->json('choices.0.message.content') : 'Summary generation failed.';
 
-        } catch (\Exception $e) {
-            Log::error('Sermon Processing Error: '.$e->getMessage());
-
-            return response()->json(['error' => 'Internal server error: '.$e->getMessage()], 500);
-        }
+        $sermon->update([
+            'transcription' => $transcription,
+            'summary' => $summary,
+            'status' => 'completed'
+        ]);
     }
 
     public function update(Request $request, Sermon $sermon)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { JournalEntry, Prayer } from '../types';
 import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
@@ -12,6 +12,7 @@ import { GrowthTracker } from '../components/journey/GrowthTracker';
 import { PrayerLog } from '../components/journey/PrayerLog';
 import { Fasting } from '../components/journey/Fasting';
 import { notificationService } from '../services/notificationService';
+import { cacheService } from '../services/cacheService';
 
 type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'prayer_log' | 'fasting';
 
@@ -20,7 +21,7 @@ interface JourneyScreenProps {
   onEditorStateChange?: (isOpen: boolean) => void;
   initialView?: JourneyView;
   initialData?: { title: string; content: string } | null;
-  onNavigateToBible?: (book: string, chapter: number) => void;
+  onNavigateToBible?: (book: string, chapter: number, verse?: number) => void;
 }
 
 const JourneyScreen: React.FC<JourneyScreenProps> = ({
@@ -58,19 +59,42 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
     }
   }, [initialData]);
 
-  // Fetch Data
+  // Fetch Data when component mounts
   useEffect(() => {
     fetchAllData();
   }, []);
 
   const fetchAllData = async () => {
-    setIsLoading(true);
-    await Promise.all([
-      fetchReflections(),
-      fetchPrayers(),
-      fetchBookmarks()
+    // Stage 1: Load from Cache (Instant UI)
+    const [cReflections, cPrayers, cBookmarks] = await Promise.all([
+      cacheService.get<JournalEntry[]>('journey_reflections'),
+      cacheService.get<Prayer[]>('journey_prayers'),
+      cacheService.get<any[]>('journey_bookmarks')
     ]);
-    setIsLoading(false);
+
+    if (cReflections) setReflections(cReflections);
+    if (cPrayers) setPrayers(cPrayers);
+    if (cBookmarks) setBookmarks(cBookmarks);
+
+    // Only show full loader if we have NO cached data at all
+    if (!cReflections && !cPrayers && !cBookmarks) {
+      setIsLoading(true);
+    } else {
+      setIsLoading(false);
+    }
+
+    // Stage 2: Background Sync (Fresh Data)
+    try {
+      await Promise.all([
+        fetchReflections(),
+        fetchPrayers(),
+        fetchBookmarks()
+      ]);
+    } catch (err) {
+      console.error('Background sync failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchReflections = async () => {
@@ -92,6 +116,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
           category: item.category || 'Devotion'
         }));
         setReflections(mapped);
+        cacheService.set('journey_reflections', mapped);
       }
     } catch (err) {
       console.error('Fetch reflections error:', err);
@@ -110,6 +135,7 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
       if (response.ok) {
         const data = await response.json();
         setPrayers(data);
+        cacheService.set('journey_prayers', data);
 
         // Update specific prayer state if one is active but local state is empty
         if (data.length > 0 && !prayerRequest) {
@@ -126,13 +152,12 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
     }
   };
 
-
-
   const fetchBookmarks = async () => {
     try {
       const { bibleService } = await import('../services/bibleService');
       const data = await bibleService.getBookmarks();
       setBookmarks(data);
+      cacheService.set('journey_bookmarks', data);
     } catch (err) {
       console.error('Fetch bookmarks error:', err);
     }
@@ -404,24 +429,69 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
     ]);
   };
 
+  const handleSelectBookmark = (bookmark: any) => {
+    onNavigateToBible?.(bookmark.book, bookmark.chapter, bookmark.verse);
+  };
+
+  const handleRemoveBookmark = async (bookmark: any) => {
+    Alert.alert(
+      'Remove Bookmark',
+      'Are you sure you want to remove this bookmark?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const originalBookmarks = [...bookmarks];
+            try {
+              // Optimistic update
+              setBookmarks(prev => prev.filter(b => b.id !== bookmark.id));
+
+              const { bibleService } = await import('../services/bibleService');
+              await bibleService.removeBookmark(
+                bookmark.version_id,
+                bookmark.book,
+                bookmark.chapter,
+                bookmark.verse
+              );
+            } catch (err) {
+              console.error('Remove bookmark error:', err);
+              setBookmarks(originalBookmarks);
+              Alert.alert('Error', 'Failed to remove bookmark. Please check your connection.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {currentView === 'home' && (
-        <JourneyHome
-          onNavigateGlobal={onNavigateGlobal}
-          onViewAllReflections={() => setCurrentView('journal_list')}
-          onViewGrowth={() => setCurrentView('growth')}
-          onNewReflection={handleNewReflection}
-          onLogPrayer={handleNewPrayer}
-          onEditPrayer={handleEditPrayer}
-          onViewFasting={() => setCurrentView('fasting')}
-          onSelectEntry={handleSelectEntry}
-          onTogglePrayerStatus={handleTogglePrayerStatus}
-          onRemovePrayer={handleRemovePrayer}
-          journalEntries={reflections}
-          activePrayers={prayers}
-          bookmarks={bookmarks}
-        />
+        isLoading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#E8503A" />
+          </View>
+        ) : (
+          <JourneyHome
+            onNavigateGlobal={onNavigateGlobal}
+            onViewAllReflections={() => setCurrentView('journal_list')}
+            onViewGrowth={() => setCurrentView('growth')}
+            onNewReflection={handleNewReflection}
+            onLogPrayer={handleNewPrayer}
+            onEditPrayer={handleEditPrayer}
+            onViewFasting={() => setCurrentView('fasting')}
+            onSelectEntry={handleSelectEntry}
+            onTogglePrayerStatus={handleTogglePrayerStatus}
+            onRemovePrayer={handleRemovePrayer}
+            onSelectBookmark={handleSelectBookmark}
+            onRemoveBookmark={handleRemoveBookmark}
+            journalEntries={reflections}
+            activePrayers={prayers}
+            bookmarks={bookmarks}
+          />
+        )
       )}
 
       {currentView === 'journal_list' && (

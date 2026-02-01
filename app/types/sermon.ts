@@ -5,6 +5,7 @@ export interface Sermon {
     duration: string;
     transcription?: string;
     summary?: string;
+    status?: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 export type ViewState = 'LIST' | 'DETAIL' | 'RECORD';

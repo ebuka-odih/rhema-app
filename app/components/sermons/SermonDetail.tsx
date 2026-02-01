@@ -13,6 +13,7 @@ interface SermonDetailProps {
     onDelete: () => void;
     onTabChange: (tab: 'SUMMARY' | 'TRANSCRIPTION') => void;
     onNavigateToBible?: (book: string, chapter: number) => void;
+    onReprocess?: (id: string) => Promise<void>;
 }
 
 export const SermonDetail: React.FC<SermonDetailProps> = ({
@@ -21,9 +22,11 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
     onBack,
     onDelete,
     onTabChange,
-    onNavigateToBible
+    onNavigateToBible,
+    onReprocess
 }) => {
     const [selectedVerse, setSelectedVerse] = React.useState<string | null>(null);
+    const [isProcessingInternal, setIsProcessingInternal] = React.useState(false);
 
     const handleReferencePress = (reference: string) => {
         setSelectedVerse(reference);
@@ -36,6 +39,19 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
             const [_, book, chapter] = parts;
             onNavigateToBible(book, parseInt(chapter));
             setSelectedVerse(null);
+        }
+    };
+
+    const handleRetryAnalysis = async () => {
+        if (!onReprocess) return;
+        setIsProcessingInternal(true);
+        try {
+            await onReprocess(sermon.id);
+            Alert.alert('Analysis Started', 'We are reprocessing your sermon. The results will appear shortly.');
+        } catch (err) {
+            Alert.alert('Error', 'Failed to start reprocessing. Please try again later.');
+        } finally {
+            setIsProcessingInternal(false);
         }
     };
 
@@ -72,6 +88,27 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
                         <IconPlay size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
+
+                {sermon.status === 'processing' && (
+                    <View style={styles.processingBar}>
+                        <Text style={styles.processingText}>AI is currently analyzing this sermon...</Text>
+                    </View>
+                )}
+
+                {sermon.status === 'failed' && (
+                    <View style={styles.failedCard}>
+                        <Text style={styles.failedText}>Transcription failed for this recording.</Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={handleRetryAnalysis}
+                            disabled={isProcessingInternal}
+                        >
+                            <Text style={styles.retryButtonText}>
+                                {isProcessingInternal ? 'Starting...' : 'Try Analysis Again'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.progressBar}>
                     <View style={styles.progressFill} />
@@ -224,5 +261,46 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         color: '#CCCCCC',
+    },
+    processingBar: {
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(232, 80, 58, 0.2)',
+    },
+    processingText: {
+        color: '#E8503A',
+        fontSize: 14,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    failedCard: {
+        backgroundColor: 'rgba(232, 80, 58, 0.05)',
+        padding: 24,
+        borderRadius: 16,
+        marginBottom: 24,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: 'rgba(232, 80, 58, 0.3)',
+    },
+    failedText: {
+        color: '#999999',
+        fontSize: 14,
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    retryButton: {
+        backgroundColor: '#E8503A',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: 'bold',
     },
 });

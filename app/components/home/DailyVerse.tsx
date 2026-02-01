@@ -34,7 +34,7 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
     });
     const [isInteracting, setIsInteracting] = useState(false);
 
-    // Sync metrics with props when they change (e.g. after Homescreen fetch)
+    // Sync metrics with props when verse changes (new day)
     React.useEffect(() => {
         setMetrics({
             likes: initialLikes,
@@ -42,7 +42,7 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
             // downloads: initialDownloads,
             userLiked: initialUserLiked
         });
-    }, [id, initialLikes, initialShares, initialDownloads, initialUserLiked]);
+    }, [id]); // Only trigger when the verse itself changes
 
     const handleInteract = async (type: 'like' | 'share' | 'comment') => {
         if (isInteracting) return;

@@ -24,6 +24,17 @@ export const SermonCard: React.FC<SermonCardProps> = ({ sermon, onPress }) => (
                     <Text style={styles.sermonDate}>{sermon.date}</Text>
                     <Text style={styles.sermonDot}>•</Text>
                     <Text style={styles.sermonDuration}>{sermon.duration}</Text>
+
+                    {sermon.status === 'processing' && (
+                        <View style={[styles.statusBadge, styles.statusProcessing]}>
+                            <Text style={styles.statusText}>Analyzing...</Text>
+                        </View>
+                    )}
+                    {sermon.status === 'failed' && (
+                        <View style={[styles.statusBadge, styles.statusFailed]}>
+                            <Text style={styles.statusText}>Failed</Text>
+                        </View>
+                    )}
                 </View>
             </View>
             <IconChevronRight size={20} color="#666666" />
@@ -77,5 +88,26 @@ const styles = StyleSheet.create({
     sermonDuration: {
         fontSize: 12,
         color: '#999999',
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 4,
+    },
+    statusProcessing: {
+        backgroundColor: 'rgba(232, 80, 58, 0.15)',
+    },
+    statusFailed: {
+        backgroundColor: 'rgba(232, 80, 58, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(232, 80, 58, 0.2)',
+    },
+    statusText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#E8503A',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });
