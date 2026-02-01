@@ -43,6 +43,7 @@
           "microphonePermission": "Allow Wordflow to access your microphone"
         }
       ],
+      "expo-notifications",
       "@react-native-community/datetimepicker",
       "@react-native-google-signin/google-signin"
     ],

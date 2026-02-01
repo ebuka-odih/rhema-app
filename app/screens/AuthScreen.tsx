@@ -87,17 +87,29 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     }
   };
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     if (!email) {
       Alert.alert('Forgot Password', 'Please enter your email address first so we know which account to reset.');
       return;
     }
 
-    Alert.alert(
-      'Reset Password',
-      `An email with instructions to reset your password has been sent to ${email}. Please check your inbox and spam folder.`,
-      [{ text: 'OK' }]
-    );
+    setLoading(true);
+    try {
+      const { error } = await signIn.forgotPassword(email);
+      if (error) {
+        Alert.alert('Error', error.message || 'Failed to send reset email. Please try again later.');
+      } else {
+        Alert.alert(
+          'Reset Password',
+          `An email with instructions to reset your password has been sent to ${email}. Please check your inbox and spam folder.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', 'An unexpected error occurred. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {

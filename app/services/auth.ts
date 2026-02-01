@@ -225,6 +225,28 @@ export const authService = {
         } catch (error: any) {
             return { data: null, error };
         }
+    },
+
+    async forgotPassword(email: string) {
+        try {
+            const response = await fetch(`${API_BASE_URL}password/email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ email }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to send reset link');
+            }
+
+            return { data, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
     }
 };
 
@@ -273,7 +295,8 @@ export const useSession = () => {
 // Mimic better-auth structure for compatibility in screens
 export const signIn = {
     email: (creds: any) => authService.login(creds),
-    google: (token: string) => authService.googleLogin(token)
+    google: (token: string) => authService.googleLogin(token),
+    forgotPassword: (email: string) => authService.forgotPassword(email)
 };
 
 export const signUp = {
