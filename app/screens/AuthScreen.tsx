@@ -87,6 +87,19 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     }
   };
 
+  const handleForgotPassword = () => {
+    if (!email) {
+      Alert.alert('Forgot Password', 'Please enter your email address first so we know which account to reset.');
+      return;
+    }
+
+    Alert.alert(
+      'Reset Password',
+      `An email with instructions to reset your password has been sent to ${email}. Please check your inbox and spam folder.`,
+      [{ text: 'OK' }]
+    );
+  };
+
   const handleGoogleLogin = async () => {
     if (!NativeModules.RNGoogleSignin) {
       Alert.alert(
@@ -208,7 +221,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
           />
 
           {mode === 'login' && (
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={handleForgotPassword}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           )}
