@@ -170,6 +170,12 @@ class BibleController extends Controller
 
                 $verse->user_liked = $userId ? $verse->interactions()->where('user_id', $userId)->where('type', 'like')->exists() : false;
 
+                // Enrich with global counts
+                $globalCounts = $this->getGlobalCounts($verse->reference);
+                $verse->likes_count = $globalCounts['like'] ?? 0;
+                $verse->shares_count = $globalCounts['share'] ?? 0;
+                $verse->downloads_count = $globalCounts['download'] ?? 0;
+
                 return response()->json($verse);
             }
 
@@ -199,6 +205,12 @@ class BibleController extends Controller
             ]);
 
             $verse->user_liked = false;
+
+            // Enrich with global counts
+            $globalCounts = $this->getGlobalCounts($verse->reference);
+            $verse->likes_count = $globalCounts['like'] ?? 0;
+            $verse->shares_count = $globalCounts['share'] ?? 0;
+            $verse->downloads_count = $globalCounts['download'] ?? 0;
 
             return response()->json($verse);
 
@@ -302,8 +314,10 @@ class BibleController extends Controller
                     }
 
                     $verse->refresh();
+                    $globalCounts = $this->getGlobalCounts($verse->reference);
+                    
                     return response()->json([
-                        'likes_count' => $verse->likes_count,
+                        'likes_count' => $globalCounts['like'] ?? 0,
                         'user_liked' => $liked,
                     ]);
                 } else {
@@ -320,8 +334,11 @@ class BibleController extends Controller
                     $verse->increment($column);
                     $verse->refresh();
 
+                    $globalCounts = $this->getGlobalCounts($verse->reference);
+                    $returnColumn = $type.'s_count';
+                    
                     return response()->json([
-                        $column => $verse->$column,
+                        $returnColumn => $globalCounts[$type] ?? 0,
                     ]);
                 }
             });
@@ -330,6 +347,17 @@ class BibleController extends Controller
 
             return response()->json(['error' => 'Failed to process interaction'], 500);
         }
+    }
+
+    protected function getGlobalCounts($reference)
+    {
+        return DB::table('daily_verse_interactions')
+            ->join('daily_verses', 'daily_verse_interactions.daily_verse_id', '=', 'daily_verses.id')
+            ->where('daily_verses.reference', $reference)
+            ->select('type', DB::raw('count(*) as count'))
+            ->groupBy('type')
+            ->pluck('count', 'type')
+            ->toArray();
     }
 
     public function dailyAffirmation(Request $request)
