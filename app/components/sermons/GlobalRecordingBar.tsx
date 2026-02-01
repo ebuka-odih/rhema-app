@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useRecording } from '../../context/RecordingContext';
-import { IconMic } from '../components/Icons';
+import { IconMic } from '../Icons';
 
 interface GlobalRecordingBarProps {
     onPress: () => void;
