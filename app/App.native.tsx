@@ -5,6 +5,7 @@ import {
     IconHome, IconMic, IconBible, IconMore, IconJourney
 } from './components/Icons';
 import { Tab } from './types';
+import { useAppFlow } from './hooks/useAppFlow';
 
 // Screens
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -15,28 +16,28 @@ import RecordScreen from './screens/RecordScreen';
 import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { useSession } from './services/auth';
 import { notificationService } from './services/notificationService';
-import { bibleService } from './services/bibleService';
 import { RecordingProvider } from './context/RecordingContext';
 import { GlobalRecordingBar } from './components/sermons/GlobalRecordingBar';
 
-type AppState = 'ONBOARDING' | 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN';
-
 const AppContent: React.FC = () => {
     // Navigation State
-    const [appState, setAppState] = useState<AppState>('WELCOME');
-    const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
+    const {
+        appState,
+        setAppState,
+        hasCheckedOnboarding,
+        completeOnboarding,
+        handleAuthenticated,
+        session,
+        isPending,
+    } = useAppFlow();
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
     const [previousTab, setPreviousTab] = useState<Tab | null>(null);
     const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number; verse?: number }>({});
     const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
     const [journalInitialData, setJournalInitialData] = useState<{ title: string; content: string } | null>(null);
-
-    const { data: session, isPending } = useSession();
     const insets = useSafeAreaInsets();
 
     const hasTriggeredSync = useRef(false);
@@ -70,40 +71,6 @@ const AppContent: React.FC = () => {
 
         return () => subscription.remove();
     }, [session, isPending]);
-
-    useEffect(() => {
-        const checkOnboarding = async () => {
-            try {
-                const seen = await AsyncStorage.getItem('hasSeenOnboarding');
-                if (seen !== 'true' && !session) {
-                    setAppState('ONBOARDING');
-                }
-                setHasCheckedOnboarding(true);
-            } catch (e) {
-                setHasCheckedOnboarding(true);
-            }
-        };
-        checkOnboarding();
-    }, [session]);
-
-    useEffect(() => {
-        if (!isPending && hasCheckedOnboarding) {
-            if (session) {
-                setAppState('MAIN');
-            } else if (appState === 'MAIN') {
-                setAppState('WELCOME');
-            }
-        }
-    }, [session, isPending, hasCheckedOnboarding]);
-
-    const completeOnboarding = async () => {
-        await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-        setAppState('WELCOME');
-    };
-
-    const handleAuthenticated = () => {
-        setAppState('MAIN');
-    };
 
     const handleNavPress = (tab: Tab) => {
         if (Platform.OS !== 'web') {

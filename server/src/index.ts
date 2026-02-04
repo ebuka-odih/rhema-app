@@ -4,13 +4,34 @@ import { auth } from "./lib/auth.js";
 
 const app = new Hono();
 
+const defaultDevOrigins = [
+    "http://localhost:5173",
+    "http://localhost:19006",
+    "http://localhost:8081",
+];
+
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const resolvedOrigins =
+    allowedOrigins.length > 0
+        ? allowedOrigins
+        : process.env.NODE_ENV === "production"
+            ? []
+            : defaultDevOrigins;
+
 app.use("*", cors({
-    origin: "*", // Adjust this in production
+    origin: (origin) => {
+        if (!origin) return null;
+        return resolvedOrigins.includes(origin) ? origin : null;
+    },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-    credentials: true,
+    credentials: false,
 }));
 
 app.on(["POST", "GET"], "/api/auth/**", (c) => {

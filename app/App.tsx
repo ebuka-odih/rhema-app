@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconHome, IconMic, IconBible, IconMore, IconJourney
 } from './components/Icons';
 import { Tab } from './types';
+import { useAppFlow } from './hooks/useAppFlow';
 
 // Screens
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -16,53 +17,19 @@ import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import LegalScreen from './screens/LegalScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSession } from './services/auth';
-
-type AppState = 'ONBOARDING' | 'WELCOME' | 'AUTH_LOGIN' | 'AUTH_SIGNUP' | 'MAIN' | 'LEGAL';
-
 const AppContent: React.FC = () => {
   // Navigation State
-  const [appState, setAppState] = useState<AppState>('WELCOME');
-  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
+  const {
+    appState,
+    setAppState,
+    hasCheckedOnboarding,
+    completeOnboarding,
+    handleAuthenticated,
+    isPending,
+  } = useAppFlow();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
   const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
-  const { data: session, isPending } = useSession();
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        const seen = await AsyncStorage.getItem('hasSeenOnboarding');
-        if (seen !== 'true' && !session) {
-          setAppState('ONBOARDING');
-        }
-        setHasCheckedOnboarding(true);
-      } catch (e) {
-        setHasCheckedOnboarding(true);
-      }
-    };
-    checkOnboarding();
-  }, [session]);
-
-  useEffect(() => {
-    if (!isPending && hasCheckedOnboarding) {
-      if (session) {
-        setAppState('MAIN');
-      } else if (appState === 'MAIN') {
-        setAppState('WELCOME');
-      }
-    }
-  }, [session, isPending, hasCheckedOnboarding]);
-
-  const completeOnboarding = async () => {
-    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-    setAppState('WELCOME');
-  };
-
-  const handleAuthenticated = () => {
-    setAppState('MAIN');
-  };
 
   const renderMainApp = () => {
     const renderScreen = () => {

@@ -136,6 +136,11 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
         const data = await response.json();
         setPrayers(data);
         cacheService.set('journey_prayers', data);
+        try {
+          await notificationService.syncPrayerReminders(data);
+        } catch (notifErr) {
+          console.error('Sync prayer reminders error:', notifErr);
+        }
 
         // Update specific prayer state if one is active but local state is empty
         if (data.length > 0 && !prayerRequest) {

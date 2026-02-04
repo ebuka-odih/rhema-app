@@ -2,8 +2,6 @@ import * as SecureStore from 'expo-secure-store';
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from './apiConfig';
 
-console.log('API_BASE_URL:', API_BASE_URL);
-
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_DATA_KEY = 'user_data';
 
@@ -135,7 +133,7 @@ export const authService = {
     async logout() {
         const token = await this.getToken();
         try {
-            await fetch(`${API_BASE_URL}/logout`, {
+            await fetch(`${API_BASE_URL}logout`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

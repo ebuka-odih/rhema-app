@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import { Prayer } from '../types';
 
 // Configure how notifications should be handled when the app is open
 Notifications.setNotificationHandler({
@@ -101,6 +102,9 @@ export const notificationService = {
     },
 
     async schedulePrayerReminder(id: string | number, hour: number, minute: number, request: string) {
+        // Ensure we don't end up with stale/duplicate schedules for the same prayer
+        await Notifications.cancelScheduledNotificationAsync(`prayer-${id}`);
+
         // Schedule the primary alarm with a consistent ID for this specific prayer
         await Notifications.scheduleNotificationAsync({
             identifier: `prayer-${id}`,
@@ -124,6 +128,50 @@ export const notificationService = {
 
     async cancelPrayerReminder(id: string | number) {
         await Notifications.cancelScheduledNotificationAsync(`prayer-${id}`);
+    },
+
+    async syncPrayerReminders(prayers: Prayer[]) {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        const prayerMap = new Map(prayers.map((p) => [p.id.toString(), p]));
+
+        for (const notif of scheduled) {
+            const identifier = notif.identifier || "";
+            if (!identifier.startsWith('prayer-')) continue;
+
+            const prayerId = identifier.replace('prayer-', '');
+            const prayer = prayerMap.get(prayerId);
+
+            // Cancel anything that no longer exists or shouldn't be scheduled
+            if (!prayer || !prayer.reminder_enabled || prayer.status !== 'active') {
+                await Notifications.cancelScheduledNotificationAsync(identifier);
+                continue;
+            }
+
+            const time = prayer.time || '';
+            const [timePart, period] = time.split(' ');
+            const [rawHour, rawMinute] = (timePart || '').split(':').map(Number);
+            if (Number.isNaN(rawHour) || Number.isNaN(rawMinute)) {
+                // Invalid time format: cancel to avoid stale notifications
+                await Notifications.cancelScheduledNotificationAsync(identifier);
+                continue;
+            }
+
+            let hour = rawHour;
+            if (period === 'PM' && hour < 12) hour += 12;
+            if (period === 'AM' && hour === 12) hour = 0;
+
+            const expectedBody = prayer.request || "It's time for your scheduled prayer session. Your soul awaits.";
+            const trigger: any = notif.trigger || {};
+
+            const needsReschedule =
+                trigger.hour !== hour ||
+                trigger.minute !== rawMinute ||
+                notif.content?.body !== expectedBody;
+
+            if (needsReschedule) {
+                await this.schedulePrayerReminder(prayer.id, hour, rawMinute, prayer.request);
+            }
+        }
     },
 
     async cancelAllReminders() {
