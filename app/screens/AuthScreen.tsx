@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { AuthHeader } from '../components/auth/AuthHeader';
 import { AuthInput } from '../components/auth/AuthInput';
 import { SocialAuth } from '../components/auth/SocialAuth';
@@ -23,9 +24,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   const [resetCode, setResetCode] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+
+  const isGoogleAvailable = !!NativeModules.RNGoogleSignin;
 
   React.useEffect(() => {
-    if (Platform.OS === 'web' || __DEV__) return;
+    if (Platform.OS === 'web') return;
 
     if (!NativeModules.RNGoogleSignin) return;
 
@@ -34,8 +38,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
       const GoogleSignin = GoogleSigninModule.GoogleSignin;
 
       if (GoogleSignin) {
+        const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+          || '335759882370-olmomtjn2n2q97sujehp3rpknp6jlk2h.apps.googleusercontent.com';
+        const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
         GoogleSignin.configure({
-          webClientId: '335759882370-olmomtjn2n2q97sujehp3rpknp6jlk2h.apps.googleusercontent.com',
+          webClientId,
+          iosClientId,
           offlineAccess: true,
           forceCodeForRefreshToken: true,
         });
@@ -43,6 +52,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     } catch (e) {
       // Completely silent in dev
     }
+  }, []);
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setIsAppleAvailable)
+      .catch(() => setIsAppleAvailable(false));
   }, []);
 
   const handleSubmit = async () => {
@@ -180,13 +196,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     }
 
     try {
-      await GoogleSignin.hasPlayServices();
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices();
+      }
       const userInfo = await GoogleSignin.signIn();
 
-      const idToken = userInfo.data?.idToken;
-      if (idToken) {
+      const tokens = await GoogleSignin.getTokens();
+      const accessToken = tokens?.accessToken;
+
+      if (accessToken) {
         setLoading(true);
-        const { error } = await signIn.google(idToken);
+        const { error } = await signIn.google(accessToken);
 
         if (error) {
           Alert.alert('Login Error', error.message || 'Failed to authenticate with backend');
@@ -194,7 +214,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
           onAuthenticated();
         }
       } else {
-        throw new Error('No ID token obtained from Google');
+        throw new Error('No access token obtained from Google');
       }
     } catch (error: any) {
       if (isErrorWithCode && isErrorWithCode(error)) {
@@ -214,6 +234,45 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
       } else {
         Alert.alert('Error', error.message || 'An unexpected error occurred during Google Sign-In');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      const identityToken = credential.identityToken;
+      if (!identityToken) {
+        throw new Error('No identity token returned from Apple');
+      }
+
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+      setLoading(true);
+      const { error } = await signIn.apple({
+        identityToken,
+        fullName: fullName || undefined,
+        email: credential.email || undefined,
+      });
+
+      if (error) {
+        Alert.alert('Login Error', error.message || 'Failed to authenticate with Apple');
+      } else {
+        onAuthenticated();
+      }
+    } catch (err: any) {
+      if (err?.code === 'ERR_CANCELED' || err?.code === 'ERR_REQUEST_CANCELED') return;
+      Alert.alert('Apple Sign-In Error', err?.message || 'Unable to sign in with Apple');
     } finally {
       setLoading(false);
     }
@@ -323,8 +382,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
             )}
           </TouchableOpacity>
 
-          {!__DEV__ && NativeModules.RNGoogleSignin && (
-            <SocialAuth onGooglePress={handleGoogleLogin} />
+          {(isGoogleAvailable || isAppleAvailable) && (
+            <SocialAuth
+              onGooglePress={handleGoogleLogin}
+              onApplePress={handleAppleLogin}
+              showGoogle={isGoogleAvailable}
+              showApple={isAppleAvailable}
+            />
           )}
 
           <View style={styles.toggleContainer}>

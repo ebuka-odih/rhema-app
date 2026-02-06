@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { IconArrowLeft, IconCheck, IconStar, IconFire, IconMic, IconBible } from '../../components/Icons';
+import { iapService, IAP_SUBSCRIPTION_ID } from '../../services/iap';
 
 const BenefitItem: React.FC<{ text: string }> = ({ text }) => (
     <View style={styles.benefitItem}>
@@ -12,6 +13,87 @@ const BenefitItem: React.FC<{ text: string }> = ({ text }) => (
 );
 
 const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+    const [product, setProduct] = React.useState<any>(null);
+    const [loadingProduct, setLoadingProduct] = React.useState(true);
+    const [processingPurchase, setProcessingPurchase] = React.useState(false);
+    const [processingRestore, setProcessingRestore] = React.useState(false);
+
+    React.useEffect(() => {
+        let cleanup: (() => void) | null = null;
+
+        const init = async () => {
+            try {
+                await iapService.initConnection();
+                const loadedProduct = await iapService.getSubscription();
+                setProduct(loadedProduct);
+            } catch (err) {
+                console.error('Failed to init IAP', err);
+            } finally {
+                setLoadingProduct(false);
+            }
+        };
+
+        init();
+        cleanup = iapService.addListeners(
+            () => {
+                setProcessingPurchase(false);
+                Alert.alert('Success', 'Your subscription is now active.');
+            },
+            (error) => {
+                setProcessingPurchase(false);
+                setProcessingRestore(false);
+                if (error?.code === 'SYNC_FAILED') {
+                    Alert.alert('Purchase Complete', 'Your purchase was successful. Subscription status will update shortly.');
+                    return;
+                }
+                if (error?.code === 'E_USER_CANCELLED') return;
+                Alert.alert('Purchase Error', error?.message || 'Unable to complete purchase.');
+            }
+        );
+
+        return () => {
+            cleanup?.();
+            iapService.endConnection().catch(() => null);
+        };
+    }, []);
+
+    const handleSubscribe = async () => {
+        if (!IAP_SUBSCRIPTION_ID) {
+            Alert.alert('Not Configured', 'Subscription product ID is missing.');
+            return;
+        }
+        setProcessingPurchase(true);
+        try {
+            await iapService.purchaseSubscription();
+        } catch (err: any) {
+            setProcessingPurchase(false);
+            Alert.alert('Purchase Error', err?.message || 'Unable to start purchase.');
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!IAP_SUBSCRIPTION_ID) {
+            Alert.alert('Not Configured', 'Subscription product ID is missing.');
+            return;
+        }
+        setProcessingRestore(true);
+        try {
+            await iapService.restorePurchases();
+            Alert.alert('Restore Complete', 'Your purchases have been restored.');
+        } catch (err: any) {
+            Alert.alert('Restore Failed', err?.message || 'Unable to restore purchases.');
+        } finally {
+            setProcessingRestore(false);
+        }
+    };
+
+    const priceLabel = product?.localizedPrice
+        || product?.priceString
+        || '$9.99';
+    const periodLabel = product?.subscriptionPeriodNumberIOS && product?.subscriptionPeriodUnitIOS
+        ? ` / ${product.subscriptionPeriodNumberIOS} ${product.subscriptionPeriodUnitIOS.toLowerCase()}`
+        : ' / month';
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -40,7 +122,10 @@ const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <View style={styles.cardHeader}>
                         <View>
                             <Text style={styles.planName}>Rhema Daily Pro</Text>
-                            <Text style={styles.planPrice}>$9.99<Text style={styles.planPeriod}> / month</Text></Text>
+                            <Text style={styles.planPrice}>
+                                {priceLabel}
+                                <Text style={styles.planPeriod}>{periodLabel}</Text>
+                            </Text>
                         </View>
                         <View style={styles.proLabel}>
                             <Text style={styles.proLabelText}>MOST POPULAR</Text>
@@ -56,8 +141,17 @@ const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <BenefitItem text="Priority Email Support" />
                     </View>
 
-                    <TouchableOpacity style={styles.subscribeButton} activeOpacity={0.8}>
-                        <Text style={styles.subscribeButtonText}>Start 7-Day Free Trial</Text>
+                    <TouchableOpacity
+                        style={[styles.subscribeButton, (processingPurchase || loadingProduct) && styles.buttonDisabled]}
+                        activeOpacity={0.8}
+                        onPress={handleSubscribe}
+                        disabled={processingPurchase || loadingProduct}
+                    >
+                        {processingPurchase || loadingProduct ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <Text style={styles.subscribeButtonText}>Start 7-Day Free Trial</Text>
+                        )}
                     </TouchableOpacity>
                     <Text style={styles.cancelAnytime}>Cancel anytime. No commitment.</Text>
                 </View>
@@ -68,13 +162,21 @@ const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <Text style={styles.freeDesc}>You are currently on the basic plan with limited features.</Text>
                 </View>
 
-                <TouchableOpacity style={styles.restoreButton}>
-                    <Text style={styles.restoreButtonText}>Restore Purchase</Text>
+                <TouchableOpacity
+                    style={styles.restoreButton}
+                    onPress={handleRestore}
+                    disabled={processingRestore}
+                >
+                    {processingRestore ? (
+                        <ActivityIndicator color="#666666" />
+                    ) : (
+                        <Text style={styles.restoreButtonText}>Restore Purchase</Text>
+                    )}
                 </TouchableOpacity>
 
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>
-                        Recurring billing. Terms and Privacy apply.
+                        {loadingProduct ? 'Loading subscription details...' : 'Recurring billing. Terms and Privacy apply.'}
                     </Text>
                 </View>
             </ScrollView>
@@ -227,6 +329,9 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: '700',
+    },
+    buttonDisabled: {
+        opacity: 0.7,
     },
     cancelAnytime: {
         fontSize: 13,

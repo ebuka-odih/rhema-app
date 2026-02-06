@@ -24,6 +24,7 @@ interface HomeScreenProps {
 const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const { data: session } = useSession();
   const firstName = session?.user?.name ? session.user.name.trim().split(' ')[0] : "User";
+  const dailyAffirmationsEnabled = session?.user?.settings?.dailyAffirmations ?? true;
 
   const time = new Date();
   const hours = time.getHours();
@@ -52,6 +53,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
   const [activeFast, setActiveFast] = React.useState<FastingSession | null>(null);
 
   const lastFetchDate = React.useRef<string>('');
+  const lastAffirmationDate = React.useRef<string>('');
+
+  const getLocalDateString = (date: Date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Fallback images for Daily Verse (Client-side rotation)
   const FALLBACK_BACKGROUNDS = [
@@ -64,9 +73,36 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=800&q=80",  // Dawn
   ];
 
+  const scheduleDailyAffirmationIfNeeded = React.useCallback(async (verseData: any, dateString: string) => {
+    if (!dailyAffirmationsEnabled) {
+      lastAffirmationDate.current = '';
+      try {
+        await notificationService.clearAllDailyAffirmations();
+      } catch (err) {
+        console.error('Failed to clear daily affirmations:', err);
+      }
+      return;
+    }
+
+    if (!verseData?.id) return;
+    if (lastAffirmationDate.current === dateString) return;
+
+    try {
+      await notificationService.scheduleDailyAffirmation(
+        7,
+        0,
+        `${verseData.reference} ${verseData.text}`,
+        verseData.affirmation || "I walk in God's grace today."
+      );
+      lastAffirmationDate.current = dateString;
+    } catch (err) {
+      console.error("Failed to schedule affirmation:", err);
+    }
+  }, [dailyAffirmationsEnabled]);
+
   const fetchDailyVerse = React.useCallback(async (skipCache = false) => {
     const now = new Date();
-    const targetDateString = now.toISOString().split('T')[0];
+    const targetDateString = getLocalDateString(now);
 
     // Try cache first if not skipping
     if (!skipCache) {
@@ -74,6 +110,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       if (cached && cached.fetchDate === targetDateString) {
         setDailyVerse(cached);
         setIsVerseLoading(false);
+        scheduleDailyAffirmationIfNeeded(cached, targetDateString);
       }
     }
 
@@ -112,22 +149,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         setDailyVerse(verseData);
         await cacheService.set('daily_verse', verseData);
 
-        try {
-          await notificationService.scheduleDailyAffirmation(
-            7, 0,
-            `${verse.reference} ${verse.text}`,
-            verse.affirmation || "I walk in God's grace today."
-          );
-        } catch (notifErr) {
-          console.error("Failed to schedule affirmation:", notifErr);
-        }
+        scheduleDailyAffirmationIfNeeded(verseData, targetDateString);
       }
     } catch (err) {
       console.error('getDailyVerse error:', err);
     } finally {
       setIsVerseLoading(false);
     }
-  }, []);
+  }, [scheduleDailyAffirmationIfNeeded]);
 
   React.useEffect(() => {
     fetchDailyVerse();
@@ -153,6 +182,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
       clearTimeout(midnightTimer);
     };
   }, [session, fetchDailyVerse]);
+
+  React.useEffect(() => {
+    const syncAffirmations = async () => {
+      const today = getLocalDateString();
+      if (!dailyAffirmationsEnabled) {
+        lastAffirmationDate.current = '';
+        try {
+          await notificationService.clearAllDailyAffirmations();
+        } catch (err) {
+          console.error('Failed to clear daily affirmations:', err);
+        }
+        return;
+      }
+
+      if (dailyVerse?.id) {
+        scheduleDailyAffirmationIfNeeded(dailyVerse, today);
+      }
+    };
+
+    syncAffirmations();
+  }, [dailyAffirmationsEnabled, dailyVerse, scheduleDailyAffirmationIfNeeded]);
 
   React.useEffect(() => {
     const fetchData = async () => {

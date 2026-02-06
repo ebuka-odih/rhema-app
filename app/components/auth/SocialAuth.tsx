@@ -1,25 +1,49 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 interface SocialAuthProps {
     onGooglePress: () => void;
+    onApplePress?: () => void;
+    showGoogle?: boolean;
+    showApple?: boolean;
 }
 
-export const SocialAuth: React.FC<SocialAuthProps> = ({ onGooglePress }) => (
-    <View style={styles.socialContainer}>
-        <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-        </View>
+export const SocialAuth: React.FC<SocialAuthProps> = ({
+    onGooglePress,
+    onApplePress,
+    showGoogle = true,
+    showApple = false,
+}) => {
+    if (!showGoogle && !showApple) return null;
 
-        <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton} onPress={onGooglePress}>
-                <Text style={styles.socialButtonText}>Google</Text>
-            </TouchableOpacity>
+    return (
+        <View style={styles.socialContainer}>
+            <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or continue with</Text>
+                <View style={styles.dividerLine} />
+            </View>
+
+            <View style={styles.socialButtons}>
+                {showApple && onApplePress && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                        cornerRadius={12}
+                        style={styles.appleButton}
+                        onPress={onApplePress}
+                    />
+                )}
+                {showGoogle && (
+                    <TouchableOpacity style={styles.socialButton} onPress={onGooglePress}>
+                        <Text style={styles.socialButtonText}>Google</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     socialContainer: {
@@ -41,9 +65,14 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
     },
     socialButtons: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: 12,
         marginBottom: 32,
+    },
+    appleButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
     },
     socialButton: {
         flex: 1,

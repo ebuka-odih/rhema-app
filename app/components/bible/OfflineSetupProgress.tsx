@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { IconCheck, IconClose } from '../Icons';
 import { SetupStep } from '../../services/offlineBibleService';
 
@@ -7,23 +7,27 @@ interface OfflineSetupProgressProps {
     visible: boolean;
     steps: SetupStep[];
     onClose: () => void;
+    onRetry?: () => void;
 }
 
-export const OfflineSetupProgress: React.FC<OfflineSetupProgressProps> = ({ visible, steps, onClose }) => {
+export const OfflineSetupProgress: React.FC<OfflineSetupProgressProps> = ({ visible, steps, onClose, onRetry }) => {
     const isError = steps.some(s => s.status === 'error');
     const isCompleted = steps.every(s => s.status === 'completed');
+    const isLoading = steps.some(s => s.status === 'loading');
+    const closeLabel = isCompleted || isError ? 'Close' : 'Continue using app';
 
     return (
         <Modal
             visible={visible}
             transparent={true}
             animationType="fade"
+            onRequestClose={onClose}
         >
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <Text style={styles.title}>SETUP PROGRESS</Text>
                     <Text style={styles.subtitle}>
-                        This may take some 10 secs to 2 minutes depending on your phone capacity
+                        This may take some 10 secs to 2 minutes depending on your phone capacity. You can continue using the app while this runs.
                     </Text>
 
                     <View style={styles.stepsContainer}>
@@ -61,12 +65,22 @@ export const OfflineSetupProgress: React.FC<OfflineSetupProgressProps> = ({ visi
                         <Text style={styles.errorText}>An error occurred during setup. Please try again later.</Text>
                     )}
 
-                    {(isCompleted || isError) && (
+                    {(isCompleted || isError || isLoading) && (
                         <View style={styles.footer}>
-                            <ActivityIndicator animating={!isCompleted && !isError} color="#E8503A" />
+                            <ActivityIndicator animating={isLoading && !isCompleted && !isError} color="#E8503A" />
                             {isCompleted && (
                                 <Text style={styles.doneText}>Setup complete! You can now use the Bible offline.</Text>
                             )}
+                            <View style={styles.footerButtons}>
+                                {isError && onRetry && (
+                                    <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+                                        <Text style={styles.retryButtonText}>Retry</Text>
+                                    </TouchableOpacity>
+                                )}
+                                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                                    <Text style={styles.closeButtonText}>{closeLabel}</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -157,10 +171,37 @@ const styles = StyleSheet.create({
         marginTop: 24,
         alignItems: 'center',
     },
+    footerButtons: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 16,
+    },
     doneText: {
         color: '#2E7D32',
         fontSize: 14,
         fontWeight: 'bold',
         marginTop: 12,
+    },
+    retryButton: {
+        backgroundColor: '#E8503A',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 10,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    closeButton: {
+        backgroundColor: '#111111',
+        paddingVertical: 10,
+        paddingHorizontal: 24,
+        borderRadius: 10,
+    },
+    closeButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
     }
 });

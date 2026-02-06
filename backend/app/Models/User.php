@@ -22,6 +22,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'apple_id',
         'password',
         'phone',
         'is_pro',

@@ -20,8 +20,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.odih.wordflow",
+      "usesAppleSignIn": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Rhema Daily needs access to your microphone to record and transcribe sermons.",
+        "NSMicrophoneUsageDescription": "Rhema Daily uses the microphone to record sermons so we can transcribe and summarize them (e.g., recording a sermon for notes).",
         "NSPhotoLibraryUsageDescription": "Rhema Daily needs access to your photo library to save generated content."
       }
     },
@@ -40,12 +41,17 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Wordflow to access your microphone"
+          "microphonePermission": "Allow Rhema Daily to use your microphone to record sermons for transcription."
         }
       ],
       "expo-notifications",
       "@react-native-community/datetimepicker",
-      "@react-native-google-signin/google-signin"
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_ME"
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png",

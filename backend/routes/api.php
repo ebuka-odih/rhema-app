@@ -14,20 +14,24 @@ use App\Http\Controllers\Api\TranscriptionController;
 use App\Http\Controllers\Api\FastingController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\BibleBookmarkController;
+use App\Http\Controllers\Api\IapController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'googleLogin']);
+Route::post('/auth/apple', [AuthController::class, 'appleLogin']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1');
 Route::post('/password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
+    Route::delete('/user', [AuthController::class, 'destroy']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::patch('/user', [AuthController::class, 'updateProfile']);
     Route::patch('/user/password', [AuthController::class, 'updatePassword']);
+    Route::post('/iap/ios/receipt', [IapController::class, 'iosReceipt']);
     
     Route::get('/verses', [ContentController::class, 'verses']);
     Route::get('/notes', [ContentController::class, 'notes']);
@@ -85,4 +89,5 @@ Route::get('/bible/affirmation', [BibleController::class, 'dailyAffirmation']);
 Route::get('/bible/versions', [BibleController::class, 'versions']);
 Route::get('/bible/books', [BibleController::class, 'books']);
 Route::get('/bible/chapter', [BibleController::class, 'chapter']);
+Route::get('/bible/offline', [BibleController::class, 'offline']);
 Route::get('/bible/search', [BibleController::class, 'search']);

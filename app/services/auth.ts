@@ -130,6 +130,43 @@ export const authService = {
         }
     },
 
+    async appleLogin(payload: { identityToken: string; fullName?: string; email?: string }) {
+        try {
+            const response = await fetch(`${API_BASE_URL}auth/apple`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    identity_token: payload.identityToken,
+                    full_name: payload.fullName,
+                    email: payload.email,
+                }),
+            });
+            const text = await response.text();
+
+            if (!response.ok) {
+                let message = 'Apple login failed';
+                try {
+                    const data = JSON.parse(text);
+                    message = data.message || message;
+                } catch (e) {
+                    console.error('Failed to parse error JSON:', text.substring(0, 100));
+                }
+                throw new Error(message);
+            }
+
+            const data = JSON.parse(text);
+            await this.setToken(data.access_token);
+            await this.setUser(data.user);
+            notifyListeners({ user: data.user });
+            return { data, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
+    },
+
     async logout() {
         const token = await this.getToken();
         try {
@@ -165,6 +202,7 @@ export const authService = {
                 try {
                     const user = JSON.parse(text);
                     await this.setUser(user);
+                    notifyListeners({ user });
                     return user;
                 } catch (e) {
                     console.error('fetchMe parse error:', text.substring(0, 100));
@@ -178,6 +216,55 @@ export const authService = {
             console.error('Fetch user error:', e);
         }
         return null;
+    },
+
+    async deleteAccount() {
+        const token = await this.getToken();
+        try {
+            const response = await fetch(`${API_BASE_URL}user`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => null);
+                throw new Error(data?.message || 'Failed to delete account');
+            }
+
+            await this.clearAuth();
+            notifyListeners(null);
+            return { data: true, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
+    },
+
+    async syncIosReceipt(receipt: string, productId: string) {
+        const token = await this.getToken();
+        try {
+            const response = await fetch(`${API_BASE_URL}iap/ios/receipt`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ receipt, product_id: productId }),
+            });
+
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(data?.message || 'Receipt validation failed');
+            }
+
+            await this.fetchMe();
+            return { data, error: null };
+        } catch (error: any) {
+            return { data: null, error };
+        }
     },
 
     async updateUser(data: any) {
@@ -320,7 +407,8 @@ export const useSession = () => {
 // Mimic better-auth structure for compatibility in screens
 export const signIn = {
     email: (creds: any) => authService.login(creds),
-    google: (token: string) => authService.googleLogin(token),
+    google: (accessToken: string) => authService.googleLogin(accessToken),
+    apple: (payload: { identityToken: string; fullName?: string; email?: string }) => authService.appleLogin(payload),
     forgotPassword: (email: string) => authService.forgotPassword(email),
     resetPassword: (creds: any) => authService.resetPassword(creds)
 };

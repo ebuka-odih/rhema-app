@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { IconFont, IconSearch } from '../Icons';
+import { IconFont, IconSearch, IconDownload, IconCheck } from '../Icons';
 
 interface BibleHeaderProps {
     book: string;
@@ -11,6 +11,9 @@ interface BibleHeaderProps {
     onOpenVersionSelector: () => void;
     onToggleFontMenu: () => void;
     onOpenSearch: () => void;
+    onOpenOffline?: () => void;
+    offlineReady?: boolean;
+    offlineBusy?: boolean;
 }
 
 export const BibleHeader: React.FC<BibleHeaderProps> = ({
@@ -20,7 +23,10 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
     onOpenBookSelector,
     onOpenVersionSelector,
     onToggleFontMenu,
-    onOpenSearch
+    onOpenSearch,
+    onOpenOffline,
+    offlineReady = false,
+    offlineBusy = false
 }) => {
     const handlePress = (callback: () => void) => {
         if (typeof callback !== 'function') return;
@@ -61,6 +67,22 @@ export const BibleHeader: React.FC<BibleHeaderProps> = ({
                 >
                     <IconSearch size={24} color="#FFFFFF" />
                 </Pressable>
+                {onOpenOffline && (
+                    <Pressable
+                        onPress={() => handlePress(onOpenOffline)}
+                        style={({ pressed }) => [
+                            styles.navIcon,
+                            pressed && styles.pressedIcon,
+                            offlineBusy && styles.disabledIcon
+                        ]}
+                    >
+                        {offlineReady ? (
+                            <IconCheck size={22} color="#E8503A" />
+                        ) : (
+                            <IconDownload size={22} color="#FFFFFF" />
+                        )}
+                    </Pressable>
+                )}
             </View>
         </View>
     );
@@ -130,5 +152,8 @@ const styles = StyleSheet.create({
     },
     pressedIcon: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    disabledIcon: {
+        opacity: 0.5,
     },
 });

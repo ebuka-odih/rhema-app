@@ -38,6 +38,32 @@ const PrivacyScreen: React.FC<{
         }
     };
 
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            'Delete Account',
+            'This will permanently delete your account and all associated data. This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setLoading(true);
+                        const { error } = await authService.deleteAccount();
+                        setLoading(false);
+
+                        if (error) {
+                            Alert.alert('Error', error.message || 'Failed to delete account.');
+                            return;
+                        }
+
+                        Alert.alert('Account Deleted', 'Your account has been permanently removed.');
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -108,7 +134,7 @@ const PrivacyScreen: React.FC<{
                         <Text style={styles.itemText}>Export My Data</Text>
                     </TouchableOpacity>
                     <View style={styles.divider} />
-                    <TouchableOpacity style={styles.item}>
+                    <TouchableOpacity style={styles.item} onPress={handleDeleteAccount}>
                         <Text style={[styles.itemText, { color: '#E8503A' }]}>Delete Account</Text>
                     </TouchableOpacity>
                 </View>

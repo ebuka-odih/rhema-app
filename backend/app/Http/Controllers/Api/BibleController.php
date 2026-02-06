@@ -404,6 +404,61 @@ class BibleController extends Controller
         return response()->json($versions);
     }
 
+    public function offline(Request $request)
+    {
+        $version = $request->query('version', 'NEW KING JAMES VERSION');
+        $jsonPath = $this->data_path.'/'.$version.'.json';
+
+        if (! File::exists($jsonPath)) {
+            return response()->json(['error' => 'Version not found'], 404);
+        }
+
+        $offlineDir = storage_path('app/bible/offline');
+        File::ensureDirectoryExists($offlineDir);
+
+        $safeName = $this->slugVersion($version);
+        $sqlitePath = $offlineDir.'/'.$safeName.'.sqlite';
+
+        $needsRebuild = ! File::exists($sqlitePath) || File::lastModified($sqlitePath) < File::lastModified($jsonPath);
+
+        if ($needsRebuild) {
+            if (File::exists($sqlitePath)) {
+                File::delete($sqlitePath);
+            }
+
+            $db = new \SQLite3($sqlitePath);
+            $db->exec('PRAGMA journal_mode=OFF;');
+            $db->exec('PRAGMA synchronous=OFF;');
+            $db->exec('PRAGMA temp_store=MEMORY;');
+            $db->exec('CREATE TABLE verses (version TEXT, book TEXT, chapter INTEGER, verse INTEGER, text TEXT);');
+            $db->exec('CREATE INDEX idx_verses_lookup ON verses(version, book, chapter);');
+            $db->exec('CREATE UNIQUE INDEX idx_verses_unique ON verses(version, book, chapter, verse);');
+
+            $content = json_decode(File::get($jsonPath), true);
+            $stmt = $db->prepare('INSERT INTO verses (version, book, chapter, verse, text) VALUES (:version, :book, :chapter, :verse, :text)');
+
+            $db->exec('BEGIN');
+            foreach ($content as $book => $chapters) {
+                foreach ($chapters as $chapter => $verses) {
+                    foreach ($verses as $verseNum => $text) {
+                        $stmt->bindValue(':version', $version, SQLITE3_TEXT);
+                        $stmt->bindValue(':book', $book, SQLITE3_TEXT);
+                        $stmt->bindValue(':chapter', (int) $chapter, SQLITE3_INTEGER);
+                        $stmt->bindValue(':verse', (int) $verseNum, SQLITE3_INTEGER);
+                        $stmt->bindValue(':text', $text, SQLITE3_TEXT);
+                        $stmt->execute();
+                    }
+                }
+            }
+            $db->exec('COMMIT');
+            $db->close();
+        }
+
+        return response()->download($sqlitePath, $safeName.'.sqlite', [
+            'Content-Type' => 'application/x-sqlite3',
+        ]);
+    }
+
     public function books(Request $request)
     {
         $version = $request->query('version', 'NEW KING JAMES VERSION');
@@ -464,5 +519,13 @@ class BibleController extends Controller
         ];
 
         return $mapping[$name] ?? $name;
+    }
+
+    protected function slugVersion($name)
+    {
+        $slug = strtolower($name);
+        $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+        $slug = trim($slug, '-');
+        return $slug ?: 'bible-version';
     }
 }

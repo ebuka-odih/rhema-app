@@ -1,7 +1,14 @@
 import * as SQLite from 'expo-sqlite';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from './apiConfig';
 
 const DB_NAME = 'wordflow_bible.db';
+const SQLITE_DIR = `${LegacyFileSystem.documentDirectory}SQLite/`;
+const DB_PATH = `${SQLITE_DIR}${DB_NAME}`;
+const TMP_DB_NAME = 'wordflow_bible_download.sqlite';
+const TMP_DB_PATH = `${SQLITE_DIR}${TMP_DB_NAME}`;
+const BACKUP_DB_NAME = 'wordflow_bible_backup.sqlite';
+const BACKUP_DB_PATH = `${SQLITE_DIR}${BACKUP_DB_NAME}`;
 
 export interface SetupStep {
     id: string;
@@ -9,52 +16,212 @@ export interface SetupStep {
     status: 'pending' | 'loading' | 'completed' | 'error';
 }
 
+type DownloadStatus = 'idle' | 'downloading' | 'installing' | 'finalizing' | 'complete' | 'error';
+
+export interface OfflineDownloadState {
+    version: string;
+    status: DownloadStatus;
+    steps: SetupStep[];
+    updatedAt: number;
+    error?: string;
+}
+
+type DownloadListener = (state: OfflineDownloadState | null) => void;
+
+let currentDownload: { version: string; promise: Promise<void>; state: OfflineDownloadState } | null = null;
+const downloadListeners = new Set<DownloadListener>();
+
+const notifyDownloadListeners = () => {
+    const state = currentDownload?.state ?? null;
+    downloadListeners.forEach((listener) => listener(state));
+};
+
+const cloneSteps = (steps: SetupStep[]) => steps.map((s) => ({ ...s }));
+
+const isCorruptDbError = (error: unknown) => {
+    const message = (error as Error)?.message || '';
+    return message.includes('not a database') || message.includes('file is not a database');
+};
+
+const deriveStatus = (steps: SetupStep[]): DownloadStatus => {
+    if (steps.some((s) => s.status === 'error')) return 'error';
+    if (steps.every((s) => s.status === 'completed')) return 'complete';
+    const installingStep = steps.find((s) => s.id === 'process' && s.status === 'loading');
+    if (installingStep) return 'installing';
+    const finalizeStep = steps.find((s) => s.id === 'finalize' && s.status === 'loading');
+    if (finalizeStep) return 'finalizing';
+    return 'downloading';
+};
+
 export const offlineBibleService = {
+    subscribeDownload(listener: DownloadListener) {
+        downloadListeners.add(listener);
+        listener(currentDownload?.state ?? null);
+        return () => downloadListeners.delete(listener);
+    },
+
+    getDownloadState() {
+        return currentDownload?.state ?? null;
+    },
+
+    async startDownload(version: string, onProgress?: (steps: SetupStep[]) => void) {
+        if (currentDownload && currentDownload.state.status !== 'complete' && currentDownload.state.status !== 'error') {
+            if (currentDownload.version === version) {
+                return currentDownload.promise;
+            }
+            throw new Error('Another offline download is already in progress.');
+        }
+
+        const initialSteps: SetupStep[] = [
+            { id: 'db', label: 'Setting up local database', status: 'loading' },
+            { id: 'download', label: 'Downloading Bible File', status: 'pending' },
+            { id: 'process', label: 'Installing Bible File...', status: 'pending' },
+            { id: 'finalize', label: 'Finalizing...', status: 'pending' },
+        ];
+
+        const state: OfflineDownloadState = {
+            version,
+            status: 'downloading',
+            steps: cloneSteps(initialSteps),
+            updatedAt: Date.now(),
+        };
+
+        const updateState = (steps: SetupStep[], error?: string) => {
+            state.steps = cloneSteps(steps);
+            state.status = deriveStatus(steps);
+            state.updatedAt = Date.now();
+            state.error = error;
+            notifyDownloadListeners();
+            if (onProgress) onProgress(steps);
+        };
+
+        const promise = this.downloadAndInstall(version, updateState)
+            .then(() => {
+                updateState(state.steps);
+            })
+            .catch((err) => {
+                updateState(state.steps, err?.message || 'Download failed');
+                throw err;
+            });
+
+        currentDownload = { version, promise, state };
+        notifyDownloadListeners();
+
+        return promise;
+    },
+
     async getDb() {
         return await SQLite.openDatabaseAsync(DB_NAME);
     },
 
     async initDb() {
         const db = await this.getDb();
-        await db.execAsync(`
-            PRAGMA journal_mode = WAL;
-            CREATE TABLE IF NOT EXISTS verses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                version TEXT,
-                book TEXT,
-                chapter INTEGER,
-                verse INTEGER,
-                text TEXT
-            );
-            CREATE INDEX IF NOT EXISTS idx_verses_lookup ON verses(version, book, chapter);
-        `);
+        try {
+            await db.execAsync(`
+                PRAGMA journal_mode = WAL;
+                CREATE TABLE IF NOT EXISTS verses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    version TEXT,
+                    book TEXT,
+                    chapter INTEGER,
+                    verse INTEGER,
+                    text TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_verses_lookup ON verses(version, book, chapter);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_verses_unique ON verses(version, book, chapter, verse);
+                CREATE TABLE IF NOT EXISTS offline_versions (
+                    version TEXT PRIMARY KEY,
+                    status TEXT,
+                    verse_count INTEGER DEFAULT 0,
+                    updated_at INTEGER
+                );
+            `);
+        } catch (error) {
+            if (isCorruptDbError(error)) {
+                console.error('Offline DB corrupt, resetting:', error);
+                await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                const freshDb = await this.getDb();
+                await freshDb.execAsync(`
+                    PRAGMA journal_mode = WAL;
+                    CREATE TABLE IF NOT EXISTS verses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        version TEXT,
+                        book TEXT,
+                        chapter INTEGER,
+                        verse INTEGER,
+                        text TEXT
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_verses_lookup ON verses(version, book, chapter);
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_verses_unique ON verses(version, book, chapter, verse);
+                    CREATE TABLE IF NOT EXISTS offline_versions (
+                        version TEXT PRIMARY KEY,
+                        status TEXT,
+                        verse_count INTEGER DEFAULT 0,
+                        updated_at INTEGER
+                    );
+                `);
+            } else {
+                throw error;
+            }
+        }
     },
 
     async isBibleDownloaded(version: string): Promise<boolean> {
+        await this.initDb();
         const db = await this.getDb();
         try {
-            // Check if table exists first
-            const tableCheck = await db.getFirstAsync<{ name: string }>(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='verses'"
-            );
-            if (!tableCheck) return false;
-
-            const first = await db.getFirstAsync<{ count: number }>(
-                'SELECT COUNT(*) as count FROM verses WHERE version = ? LIMIT 1',
+            const statusRow = await db.getFirstAsync<{ status: string; verse_count: number }>(
+                'SELECT status, verse_count FROM offline_versions WHERE version = ? LIMIT 1',
                 [version]
             );
-            return (first?.count || 0) > 0;
+            if (statusRow?.status === 'complete' && (statusRow.verse_count || 0) > 0) return true;
+            if (statusRow?.status === 'downloading' && (statusRow.verse_count || 0) > 0) return true;
+            if (statusRow?.status === 'downloading' || statusRow?.status === 'error') return false;
+
+            const existsRow = await db.getFirstAsync<{ exists: number }>(
+                'SELECT 1 as exists FROM verses WHERE version = ? LIMIT 1',
+                [version]
+            );
+            if (existsRow?.exists) {
+                const countRow = await db.getFirstAsync<{ count: number }>(
+                    'SELECT COUNT(*) as count FROM verses WHERE version = ?',
+                    [version]
+                );
+                await this.setVersionStatus(version, 'complete', countRow?.count || 0);
+                return true;
+            }
+            return false;
         } catch (e) {
             console.error('isBibleDownloaded error:', e);
+            if (isCorruptDbError(e)) {
+                try {
+                    await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                } catch (resetErr) {
+                    console.error('Offline DB reset failed:', resetErr);
+                }
+            }
             return false;
         }
+    },
+
+    async setVersionStatus(version: string, status: 'downloading' | 'complete' | 'error', verseCount = 0) {
+        const db = await this.getDb();
+        await db.runAsync(
+            'INSERT OR REPLACE INTO offline_versions (version, status, verse_count, updated_at) VALUES (?, ?, ?, ?)',
+            [version, status, verseCount, Date.now()]
+        );
+    },
+
+    async clearVersionData(version: string) {
+        const db = await this.getDb();
+        await db.runAsync('DELETE FROM verses WHERE version = ?', [version]);
     },
 
     async downloadAndInstall(version: string, onProgress: (steps: SetupStep[]) => void) {
         let steps: SetupStep[] = [
             { id: 'db', label: 'Setting up local database', status: 'loading' },
-            { id: 'download', label: 'Downloading Bible Content', status: 'pending' },
-            { id: 'process', label: 'Installing Verses...', status: 'pending' },
+            { id: 'download', label: 'Downloading Bible File', status: 'pending' },
+            { id: 'process', label: 'Installing Bible File...', status: 'pending' },
             { id: 'finalize', label: 'Finalizing...', status: 'pending' },
         ];
 
@@ -63,57 +230,96 @@ export const offlineBibleService = {
 
             // 1. Init DB
             await this.initDb();
+            const db = await this.getDb();
+            const existingCountRow = await db.getFirstAsync<{ count: number }>(
+                'SELECT COUNT(*) as count FROM verses WHERE version = ? LIMIT 1',
+                [version]
+            );
+            const existingCount = existingCountRow?.count || 0;
+            await this.setVersionStatus(version, 'downloading', existingCount);
             steps[0].status = 'completed';
             steps[1].status = 'loading';
             onProgress([...steps]);
 
-            // 2. Download JSON from Server
-            // Assuming the server has a way to serve the full JSON. 
-            // We'll use the existing books/chapter endpoints to build it if needed, 
-            // but for offline we really want a single fetch.
-            // Let's assume we can fetch the full version JSON.
-            // In a real app, you might download a pre-built SQLite file.
-            const response = await fetch(`${API_BASE_URL}bible/books?version=${encodeURIComponent(version)}`);
-            if (!response.ok) throw new Error('Failed to fetch books list');
-            const books = await response.json() as { name: string; chapters: number }[];
+            // 2. Download prebuilt SQLite file from server
+            await LegacyFileSystem.makeDirectoryAsync(SQLITE_DIR, { intermediates: true });
+            const downloadUrl = `${API_BASE_URL}bible/offline?version=${encodeURIComponent(version)}`;
+            const downloadResumable = LegacyFileSystem.createDownloadResumable(
+                downloadUrl,
+                TMP_DB_PATH,
+                {},
+                (progress) => {
+                    const total = progress.totalBytesExpectedToWrite || 0;
+                    const written = progress.totalBytesWritten || 0;
+                    if (total > 0) {
+                        const percent = Math.round((written / total) * 100);
+                        steps[1].label = `Downloading Bible File (${percent}%)`;
+                        onProgress([...steps]);
+                    }
+                }
+            );
+
+            const downloadResult = await downloadResumable.downloadAsync();
+            if (!downloadResult?.uri) {
+                throw new Error('Download failed');
+            }
+            if (downloadResult.status && downloadResult.status !== 200) {
+                await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+                throw new Error(`Download failed with status ${downloadResult.status}`);
+            }
 
             steps[1].status = 'completed';
             steps[2].status = 'loading';
             onProgress([...steps]);
 
-            const db = await this.getDb();
-
-            // For each book, fetch all chapters and insert
-            // This is a simplified version. In production, a single zip/sqlite download is better.
-            for (let i = 0; i < books.length; i++) {
-                const book = books[i];
-                const progress = Math.round(((i + 1) / books.length) * 100);
-                steps[2].label = `Installing ${book.name} (${progress}%)`;
-                onProgress([...steps]);
-
-                // Batch insert logic
-                await db.withTransactionAsync(async () => {
-                    for (let ch = 1; ch <= book.chapters; ch++) {
-                        const chResp = await fetch(`${API_BASE_URL}bible/chapter?version=${encodeURIComponent(version)}&book=${encodeURIComponent(book.name)}&chapter=${ch}`);
-                        if (!chResp.ok) continue;
-                        const chData = await chResp.json();
-
-                        const verses = chData.verses;
-                        for (const [vNum, vText] of Object.entries(verses)) {
-                            await db.runAsync(
-                                'INSERT INTO verses (version, book, chapter, verse, text) VALUES (?, ?, ?, ?, ?)',
-                                [version, book.name, ch, parseInt(vNum), vText as string]
-                            );
-                        }
-                    }
-                });
+            // 3. Replace local DB with downloaded file (download completes before replacement)
+            const existingInfo = await LegacyFileSystem.getInfoAsync(DB_PATH);
+            if (existingInfo.exists) {
+                await LegacyFileSystem.copyAsync({ from: DB_PATH, to: BACKUP_DB_PATH });
             }
 
+            try {
+                await SQLite.deleteDatabaseAsync(DB_NAME);
+            } catch (e) {
+                try {
+                    await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                } catch (deleteErr) {
+                    console.error('Offline DB delete failed:', deleteErr);
+                }
+            }
+
+            await LegacyFileSystem.copyAsync({ from: downloadResult.uri, to: DB_PATH });
+            await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+
+            // 4. Validate downloaded DB
+            try {
+                const validateDb = await this.getDb();
+                await validateDb.execAsync('PRAGMA schema_version;');
+            } catch (validationErr) {
+                if (isCorruptDbError(validationErr)) {
+                    const backupInfo = await LegacyFileSystem.getInfoAsync(BACKUP_DB_PATH);
+                    if (backupInfo.exists) {
+                        await LegacyFileSystem.copyAsync({ from: BACKUP_DB_PATH, to: DB_PATH });
+                    }
+                }
+                throw validationErr;
+            }
+
+            // 5. Ensure metadata exists and mark version complete
+            await this.initDb();
+            const dbFinal = await this.getDb();
+            const countRow = await dbFinal.getFirstAsync<{ count: number }>(
+                'SELECT COUNT(*) as count FROM verses WHERE version = ? LIMIT 1',
+                [version]
+            );
+            const verseCount = countRow?.count || 0;
+
             steps[2].status = 'completed';
-            steps[2].label = 'All Verses Installed';
+            steps[2].label = 'Bible File Installed';
             steps[3].status = 'loading';
             onProgress([...steps]);
 
+            await this.setVersionStatus(version, 'complete', verseCount);
             steps[3].status = 'completed';
             onProgress([...steps]);
 
@@ -122,6 +328,12 @@ export const offlineBibleService = {
             const activeIndex = steps.findIndex(s => s.status === 'loading');
             if (activeIndex !== -1) steps[activeIndex].status = 'error';
             onProgress([...steps]);
+            try {
+                await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+                await this.setVersionStatus(version, 'error', 0);
+            } catch (cleanupErr) {
+                console.error('Offline cleanup error:', cleanupErr);
+            }
             throw error;
         }
     },

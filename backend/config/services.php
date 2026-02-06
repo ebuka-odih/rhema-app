@@ -43,4 +43,9 @@ return [
         'key' => env('OPENAI_API_KEY'),
     ],
 
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID', 'com.odih.wordflow'),
+        'shared_secret' => env('APPLE_SHARED_SECRET'),
+    ],
+
 ];

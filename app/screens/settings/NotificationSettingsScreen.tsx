@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
 import { IconArrowLeft, IconBell, IconClock, IconMessage, IconActivity } from '../../components/Icons';
 import { useSession, authService } from '../../services/auth';
+import { notificationService } from '../../services/notificationService';
+import { cacheService } from '../../services/cacheService';
 
 interface NotificationToggleProps {
     icon: React.ReactNode;
@@ -47,6 +49,13 @@ const NotificationSettingsScreen: React.FC<{ onBack: () => void }> = ({ onBack }
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
+    const getLocalDateString = (date: Date = new Date()) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const handleSave = async () => {
         setLoading(true);
         const { data, error } = await authService.updateUser({ settings });
@@ -55,6 +64,24 @@ const NotificationSettingsScreen: React.FC<{ onBack: () => void }> = ({ onBack }
         if (error) {
             Alert.alert('Error', error.message);
         } else {
+            try {
+                if (!settings.dailyAffirmations) {
+                    await notificationService.clearAllDailyAffirmations();
+                } else {
+                    const cached = await cacheService.get<any>('daily_verse');
+                    const today = getLocalDateString();
+                    if (cached && cached.fetchDate === today && cached.reference && cached.text) {
+                        await notificationService.scheduleDailyAffirmation(
+                            7,
+                            0,
+                            `${cached.reference} ${cached.text}`,
+                            cached.affirmation || "I walk in God's grace today."
+                        );
+                    }
+                }
+            } catch (notifErr) {
+                console.error('Notification sync failed:', notifErr);
+            }
             Alert.alert('Success', 'Preferences saved successfully');
         }
     };

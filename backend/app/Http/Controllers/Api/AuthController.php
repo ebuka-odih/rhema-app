@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use App\Notifications\PasswordResetOtp;
 
@@ -92,6 +94,63 @@ class AuthController extends Controller
         ]);
     }
 
+    public function appleLogin(Request $request)
+    {
+        $request->validate([
+            'identity_token' => 'required|string',
+            'full_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email',
+        ]);
+
+        $payload = $this->verifyAppleIdentityToken($request->identity_token);
+        if (! $payload) {
+            return response()->json(['message' => 'Invalid Apple token'], 401);
+        }
+
+        $appleId = $payload['sub'] ?? null;
+        $email = $payload['email'] ?? $request->email;
+        $emailVerified = ($payload['email_verified'] ?? 'false') === 'true';
+
+        if (! $appleId) {
+            return response()->json(['message' => 'Invalid Apple token'], 401);
+        }
+
+        $user = User::where('apple_id', $appleId)->first();
+
+        if (! $user && $email) {
+            $user = User::where('email', $email)->first();
+        }
+
+        if (! $user && ! $email) {
+            return response()->json(['message' => 'Apple email not available'], 422);
+        }
+
+        if (! $user) {
+            $user = User::create([
+                'name' => $request->full_name ?: 'Apple User',
+                'email' => $email,
+                'apple_id' => $appleId,
+                'password' => Hash::make(uniqid()),
+                'email_verified_at' => $emailVerified ? now() : null,
+            ]);
+        } else {
+            $updates = [];
+            if (! $user->apple_id) $updates['apple_id'] = $appleId;
+            if (! $user->email && $email) $updates['email'] = $email;
+            if ($emailVerified && ! $user->email_verified_at) $updates['email_verified_at'] = now();
+            if ($request->full_name && $user->name === 'Apple User') $updates['name'] = $request->full_name;
+            if (! empty($updates)) $user->update($updates);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user,
+        ]);
+    }
+
     private function verifyGoogleToken($token)
     {
         try {
@@ -162,6 +221,25 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Password updated successfully',
         ]);
+    }
+
+    public function destroy(Request $request)
+    {
+        $user = $request->user();
+
+        // Delete stored sermon audio before removing the user
+        $user->sermons()->each(function ($sermon) {
+            if ($sermon->audio_path) {
+                Storage::disk('public')->delete($sermon->audio_path);
+            }
+        });
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+        $user->tokens()->delete();
+        $user->delete();
+
+        return response()->json(['message' => 'Account deleted successfully']);
     }
     
     public function sendResetLinkEmail(Request $request)
@@ -244,5 +322,80 @@ class AuthController extends Controller
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
         return response()->json(['message' => 'Your password has been reset successfully.']);
+    }
+
+    private function verifyAppleIdentityToken(string $identityToken): ?array
+    {
+        $parts = explode('.', $identityToken);
+        if (count($parts) !== 3) return null;
+
+        $header = json_decode($this->base64UrlDecode($parts[0]), true);
+        $payload = json_decode($this->base64UrlDecode($parts[1]), true);
+
+        if (! is_array($header) || ! is_array($payload)) return null;
+
+        if (($payload['iss'] ?? null) !== 'https://appleid.apple.com') return null;
+
+        $clientId = config('services.apple.client_id', 'com.odih.wordflow');
+        $aud = $payload['aud'] ?? null;
+        if (is_array($aud)) {
+            if (! in_array($clientId, $aud, true)) return null;
+        } else {
+            if ($aud !== $clientId) return null;
+        }
+
+        if (($payload['exp'] ?? 0) < time()) return null;
+
+        $kid = $header['kid'] ?? null;
+        if (! $kid) return null;
+
+        $keys = $this->getApplePublicKeys();
+        if (! isset($keys[$kid])) return null;
+
+        $signature = $this->base64UrlDecode($parts[2]);
+        $data = $parts[0] . '.' . $parts[1];
+        $publicKey = openssl_pkey_get_public($keys[$kid]);
+        if (! $publicKey) return null;
+
+        $verified = openssl_verify($data, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+        if ($verified !== 1) return null;
+
+        return $payload;
+    }
+
+    private function getApplePublicKeys(): array
+    {
+        return Cache::remember('apple_signin_public_keys', 3600, function () {
+            try {
+                $client = new \GuzzleHttp\Client;
+                $response = $client->get('https://appleid.apple.com/auth/keys', [
+                    'timeout' => 10,
+                ]);
+                $data = json_decode($response->getBody()->getContents(), true);
+                $keys = [];
+
+                foreach ($data['keys'] ?? [] as $key) {
+                    if (! empty($key['kid']) && ! empty($key['x5c'][0])) {
+                        $cert = "-----BEGIN CERTIFICATE-----\n"
+                            . chunk_split($key['x5c'][0], 64, "\n")
+                            . "-----END CERTIFICATE-----\n";
+                        $keys[$key['kid']] = $cert;
+                    }
+                }
+
+                return $keys;
+            } catch (\Throwable $e) {
+                return [];
+            }
+        });
+    }
+
+    private function base64UrlDecode(string $value): string
+    {
+        $remainder = strlen($value) % 4;
+        if ($remainder) {
+            $value .= str_repeat('=', 4 - $remainder);
+        }
+        return base64_decode(strtr($value, '-_', '+/')) ?: '';
     }
 }

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Share, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform, Share, Alert, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { bibleService, BibleVersion, BibleChapter, BibleBook } from '../services/bibleService';
 import { IconNote } from '../components/Icons';
+import { offlineBibleService, SetupStep, OfflineDownloadState } from '../services/offlineBibleService';
 
 // Extracted Components
 import { BibleHeader } from '../components/bible/BibleHeader';
@@ -15,6 +16,7 @@ import { FontSettingsMenu } from '../components/bible/FontSettingsMenu';
 import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { BibleSearchModal } from '../components/bible/BibleSearchModal';
 import { BibleShareModal } from '../components/bible/BibleShareModal';
+import { OfflineSetupProgress } from '../components/bible/OfflineSetupProgress';
 import { useSession } from '../services/auth';
 import { BibleHighlight, BibleBookmark } from '../types';
 
@@ -26,6 +28,7 @@ interface BibleScreenProps {
 }
 
 const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, initialVerse, onNavigateNote }) => {
+  const isMountedRef = useRef(true);
   const { data: session } = useSession();
   const isPro = session?.user?.is_pro || false;
 
@@ -58,6 +61,10 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareText, setShareText] = useState('');
   const [shareReference, setShareReference] = useState('');
+  const [offlineSteps, setOfflineSteps] = useState<SetupStep[]>([]);
+  const [offlineVisible, setOfflineVisible] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
 
   // Persistence Key
   const BIBLE_STATE_KEY = 'last_read_bible_state';
@@ -177,6 +184,103 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
       })).catch(err => console.error('[BIBLE] Save error:', err));
     }
   }, [version, book, chapter, isInitializing]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkOffline = async () => {
+      try {
+        const ready = await offlineBibleService.isBibleDownloaded(version.id);
+        if (isMounted) setOfflineReady(ready);
+      } catch (err) {
+        console.error('[BIBLE] Offline check failed:', err);
+      }
+    };
+    checkOffline();
+
+    const unsubscribe = offlineBibleService.subscribeDownload((state: OfflineDownloadState | null) => {
+      if (!state || state.version !== version.id) {
+        if (isMounted) {
+          setOfflineBusy(false);
+        }
+        return;
+      }
+      if (!isMounted) return;
+
+      setOfflineSteps(state.steps || []);
+      const busy = state.status === 'downloading' || state.status === 'installing' || state.status === 'finalizing';
+      setOfflineBusy(busy);
+      if (state.status === 'complete') {
+        setOfflineReady(true);
+      }
+      if (state.status === 'error') {
+        setOfflineReady(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [version.id]);
+
+  const startOfflineSetup = async () => {
+    if (offlineBusy) {
+      setOfflineVisible(true);
+      return;
+    }
+
+    setOfflineVisible(true);
+    try {
+      await offlineBibleService.startDownload(version.id);
+      if (isMountedRef.current) {
+        Alert.alert('Offline Ready', 'This Bible version is now available without an internet connection.');
+      }
+    } catch (err) {
+      console.error('[BIBLE] Offline setup error:', err);
+      if (isMountedRef.current) {
+        Alert.alert('Offline Setup Failed', 'We could not download the Bible for offline use. Please check your connection and try again.');
+      }
+    }
+  };
+
+  const handleOfflinePress = async () => {
+    if (offlineBusy) {
+      setOfflineVisible(true);
+      return;
+    }
+    const ready = await offlineBibleService.isBibleDownloaded(version.id);
+    if (ready) {
+      Alert.alert(
+        'Offline Ready',
+        'This version is already downloaded for offline use.',
+        [
+          { text: 'OK' },
+          { text: 'Re-download', style: 'destructive', onPress: startOfflineSetup }
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Download for Offline',
+      'This will download the full Bible so you can read without an internet connection.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Download', onPress: startOfflineSetup }
+      ]
+    );
+  };
+
+  const activeOfflineStep = offlineSteps.find(s => s.status === 'loading');
+  const offlineLabel = activeOfflineStep?.label || 'Preparing offline download...';
+  const percentMatch = offlineLabel.match(/(\d+)%/);
+  const offlinePercent = percentMatch ? percentMatch[1] : null;
 
   // Fetch Chapter Content & Highlights
   useEffect(() => {
@@ -469,6 +573,9 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         onOpenVersionSelector={() => setShowVersionMenu(true)}
         onToggleFontMenu={() => setShowFontMenu(!showFontMenu)}
         onOpenSearch={() => setShowSearchModal(true)}
+        onOpenOffline={handleOfflinePress}
+        offlineReady={offlineReady}
+        offlineBusy={offlineBusy}
       />
 
       <BibleSearchModal
@@ -562,6 +669,32 @@ const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, 
         version={version.short_name}
       />
 
+      <OfflineSetupProgress
+        visible={offlineVisible}
+        steps={offlineSteps}
+        onRetry={() => {
+          setOfflineVisible(true);
+          startOfflineSetup();
+        }}
+        onClose={() => {
+          setOfflineVisible(false);
+        }}
+      />
+
+      {offlineBusy && (
+        <View style={styles.offlineBanner}>
+          <View style={styles.offlineBannerText}>
+            <Text style={styles.offlineBannerTitle}>Offline download running</Text>
+            <Text style={styles.offlineBannerSubtitle}>
+              {offlinePercent ? `${offlinePercent}% complete` : offlineLabel}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setOfflineVisible(true)} style={styles.offlineBannerButton}>
+            <Text style={styles.offlineBannerButtonText}>View</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </View>
   );
 };
@@ -589,7 +722,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 10,
-  }
+  },
+  offlineBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 110,
+    backgroundColor: '#111111',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  offlineBannerText: {
+    flex: 1,
+    marginRight: 12,
+  },
+  offlineBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  offlineBannerSubtitle: {
+    color: '#999999',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  offlineBannerButton: {
+    backgroundColor: '#E8503A',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  offlineBannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
 
 export default BibleScreen;
