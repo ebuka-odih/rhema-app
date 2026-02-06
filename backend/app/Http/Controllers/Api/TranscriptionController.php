@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\OpenRouter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,10 @@ class TranscriptionController extends Controller
     {
         $request->validate([
             'audio' => 'required|file',
+            'model' => 'sometimes|string',
+            'models' => 'sometimes|array',
+            'models.*' => 'string',
+            'prompt' => 'sometimes|string',
         ]);
 
         $file = $request->file('audio');
@@ -21,28 +26,69 @@ class TranscriptionController extends Controller
         $filePath = storage_path('app/public/'.$path);
 
         try {
-            $openaiKey = config('services.openai.key');
-            if (! $openaiKey) {
-                return response()->json(['error' => 'OpenAI API key not configured on server'], 500);
+            $openrouterKey = OpenRouter::key();
+            if (! $openrouterKey) {
+                return response()->json(['error' => 'OpenRouter API key not configured on server'], 500);
             }
 
-            $response = Http::withToken($openaiKey)
-                ->attach('file', file_get_contents($filePath), 'audio.m4a')
-                ->post('https://api.openai.com/v1/audio/transcriptions', [
-                    'model' => 'whisper-1',
-                ]);
+            $models = $request->input('models');
+            if (! is_array($models) || count($models) === 0) {
+                $singleModel = $request->input('model') ?: OpenRouter::transcriptionModel();
+                $models = $singleModel ? [$singleModel] : [];
+            }
+
+            if (count($models) === 0) {
+                return response()->json(['error' => 'No transcription model configured'], 500);
+            }
+
+            $baseUrl = OpenRouter::baseUrl();
+            $headers = OpenRouter::headers();
+            $results = [];
+            $errors = [];
+
+            foreach ($models as $model) {
+                $payload = ['model' => $model];
+                if ($request->filled('prompt')) {
+                    $payload['prompt'] = $request->input('prompt');
+                }
+
+                $response = Http::withToken($openrouterKey)
+                    ->withHeaders($headers)
+                    ->timeout(300)
+                    ->attach('file', file_get_contents($filePath), $file->getClientOriginalName() ?: 'audio.m4a')
+                    ->post($baseUrl.'/audio/transcriptions', $payload);
+
+                if ($response->failed()) {
+                    $errors[$model] = $response->body();
+                    Log::error('OpenRouter transcription error ('.$model.'): '.$response->body());
+                    continue;
+                }
+
+                $results[$model] = $response->json('text');
+            }
 
             // Clean up
             Storage::disk('public')->delete($path);
 
-            if ($response->failed()) {
-                Log::error('Whisper API Error: '.$response->body());
+            if (count($results) === 0) {
+                return response()->json([
+                    'error' => 'Failed to transcribe audio',
+                    'details' => $errors,
+                ], 500);
+            }
 
-                return response()->json(['error' => 'Failed to transcribe audio'], 500);
+            if (count($results) === 1 && count($errors) === 0) {
+                $model = array_key_first($results);
+
+                return response()->json([
+                    'text' => $results[$model],
+                    'model' => $model,
+                ]);
             }
 
             return response()->json([
-                'text' => $response->json('text'),
+                'results' => $results,
+                'errors' => $errors,
             ]);
 
         } catch (\Exception $e) {

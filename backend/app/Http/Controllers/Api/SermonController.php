@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sermon;
+use App\Services\OpenRouter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -99,31 +100,44 @@ class SermonController extends Controller
 
     protected function performProcessing(Sermon $sermon, string $filePath)
     {
-        $openaiKey = config('services.openai.key');
-        if (!$openaiKey) {
-            throw new \Exception('OpenAI API key missing');
+        $openrouterKey = OpenRouter::key();
+        if (! $openrouterKey) {
+            throw new \Exception('OpenRouter API key missing');
+        }
+        $transcriptionModel = OpenRouter::transcriptionModel();
+        if (! $transcriptionModel) {
+            throw new \Exception('OpenRouter transcription model missing');
+        }
+        $summaryModel = OpenRouter::summaryModel();
+        if (! $summaryModel) {
+            throw new \Exception('OpenRouter summary model missing');
         }
 
-        // 1. Transcription using Whisper (Increased timeout to 5 mins for long sermons)
-        $transcriptionResponse = Http::withToken($openaiKey)
-            ->timeout(300) 
+        $baseUrl = OpenRouter::baseUrl();
+        $headers = OpenRouter::headers();
+
+        // 1. Transcription (Increased timeout to 5 mins for long sermons)
+        $transcriptionResponse = Http::withToken($openrouterKey)
+            ->withHeaders($headers)
+            ->timeout(300)
             ->attach('file', file_get_contents($filePath), 'sermon.m4a')
-            ->post('https://api.openai.com/v1/audio/transcriptions', [
-                'model' => 'whisper-1',
+            ->post($baseUrl.'/audio/transcriptions', [
+                'model' => $transcriptionModel,
                 'prompt' => 'A faithful and accurate transcript of a sermon, capturing the message, scripture references, and spiritual insights clearly.',
             ]);
 
         if ($transcriptionResponse->failed()) {
-            throw new \Exception('Whisper API Error: '.$transcriptionResponse->body());
+            throw new \Exception('OpenRouter transcription error: '.$transcriptionResponse->body());
         }
 
         $transcription = $transcriptionResponse->json('text');
 
-        // 2. Summarization using GPT-4o-mini
-        $summaryResponse = Http::withToken($openaiKey)
+        // 2. Summarization
+        $summaryResponse = Http::withToken($openrouterKey)
+            ->withHeaders($headers)
             ->timeout(120)
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-4o-mini',
+            ->post($baseUrl.'/chat/completions', [
+                'model' => $summaryModel,
                 'messages' => [
                     [
                         'role' => 'system',

@@ -39,6 +39,15 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'openrouter' => [
+        'key' => env('OPENROUTER_API_KEY'),
+        'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'transcription_model' => env('OPENROUTER_TRANSCRIPTION_MODEL'),
+        'summary_model' => env('OPENROUTER_SUMMARY_MODEL'),
+        'http_referer' => env('OPENROUTER_HTTP_REFERER', env('APP_URL')),
+        'title' => env('OPENROUTER_TITLE', env('APP_NAME', 'Wordflow')),
+    ],
+
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
     ],
