@@ -51,7 +51,9 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.REPLACE_ME"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "web": {
       "favicon": "./assets/favicon.png",
