@@ -19,7 +19,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.odih.wordflow",
+      "bundleIdentifier": "com.odih.rhema",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Rhema Daily uses the microphone to record sermons so we can transcribe and summarize them (e.g., recording a sermon for notes).",
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "package": "com.odih.wordflow",
+      "package": "com.odih.rhema",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0D0D"
