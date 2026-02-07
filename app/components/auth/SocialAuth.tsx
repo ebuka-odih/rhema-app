@@ -7,6 +7,8 @@ interface SocialAuthProps {
     onApplePress?: () => void;
     showGoogle?: boolean;
     showApple?: boolean;
+    dividerPosition?: 'top' | 'bottom' | 'none';
+    dividerText?: string;
 }
 
 export const SocialAuth: React.FC<SocialAuthProps> = ({
@@ -14,16 +16,22 @@ export const SocialAuth: React.FC<SocialAuthProps> = ({
     onApplePress,
     showGoogle = true,
     showApple = false,
+    dividerPosition = 'top',
+    dividerText = 'or continue with',
 }) => {
     if (!showGoogle && !showApple) return null;
 
+    const divider = (
+        <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{dividerText}</Text>
+            <View style={styles.dividerLine} />
+        </View>
+    );
+
     return (
         <View style={styles.socialContainer}>
-            <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or continue with</Text>
-                <View style={styles.dividerLine} />
-            </View>
+            {dividerPosition === 'top' && divider}
 
             <View style={styles.socialButtons}>
                 {showApple && onApplePress && (
@@ -41,6 +49,8 @@ export const SocialAuth: React.FC<SocialAuthProps> = ({
                     </TouchableOpacity>
                 )}
             </View>
+
+            {dividerPosition === 'bottom' && divider}
         </View>
     );
 };

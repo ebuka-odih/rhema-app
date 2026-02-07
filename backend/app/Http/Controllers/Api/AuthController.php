@@ -337,11 +337,17 @@ class AuthController extends Controller
         if (($payload['iss'] ?? null) !== 'https://appleid.apple.com') return null;
 
         $clientId = config('services.apple.client_id', 'com.odih.wordflow');
+        $extraClientIds = config('services.apple.client_ids', []);
+        if (! is_array($extraClientIds)) {
+            $extraClientIds = [];
+        }
+        $allowedClientIds = array_values(array_unique(array_filter(array_merge([$clientId], $extraClientIds))));
+
         $aud = $payload['aud'] ?? null;
         if (is_array($aud)) {
-            if (! in_array($clientId, $aud, true)) return null;
+            if (empty(array_intersect($allowedClientIds, $aud))) return null;
         } else {
-            if ($aud !== $clientId) return null;
+            if (! in_array($aud, $allowedClientIds, true)) return null;
         }
 
         if (($payload['exp'] ?? 0) < time()) return null;

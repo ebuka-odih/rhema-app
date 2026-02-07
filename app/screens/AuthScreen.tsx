@@ -305,6 +305,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
         </View>
 
         <View style={styles.form}>
+          {mode !== 'reset_password' && (isGoogleAvailable || isAppleAvailable) && (
+            <SocialAuth
+              onGooglePress={handleGoogleLogin}
+              onApplePress={handleAppleLogin}
+              showGoogle={isGoogleAvailable}
+              showApple={isAppleAvailable}
+              dividerPosition="bottom"
+              dividerText="or continue with email"
+            />
+          )}
+
           {mode === 'signup' && (
             <AuthInput
               label="Full Name"
@@ -381,15 +392,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
               </Text>
             )}
           </TouchableOpacity>
-
-          {(isGoogleAvailable || isAppleAvailable) && (
-            <SocialAuth
-              onGooglePress={handleGoogleLogin}
-              onApplePress={handleAppleLogin}
-              showGoogle={isGoogleAvailable}
-              showApple={isAppleAvailable}
-            />
-          )}
 
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleText}>
