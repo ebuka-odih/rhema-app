@@ -53,7 +53,7 @@ return [
     ],
 
     'apple' => [
-        'client_id' => env('APPLE_CLIENT_ID', 'com.odih.wordflow'),
+        'client_id' => env('APPLE_CLIENT_ID', 'com.odih.rhema'),
         'client_ids' => array_filter(array_map('trim', explode(',', env('APPLE_CLIENT_IDS', '')))),
         'shared_secret' => env('APPLE_SHARED_SECRET'),
     ],
