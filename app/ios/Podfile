@@ -52,11 +52,6 @@ target 'Wordflow' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
-  rct_folly_podspec = File.join(config[:reactNativePath], "third-party-podspecs", "RCT-Folly.podspec")
-  if File.exist?(rct_folly_podspec)
-    pod 'RCT-Folly', :podspec => rct_folly_podspec
-  end
-
   post_install do |installer|
     react_native_post_install(
       installer,
