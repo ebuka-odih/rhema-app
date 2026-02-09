@@ -3,12 +3,15 @@ import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { API_BASE_URL } from './apiConfig';
 
 const DB_NAME = 'wordflow_bible.db';
-const SQLITE_DIR = `${LegacyFileSystem.documentDirectory}SQLite/`;
+const fallbackSqliteDir = `${LegacyFileSystem.documentDirectory}SQLite/`;
+const sqliteDefaultDir = (SQLite as any).defaultDatabaseDirectory || fallbackSqliteDir;
+const SQLITE_DIR = sqliteDefaultDir.endsWith('/') ? sqliteDefaultDir : `${sqliteDefaultDir}/`;
 const DB_PATH = `${SQLITE_DIR}${DB_NAME}`;
 const TMP_DB_NAME = 'wordflow_bible_download.sqlite';
 const TMP_DB_PATH = `${SQLITE_DIR}${TMP_DB_NAME}`;
 const BACKUP_DB_NAME = 'wordflow_bible_backup.sqlite';
 const BACKUP_DB_PATH = `${SQLITE_DIR}${BACKUP_DB_NAME}`;
+const toFsUri = (path: string) => (path.startsWith('file://') ? path : `file://${path}`);
 
 export interface SetupStep {
     id: string;
@@ -30,6 +33,7 @@ type DownloadListener = (state: OfflineDownloadState | null) => void;
 
 let currentDownload: { version: string; promise: Promise<void>; state: OfflineDownloadState } | null = null;
 const downloadListeners = new Set<DownloadListener>();
+let dbInstance: SQLite.SQLiteDatabase | null = null;
 
 const notifyDownloadListeners = () => {
     const state = currentDownload?.state ?? null;
@@ -111,7 +115,21 @@ export const offlineBibleService = {
     },
 
     async getDb() {
-        return await SQLite.openDatabaseAsync(DB_NAME);
+        if (!dbInstance) {
+            dbInstance = await SQLite.openDatabaseAsync(DB_NAME, undefined, SQLITE_DIR);
+        }
+        return dbInstance;
+    },
+
+    async closeDb() {
+        if (!dbInstance) return;
+        try {
+            await dbInstance.closeAsync();
+        } catch (e) {
+            console.error('closeDb error:', e);
+        } finally {
+            dbInstance = null;
+        }
     },
 
     async initDb() {
@@ -139,7 +157,12 @@ export const offlineBibleService = {
         } catch (error) {
             if (isCorruptDbError(error)) {
                 console.error('Offline DB corrupt, resetting:', error);
-                await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                await this.closeDb();
+                try {
+                    await SQLite.deleteDatabaseAsync(DB_NAME, SQLITE_DIR);
+                } catch {
+                    await LegacyFileSystem.deleteAsync(toFsUri(DB_PATH), { idempotent: true });
+                }
                 const freshDb = await this.getDb();
                 await freshDb.execAsync(`
                     PRAGMA journal_mode = WAL;
@@ -178,11 +201,11 @@ export const offlineBibleService = {
             if (statusRow?.status === 'downloading' && (statusRow.verse_count || 0) > 0) return true;
             if (statusRow?.status === 'downloading' || statusRow?.status === 'error') return false;
 
-            const existsRow = await db.getFirstAsync<{ exists: number }>(
-                'SELECT 1 as exists FROM verses WHERE version = ? LIMIT 1',
+            const existsRow = await db.getFirstAsync<{ has_version: number }>(
+                'SELECT 1 as has_version FROM verses WHERE version = ? LIMIT 1',
                 [version]
             );
-            if (existsRow?.exists) {
+            if (existsRow?.has_version) {
                 const countRow = await db.getFirstAsync<{ count: number }>(
                     'SELECT COUNT(*) as count FROM verses WHERE version = ?',
                     [version]
@@ -195,7 +218,12 @@ export const offlineBibleService = {
             console.error('isBibleDownloaded error:', e);
             if (isCorruptDbError(e)) {
                 try {
-                    await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                    await this.closeDb();
+                    try {
+                        await SQLite.deleteDatabaseAsync(DB_NAME, SQLITE_DIR);
+                    } catch {
+                        await LegacyFileSystem.deleteAsync(toFsUri(DB_PATH), { idempotent: true });
+                    }
                 } catch (resetErr) {
                     console.error('Offline DB reset failed:', resetErr);
                 }
@@ -242,11 +270,11 @@ export const offlineBibleService = {
             onProgress([...steps]);
 
             // 2. Download prebuilt SQLite file from server
-            await LegacyFileSystem.makeDirectoryAsync(SQLITE_DIR, { intermediates: true });
+            await LegacyFileSystem.makeDirectoryAsync(toFsUri(SQLITE_DIR), { intermediates: true });
             const downloadUrl = `${API_BASE_URL}bible/offline?version=${encodeURIComponent(version)}`;
             const downloadResumable = LegacyFileSystem.createDownloadResumable(
                 downloadUrl,
-                TMP_DB_PATH,
+                toFsUri(TMP_DB_PATH),
                 {},
                 (progress) => {
                     const total = progress.totalBytesExpectedToWrite || 0;
@@ -264,7 +292,7 @@ export const offlineBibleService = {
                 throw new Error('Download failed');
             }
             if (downloadResult.status && downloadResult.status !== 200) {
-                await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+                await LegacyFileSystem.deleteAsync(toFsUri(TMP_DB_PATH), { idempotent: true });
                 throw new Error(`Download failed with status ${downloadResult.status}`);
             }
 
@@ -273,23 +301,24 @@ export const offlineBibleService = {
             onProgress([...steps]);
 
             // 3. Replace local DB with downloaded file (download completes before replacement)
-            const existingInfo = await LegacyFileSystem.getInfoAsync(DB_PATH);
+            const existingInfo = await LegacyFileSystem.getInfoAsync(toFsUri(DB_PATH));
             if (existingInfo.exists) {
-                await LegacyFileSystem.copyAsync({ from: DB_PATH, to: BACKUP_DB_PATH });
+                await LegacyFileSystem.copyAsync({ from: toFsUri(DB_PATH), to: toFsUri(BACKUP_DB_PATH) });
             }
 
             try {
-                await SQLite.deleteDatabaseAsync(DB_NAME);
+                await this.closeDb();
+                await SQLite.deleteDatabaseAsync(DB_NAME, SQLITE_DIR);
             } catch (e) {
                 try {
-                    await LegacyFileSystem.deleteAsync(DB_PATH, { idempotent: true });
+                    await LegacyFileSystem.deleteAsync(toFsUri(DB_PATH), { idempotent: true });
                 } catch (deleteErr) {
                     console.error('Offline DB delete failed:', deleteErr);
                 }
             }
 
-            await LegacyFileSystem.copyAsync({ from: downloadResult.uri, to: DB_PATH });
-            await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+            await LegacyFileSystem.copyAsync({ from: downloadResult.uri, to: toFsUri(DB_PATH) });
+            await LegacyFileSystem.deleteAsync(toFsUri(TMP_DB_PATH), { idempotent: true });
 
             // 4. Validate downloaded DB
             try {
@@ -297,9 +326,9 @@ export const offlineBibleService = {
                 await validateDb.execAsync('PRAGMA schema_version;');
             } catch (validationErr) {
                 if (isCorruptDbError(validationErr)) {
-                    const backupInfo = await LegacyFileSystem.getInfoAsync(BACKUP_DB_PATH);
+                    const backupInfo = await LegacyFileSystem.getInfoAsync(toFsUri(BACKUP_DB_PATH));
                     if (backupInfo.exists) {
-                        await LegacyFileSystem.copyAsync({ from: BACKUP_DB_PATH, to: DB_PATH });
+                        await LegacyFileSystem.copyAsync({ from: toFsUri(BACKUP_DB_PATH), to: toFsUri(DB_PATH) });
                     }
                 }
                 throw validationErr;
@@ -329,7 +358,7 @@ export const offlineBibleService = {
             if (activeIndex !== -1) steps[activeIndex].status = 'error';
             onProgress([...steps]);
             try {
-                await LegacyFileSystem.deleteAsync(TMP_DB_PATH, { idempotent: true });
+                await LegacyFileSystem.deleteAsync(toFsUri(TMP_DB_PATH), { idempotent: true });
                 await this.setVersionStatus(version, 'error', 0);
             } catch (cleanupErr) {
                 console.error('Offline cleanup error:', cleanupErr);

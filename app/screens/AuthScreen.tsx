@@ -25,11 +25,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+  const isIOS = Platform.OS === 'ios';
 
-  const isGoogleAvailable = !!NativeModules.RNGoogleSignin;
+  const isGoogleAvailable = !isIOS && !!NativeModules.RNGoogleSignin;
 
   React.useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web' || isIOS) return;
 
     if (!NativeModules.RNGoogleSignin) return;
 
@@ -52,7 +53,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
     } catch (e) {
       // Completely silent in dev
     }
-  }, []);
+  }, [isIOS]);
 
   React.useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -170,6 +171,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialMode, onAuthenticated, o
   };
 
   const handleGoogleLogin = async () => {
+    if (isIOS) {
+      Alert.alert('Google Sign-In', 'Google Sign-In is not available on iOS.');
+      return;
+    }
+
     if (!NativeModules.RNGoogleSignin) {
       Alert.alert(
         "Google Sign-In Preview",

@@ -250,7 +250,7 @@ export const notificationService = {
             identifier: 'active-recording',
             content: {
                 title: "🔴 Sermon Recording Active",
-                body: "WordFlow is currently recording your sermon. Don't worry, we're capturing every word!",
+                body: "Rhema Daily is currently recording your sermon. Don't worry, we're capturing every word!",
                 priority: Notifications.AndroidNotificationPriority.LOW,
                 sticky: true, // Android: Prevent user from swiping away
                 autoDismiss: false,

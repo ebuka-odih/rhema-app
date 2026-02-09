@@ -19,17 +19,269 @@ export interface BibleChapter {
     verses: Record<string, string>;
 }
 
+interface BibleBookmarkRecord {
+    id?: string;
+    user_id?: string;
+    version_id: string;
+    book: string;
+    chapter: number;
+    verse: number;
+    text?: string;
+    created_at?: string;
+}
+
+interface PendingBookmarkOperation {
+    action: 'save' | 'remove';
+    bookmark: BibleBookmarkRecord;
+}
+
 // Cache keys
 const CACHE_KEYS = {
     VERSIONS: 'bible_versions_cache',
     BOOKS: (version: string) => `bible_books_cache_${version}`,
     CHAPTER: (version: string, book: string, chapter: number) => `bible_chapter_cache_${version}_${book}_${chapter}`,
+    BOOKMARKS: 'bible_bookmarks_cache',
+    BOOKMARK_PENDING_OPS: 'bible_bookmarks_pending_ops',
 };
 
 // In-memory cache for ultra-fast access
 let versionsCache: BibleVersion[] | null = null;
 const booksCache: Record<string, BibleBook[]> = {};
 const chapterCache: Record<string, BibleChapter> = {};
+let bookmarksCache: BibleBookmarkRecord[] | null = null;
+let pendingBookmarkOpsCache: PendingBookmarkOperation[] | null = null;
+
+const toNumber = (value: unknown): number => {
+    if (typeof value === 'number') return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const bookmarkKey = (bookmark: { book: string; chapter: number; verse: number }) =>
+    `${bookmark.book}:${bookmark.chapter}:${bookmark.verse}`;
+
+const normalizeBookmark = (bookmark: any): BibleBookmarkRecord => {
+    const chapter = toNumber(bookmark?.chapter);
+    const verse = toNumber(bookmark?.verse);
+    const versionId = typeof bookmark?.version_id === 'string' ? bookmark.version_id : '';
+    const book = typeof bookmark?.book === 'string' ? bookmark.book : '';
+    const localId = `local:${versionId}:${book}:${chapter}:${verse}`;
+
+    return {
+        id: bookmark?.id ? String(bookmark.id) : localId,
+        user_id: typeof bookmark?.user_id === 'string' ? bookmark.user_id : undefined,
+        version_id: versionId,
+        book,
+        chapter,
+        verse,
+        text: typeof bookmark?.text === 'string' ? bookmark.text : '',
+        created_at: typeof bookmark?.created_at === 'string' ? bookmark.created_at : undefined,
+    };
+};
+
+const normalizeBookmarkList = (bookmarks: any[]): BibleBookmarkRecord[] => {
+    const map = new Map<string, BibleBookmarkRecord>();
+
+    for (const rawBookmark of bookmarks) {
+        const normalized = normalizeBookmark(rawBookmark);
+        map.set(bookmarkKey(normalized), normalized);
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+        if (a.created_at && b.created_at) return b.created_at.localeCompare(a.created_at);
+        if (a.created_at) return -1;
+        if (b.created_at) return 1;
+        return bookmarkKey(a).localeCompare(bookmarkKey(b));
+    });
+};
+
+const normalizePendingBookmarkOps = (operations: any[]): PendingBookmarkOperation[] => {
+    const normalized: PendingBookmarkOperation[] = [];
+
+    for (const op of operations) {
+        if (op?.action !== 'save' && op?.action !== 'remove') continue;
+        if (!op?.bookmark || typeof op.bookmark !== 'object') continue;
+
+        normalized.push({
+            action: op.action,
+            bookmark: normalizeBookmark(op.bookmark),
+        });
+    }
+
+    return normalized;
+};
+
+const readBookmarksCache = async (): Promise<BibleBookmarkRecord[]> => {
+    if (bookmarksCache) return bookmarksCache;
+
+    try {
+        const stored = await AsyncStorage.getItem(CACHE_KEYS.BOOKMARKS);
+        if (!stored) {
+            bookmarksCache = [];
+            return [];
+        }
+
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+            bookmarksCache = [];
+            return [];
+        }
+
+        bookmarksCache = normalizeBookmarkList(parsed);
+        return bookmarksCache;
+    } catch (error) {
+        console.error('Error reading bookmarks cache:', error);
+        bookmarksCache = [];
+        return [];
+    }
+};
+
+const writeBookmarksCache = async (bookmarks: BibleBookmarkRecord[]): Promise<BibleBookmarkRecord[]> => {
+    const normalized = normalizeBookmarkList(bookmarks);
+    bookmarksCache = normalized;
+
+    try {
+        await AsyncStorage.setItem(CACHE_KEYS.BOOKMARKS, JSON.stringify(normalized));
+    } catch (error) {
+        console.error('Error writing bookmarks cache:', error);
+    }
+
+    return normalized;
+};
+
+const readPendingBookmarkOps = async (): Promise<PendingBookmarkOperation[]> => {
+    if (pendingBookmarkOpsCache) return pendingBookmarkOpsCache;
+
+    try {
+        const stored = await AsyncStorage.getItem(CACHE_KEYS.BOOKMARK_PENDING_OPS);
+        if (!stored) {
+            pendingBookmarkOpsCache = [];
+            return [];
+        }
+
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+            pendingBookmarkOpsCache = [];
+            return [];
+        }
+
+        pendingBookmarkOpsCache = normalizePendingBookmarkOps(parsed);
+        return pendingBookmarkOpsCache;
+    } catch (error) {
+        console.error('Error reading pending bookmark operations:', error);
+        pendingBookmarkOpsCache = [];
+        return [];
+    }
+};
+
+const writePendingBookmarkOps = async (operations: PendingBookmarkOperation[]): Promise<PendingBookmarkOperation[]> => {
+    const normalized = normalizePendingBookmarkOps(operations);
+    pendingBookmarkOpsCache = normalized;
+
+    try {
+        await AsyncStorage.setItem(CACHE_KEYS.BOOKMARK_PENDING_OPS, JSON.stringify(normalized));
+    } catch (error) {
+        console.error('Error writing pending bookmark operations:', error);
+    }
+
+    return normalized;
+};
+
+const queuePendingBookmarkOperation = async (operation: PendingBookmarkOperation) => {
+    const pending = await readPendingBookmarkOps();
+    const opKey = bookmarkKey(operation.bookmark);
+    const filtered = pending.filter((item) => bookmarkKey(item.bookmark) !== opKey);
+    await writePendingBookmarkOps([...filtered, operation]);
+};
+
+const clearPendingBookmarkOperation = async (bookmark: { book: string; chapter: number; verse: number }) => {
+    const pending = await readPendingBookmarkOps();
+    const opKey = bookmarkKey(bookmark);
+    await writePendingBookmarkOps(pending.filter((item) => bookmarkKey(item.bookmark) !== opKey));
+};
+
+const syncPendingBookmarkOperations = async () => {
+    const pending = await readPendingBookmarkOps();
+    if (pending.length === 0) return;
+
+    const { authService } = await import('./auth');
+    const token = await authService.getToken();
+    if (!token) return;
+
+    const remaining: PendingBookmarkOperation[] = [];
+
+    for (let i = 0; i < pending.length; i += 1) {
+        const op = pending[i];
+        try {
+            if (op.action === 'save') {
+                const response = await fetch(`${API_BASE_URL}bible/bookmarks`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        version_id: op.bookmark.version_id,
+                        book: op.bookmark.book,
+                        chapter: op.bookmark.chapter,
+                        verse: op.bookmark.verse,
+                        text: op.bookmark.text || '',
+                    }),
+                });
+
+                if (!response.ok) throw new Error(`Failed to sync bookmark save (${response.status})`);
+
+                const saved = normalizeBookmark(await response.json());
+                const currentBookmarks = await readBookmarksCache();
+                await writeBookmarksCache(upsertBookmarkInList(currentBookmarks, saved));
+            } else {
+                const response = await fetch(`${API_BASE_URL}bible/bookmarks/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        version_id: op.bookmark.version_id,
+                        book: op.bookmark.book,
+                        chapter: op.bookmark.chapter,
+                        verse: op.bookmark.verse,
+                    }),
+                });
+
+                if (!response.ok) throw new Error(`Failed to sync bookmark remove (${response.status})`);
+
+                const currentBookmarks = await readBookmarksCache();
+                await writeBookmarksCache(
+                    removeBookmarkFromList(currentBookmarks, op.bookmark.book, op.bookmark.chapter, op.bookmark.verse)
+                );
+            }
+        } catch (error) {
+            console.error('Failed to sync pending bookmark operation:', error);
+            remaining.push(...pending.slice(i));
+            break;
+        }
+    }
+
+    await writePendingBookmarkOps(remaining);
+};
+
+const upsertBookmarkInList = (bookmarks: BibleBookmarkRecord[], bookmark: BibleBookmarkRecord): BibleBookmarkRecord[] => {
+    const key = bookmarkKey(bookmark);
+    const filtered = bookmarks.filter((item) => bookmarkKey(item) !== key);
+    return [...filtered, bookmark];
+};
+
+const removeBookmarkFromList = (bookmarks: BibleBookmarkRecord[], book: string, chapter: number, verse: number): BibleBookmarkRecord[] => {
+    const key = bookmarkKey({ book, chapter, verse });
+    return bookmarks.filter((item) => bookmarkKey(item) !== key);
+};
+
+const getBookmarksForChapterFromList = (bookmarks: BibleBookmarkRecord[], book: string, chapter: number): BibleBookmarkRecord[] => {
+    return bookmarks.filter((item) => item.book === book && item.chapter === chapter);
+};
 
 export const bibleService = {
     // Synchronous checks for memory cache
@@ -320,7 +572,10 @@ export const bibleService = {
 
     // Bookmarks
     async getBookmarks() {
+        const cachedBookmarks = await readBookmarksCache();
+
         try {
+            await syncPendingBookmarkOperations();
             const { authService } = await import('./auth');
             const token = await authService.getToken();
             const response = await fetch(`${API_BASE_URL}bible/bookmarks`, {
@@ -330,14 +585,24 @@ export const bibleService = {
                 }
             });
             if (!response.ok) throw new Error('Failed to fetch bookmarks');
-            return await response.json();
+
+            const data = await response.json();
+            return await writeBookmarksCache(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('getBookmarks error:', err);
-            return [];
+            return cachedBookmarks;
         }
     },
 
     async saveBookmark(bookmark: { version_id: string; book: string; chapter: number; verse: number; text?: string }) {
+        const localBookmark = normalizeBookmark({
+            ...bookmark,
+            created_at: new Date().toISOString(),
+        });
+
+        const currentBookmarks = await readBookmarksCache();
+        await writeBookmarksCache(upsertBookmarkInList(currentBookmarks, localBookmark));
+
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
@@ -351,14 +616,24 @@ export const bibleService = {
                 body: JSON.stringify(bookmark),
             });
             if (!response.ok) throw new Error('Failed to save bookmark');
-            return await response.json();
+
+            const data = await response.json();
+            const savedBookmark = normalizeBookmark(data);
+            const refreshedBookmarks = await readBookmarksCache();
+            await writeBookmarksCache(upsertBookmarkInList(refreshedBookmarks, savedBookmark));
+            await clearPendingBookmarkOperation(savedBookmark);
+            return savedBookmark;
         } catch (err) {
             console.error('saveBookmark error:', err);
-            throw err;
+            await queuePendingBookmarkOperation({ action: 'save', bookmark: localBookmark });
+            return localBookmark;
         }
     },
 
     async removeBookmark(version_id: string, book: string, chapter: number, verse: number) {
+        const currentBookmarks = await readBookmarksCache();
+        await writeBookmarksCache(removeBookmarkFromList(currentBookmarks, book, chapter, verse));
+
         try {
             const { authService } = await import('./auth');
             const token = await authService.getToken();
@@ -372,15 +647,25 @@ export const bibleService = {
                 body: JSON.stringify({ version_id, book, chapter, verse }),
             });
             if (!response.ok) throw new Error('Failed to remove bookmark');
+            await clearPendingBookmarkOperation({ book, chapter, verse });
             return await response.json();
         } catch (err) {
             console.error('removeBookmark error:', err);
-            throw err;
+            await queuePendingBookmarkOperation({
+                action: 'remove',
+                bookmark: normalizeBookmark({ version_id, book, chapter, verse }),
+            });
+            return { message: 'Bookmark removed locally.' };
         }
     },
 
     async getBookmarksForChapter(version_id: string, book: string, chapter: number) {
+        const chapterNumber = toNumber(chapter);
+        const cachedBookmarks = await readBookmarksCache();
+        const cachedChapterBookmarks = getBookmarksForChapterFromList(cachedBookmarks, book, chapterNumber);
+
         try {
+            await syncPendingBookmarkOperations();
             const { authService } = await import('./auth');
             const token = await authService.getToken();
             const response = await fetch(
@@ -393,10 +678,17 @@ export const bibleService = {
                 }
             );
             if (!response.ok) throw new Error('Failed to fetch bookmarks');
-            return await response.json();
+
+            const data = await response.json();
+            const chapterBookmarks = normalizeBookmarkList(Array.isArray(data) ? data : []);
+            const withoutThisChapter = cachedBookmarks.filter(
+                (item) => !(item.book === book && item.chapter === chapterNumber)
+            );
+            await writeBookmarksCache([...withoutThisChapter, ...chapterBookmarks]);
+            return chapterBookmarks;
         } catch (err) {
             console.error('getBookmarksForChapter error:', err);
-            return [];
+            return cachedChapterBookmarks;
         }
     },
 
