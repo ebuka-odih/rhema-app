@@ -1,20 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { IconFire } from '../Icons';
 
 interface DashboardSectionProps {
-    onViewGrowth: () => void;
     journalEntriesCount: number;
 }
 
-export const DashboardSection: React.FC<DashboardSectionProps> = ({ onViewGrowth, journalEntriesCount }) => {
+export const DashboardSection: React.FC<DashboardSectionProps> = ({ journalEntriesCount }) => {
     return (
         <View style={styles.dashboardContainer}>
-            <TouchableOpacity
-                style={styles.streakCard}
-                onPress={onViewGrowth}
-                activeOpacity={0.9}
-            >
+            <View style={styles.streakCard}>
                 <View style={styles.streakHeader}>
                     <View style={styles.streakHeaderLeft}>
                         <View style={styles.fireIconContainer}>
@@ -47,7 +42,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ onViewGrowth
                         <Text style={styles.statLabel}>Fasts</Text>
                     </View>
                 </View>
-            </TouchableOpacity>
+            </View>
         </View>
     );
 };

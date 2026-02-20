@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Sermon } from '../../types/sermon';
-import { IconArrowLeft, IconTrash, IconPlay, IconDownload } from '../Icons';
+import { IconArrowLeft, IconTrash } from '../Icons';
 import { TabNavigator } from './TabNavigator';
 import { BibleReferenceHandler } from '../bible/BibleReferenceHandler';
 import { BibleVerseModal } from '../bible/BibleVerseModal';
@@ -63,12 +63,6 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
                 </TouchableOpacity>
                 <Text style={styles.detailTitle} numberOfLines={1}>{sermon.title}</Text>
                 <View style={styles.detailActions}>
-                    <TouchableOpacity
-                        style={styles.detailAction}
-                        onPress={() => Alert.alert("Coming Soon", "Downloading sermon audio will be available in the future.")}
-                    >
-                        <IconDownload size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
                     <TouchableOpacity onPress={onDelete} style={styles.detailAction}>
                         <IconTrash size={20} color="#E8503A" />
                     </TouchableOpacity>
@@ -81,12 +75,6 @@ export const SermonDetail: React.FC<SermonDetailProps> = ({
                         <Text style={styles.playerDate}>{sermon.date}</Text>
                         <Text style={styles.playerDuration}>{sermon.duration}</Text>
                     </View>
-                    <TouchableOpacity
-                        style={styles.playButton}
-                        onPress={() => Alert.alert("Coming Soon", "Audio playback for recorded sermons is coming soon!")}
-                    >
-                        <IconPlay size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
                 </View>
 
                 {sermon.status === 'processing' && (
@@ -209,14 +197,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#FFFFFF',
-    },
-    playButton: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#E8503A',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     progressBar: {
         height: 4,

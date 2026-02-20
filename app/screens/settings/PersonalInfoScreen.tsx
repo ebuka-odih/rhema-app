@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
-import { IconArrowLeft, IconUser, IconEdit, IconCheck } from '../../components/Icons';
+import { IconArrowLeft, IconUser, IconCheck } from '../../components/Icons';
 import { useSession, authService } from '../../services/auth';
 
 const InputField: React.FC<{
@@ -81,14 +81,8 @@ const PersonalInfoScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <View style={styles.avatarContainer}>
                             <Text style={styles.avatarText}>{name.charAt(0) || 'U'}</Text>
                         </View>
-                        <TouchableOpacity
-                            style={styles.editBadge}
-                            onPress={() => Alert.alert("Coming Soon", "Changing profile photo will be available soon.")}
-                        >
-                            <IconEdit size={16} color="#FFFFFF" />
-                        </TouchableOpacity>
                     </View>
-                    <Text style={styles.avatarLabel}>Change Profile Photo</Text>
+                    <Text style={styles.avatarLabel}>Profile Photo</Text>
                 </View>
 
                 {/* Form Section */}
@@ -195,19 +189,6 @@ const styles = StyleSheet.create({
         fontSize: 40,
         fontWeight: '800',
         color: '#E8503A',
-    },
-    editBadge: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#E8503A',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 3,
-        borderColor: '#000000',
     },
     avatarLabel: {
         fontSize: 14,

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Switch, Al
 import { useSession, signOut } from '../services/auth';
 import {
   IconUser, IconSettings, IconBell, IconLock,
-  IconShield, IconStar, IconHelp, IconLogout,
+  IconShield, IconStar, IconLogout,
   IconChevronRight, IconArrowLeft, IconShare
 } from '../components/Icons';
 import QRCodeScreen from './QRCodeScreen';
@@ -13,10 +13,10 @@ import SecurityScreen from './settings/SecurityScreen';
 import SubscriptionScreen from './settings/SubscriptionScreen';
 import NotificationSettingsScreen from './settings/NotificationSettingsScreen';
 import PrivacyScreen from './settings/PrivacyScreen';
-import HelpSupportScreen from './settings/HelpSupportScreen';
 import AboutScreen from './settings/AboutScreen';
 import TermsOfServiceScreen from './settings/TermsOfServiceScreen';
 import PrivacyPolicyScreen from './settings/PrivacyPolicyScreen';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const SettingsItem: React.FC<{
   icon: React.ReactNode;
@@ -44,13 +44,26 @@ const SettingsItem: React.FC<{
   </TouchableOpacity>
 );
 
-type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'HELP' | 'ABOUT' | 'QR_CODE' | 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY';
+type SettingsView = 'MAIN' | 'PERSONAL_INFO' | 'SECURITY' | 'SUBSCRIPTION' | 'NOTIFICATIONS' | 'PRIVACY' | 'ABOUT' | 'QR_CODE' | 'TERMS_OF_SERVICE' | 'PRIVACY_POLICY';
 
-const MoreScreen: React.FC = () => {
+interface MoreScreenProps {
+  entryView?: SettingsView | null;
+  onEntryViewHandled?: () => void;
+}
+
+const MoreScreen: React.FC<MoreScreenProps> = ({ entryView = null, onEntryViewHandled }) => {
   const { data: session } = useSession();
+  const { isPro } = useSubscription();
   const user = session?.user;
   const [currentView, setCurrentView] = React.useState<SettingsView>('MAIN');
   const [previousView, setPreviousView] = React.useState<SettingsView>('MAIN');
+
+  React.useEffect(() => {
+    if (!entryView) return;
+    setPreviousView('MAIN');
+    setCurrentView(entryView);
+    onEntryViewHandled?.();
+  }, [entryView, onEntryViewHandled]);
 
   const navigateTo = (view: SettingsView) => {
     setPreviousView(currentView);
@@ -73,7 +86,6 @@ const MoreScreen: React.FC = () => {
   if (currentView === 'SUBSCRIPTION') return <SubscriptionScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'NOTIFICATIONS') return <NotificationSettingsScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'PRIVACY') return <PrivacyScreen onBack={() => setCurrentView('MAIN')} onToS={() => navigateTo('TERMS_OF_SERVICE')} onPrivacy={() => navigateTo('PRIVACY_POLICY')} />;
-  if (currentView === 'HELP') return <HelpSupportScreen onBack={() => setCurrentView('MAIN')} />;
   if (currentView === 'ABOUT') return <AboutScreen onBack={() => setCurrentView('MAIN')} onToS={() => navigateTo('TERMS_OF_SERVICE')} onPrivacy={() => navigateTo('PRIVACY_POLICY')} />;
   if (currentView === 'TERMS_OF_SERVICE') return <TermsOfServiceScreen onBack={() => setCurrentView(previousView)} />;
   if (currentView === 'PRIVACY_POLICY') return <PrivacyPolicyScreen onBack={() => setCurrentView(previousView)} />;
@@ -101,10 +113,10 @@ const MoreScreen: React.FC = () => {
               <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
               <Text style={styles.userEmail}>{user?.email || 'No email'}</Text>
               <View style={styles.badgeContainer}>
-                <View style={[styles.badge, user?.is_pro ? styles.proBadge : styles.freeBadge]}>
-                  <IconStar size={12} color={user?.is_pro ? '#FFD700' : '#666666'} />
-                  <Text style={[styles.badgeText, user?.is_pro ? styles.proBadgeText : styles.freeBadgeText]}>
-                    {user?.is_pro ? 'PRO MEMBER' : 'FREE PLAN'}
+                <View style={[styles.badge, isPro ? styles.proBadge : styles.freeBadge]}>
+                  <IconStar size={12} color={isPro ? '#FFD700' : '#666666'} />
+                  <Text style={[styles.badgeText, isPro ? styles.proBadgeText : styles.freeBadgeText]}>
+                    {isPro ? 'PRO MEMBER' : 'FREE PLAN'}
                   </Text>
                 </View>
               </View>
@@ -131,7 +143,7 @@ const MoreScreen: React.FC = () => {
             <SettingsItem
               icon={<IconStar size={20} color="#FFFFFF" />}
               label="Subscription Plan"
-              value={user?.is_pro ? 'Monthly Pro' : 'Free'}
+              value={isPro ? 'Rhema Daily Pro' : 'Free'}
               onPress={() => navigateTo('SUBSCRIPTION')}
             />
           </View>
@@ -163,12 +175,6 @@ const MoreScreen: React.FC = () => {
               icon={<IconShare size={20} color="#FFFFFF" />}
               label="Share App"
               onPress={() => navigateTo('QR_CODE')}
-            />
-            <View style={styles.divider} />
-            <SettingsItem
-              icon={<IconHelp size={20} color="#FFFFFF" />}
-              label="Help Center"
-              onPress={() => navigateTo('HELP')}
             />
             <View style={styles.divider} />
             <SettingsItem

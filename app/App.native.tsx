@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { notificationService } from './services/notificationService';
 import { RecordingProvider } from './context/RecordingContext';
 import { GlobalRecordingBar } from './components/sermons/GlobalRecordingBar';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 
 const AppContent: React.FC = () => {
     // Navigation State
@@ -34,6 +35,7 @@ const AppContent: React.FC = () => {
         isPending,
     } = useAppFlow();
     const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
+    const [moreEntryView, setMoreEntryView] = useState<'SUBSCRIPTION' | null>(null);
     const [previousTab, setPreviousTab] = useState<Tab | null>(null);
     const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number; verse?: number }>({});
     const [isJournalEditorOpen, setIsJournalEditorOpen] = useState(false);
@@ -110,6 +112,10 @@ const AppContent: React.FC = () => {
                             setBibleNavState({ book, chapter, verse });
                             setActiveTab(Tab.BIBLE);
                         }}
+                        onNavigateToSubscription={() => {
+                            setMoreEntryView('SUBSCRIPTION');
+                            setActiveTab(Tab.MORE);
+                        }}
                     />
                 );
                 case Tab.JOURNEY: return (
@@ -133,7 +139,12 @@ const AppContent: React.FC = () => {
                         }}
                     />
                 );
-                case Tab.MORE: return <MoreScreen />;
+                case Tab.MORE: return (
+                    <MoreScreen
+                        entryView={moreEntryView}
+                        onEntryViewHandled={() => setMoreEntryView(null)}
+                    />
+                );
                 default: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
             }
         };
@@ -193,7 +204,10 @@ const AppContent: React.FC = () => {
                             active={activeTab === Tab.MORE}
                             icon={<IconMore size={24} color={activeTab === Tab.MORE ? '#E8503A' : '#666666'} />}
                             label="More"
-                            onPress={() => handleNavPress(Tab.MORE)}
+                            onPress={() => {
+                                setMoreEntryView(null);
+                                handleNavPress(Tab.MORE);
+                            }}
                         />
                     </View>
                 )}
@@ -244,9 +258,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
     return (
         <SafeAreaProvider>
-            <RecordingProvider>
-                <AppContent />
-            </RecordingProvider>
+            <SubscriptionProvider>
+                <RecordingProvider>
+                    <AppContent />
+                </RecordingProvider>
+            </SubscriptionProvider>
         </SafeAreaProvider>
     );
 };

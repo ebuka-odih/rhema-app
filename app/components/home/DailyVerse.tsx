@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, Share, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { IconHeart, IconShare, IconComment } from '../Icons';
+import { IconHeart, IconShare } from '../Icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { API_BASE_URL } from '../../services/apiConfig';
@@ -44,7 +44,7 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
         });
     }, [id]); // Only trigger when the verse itself changes
 
-    const handleInteract = async (type: 'like' | 'share' | 'comment') => {
+    const handleInteract = async (type: 'like' | 'share') => {
         if (isInteracting) return;
 
         // Haptic Feedback
@@ -55,13 +55,6 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
         setIsInteracting(true);
         try {
             const token = await authService.getToken();
-
-            if (type === 'comment') {
-                // Placeholder for comment section logic
-                Alert.alert("Comments", "Comment section coming soon!");
-                setIsInteracting(false);
-                return;
-            }
 
             const res = await fetch(`${API_BASE_URL}bible/daily-verse/interact`, {
                 method: 'POST',
@@ -200,18 +193,6 @@ export const DailyVerse: React.FC<DailyVerseProps> = ({
                         <Text style={styles.actionCount}>{metrics.shares}</Text>
                     </View>
 
-                    <View style={styles.actionItem}>
-                        <TouchableOpacity
-                            style={styles.actionCircle}
-                            onPress={() => handleInteract('comment')}
-                            activeOpacity={0.7}
-                            disabled={!id || isInteracting}
-                        >
-                            <IconComment size={20} color={id ? "#FFFFFF" : "#444"} strokeWidth={2.5} />
-                        </TouchableOpacity>
-                        {/* Placeholder count */}
-                        <Text style={styles.actionCount}>0</Text>
-                    </View>
                 </View>
             </View>
         </View>

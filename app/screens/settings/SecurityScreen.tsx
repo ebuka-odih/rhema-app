@@ -11,7 +11,6 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         new: '',
         confirm: '',
     });
-    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [biometricEnabled, setBiometricEnabled] = useState(true);
 
     const handleChangePassword = async () => {
@@ -116,25 +115,6 @@ const SecurityScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 <Text style={styles.sectionHeader}>Authentication</Text>
                 <View style={styles.card}>
-                    <View style={styles.item}>
-                        <View style={styles.itemLeft}>
-                            <IconShield size={20} color="#E8503A" />
-                            <View>
-                                <Text style={styles.itemText}>Two-Factor Authentication</Text>
-                                <Text style={styles.itemSubtext}>Add an extra layer of security</Text>
-                            </View>
-                        </View>
-                        <Switch
-                            trackColor={{ false: '#333333', true: '#E8503A' }}
-                            thumbColor="#FFFFFF"
-                            value={twoFactorEnabled}
-                            onValueChange={(val) => {
-                                setTwoFactorEnabled(val);
-                                if (val) Alert.alert("Coming Soon", "Two-Factor authentication setup will be available in a future update.");
-                            }}
-                        />
-                    </View>
-                    <View style={styles.divider} />
                     <View style={styles.item}>
                         <View style={styles.itemLeft}>
                             <IconShield size={20} color="#E8503A" />

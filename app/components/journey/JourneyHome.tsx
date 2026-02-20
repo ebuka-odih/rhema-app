@@ -13,7 +13,6 @@ import { BookmarksSection } from './BookmarksSection';
 interface JourneyHomeProps {
   onNavigateGlobal?: (tab: string) => void;
   onViewAllReflections: () => void;
-  onViewGrowth: () => void;
   onNewReflection: () => void;
   onLogPrayer: () => void;
   onEditPrayer: (prayer: Prayer) => void;
@@ -29,7 +28,6 @@ interface JourneyHomeProps {
 }
 
 export const JourneyHome: React.FC<JourneyHomeProps> = ({
-  onViewGrowth,
   onNewReflection,
   onLogPrayer,
   onEditPrayer,
@@ -49,10 +47,10 @@ export const JourneyHome: React.FC<JourneyHomeProps> = ({
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <JourneyHeader onViewGrowth={onViewGrowth} />
+      <JourneyHeader />
 
       {/* Dashboard */}
-      <DashboardSection onViewGrowth={onViewGrowth} journalEntriesCount={journalEntries.length} />
+      <DashboardSection journalEntriesCount={journalEntries.length} />
 
       {/* Quick Actions */}
       <QuickActionsSection

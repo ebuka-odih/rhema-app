@@ -8,13 +8,12 @@ import { API_BASE_URL } from '../services/apiConfig';
 import { JourneyHome } from '../components/journey/JourneyHome';
 import { JournalList } from '../components/journey/JournalList';
 import { JournalEditor } from '../components/journey/JournalEditor';
-import { GrowthTracker } from '../components/journey/GrowthTracker';
 import { PrayerLog } from '../components/journey/PrayerLog';
 import { Fasting } from '../components/journey/Fasting';
 import { notificationService } from '../services/notificationService';
 import { cacheService } from '../services/cacheService';
 
-type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'growth' | 'prayer_log' | 'fasting';
+type JourneyView = 'home' | 'journal_list' | 'journal_editor' | 'prayer_log' | 'fasting';
 
 interface JourneyScreenProps {
   onNavigateGlobal?: (tab: string) => void;
@@ -482,7 +481,6 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
           <JourneyHome
             onNavigateGlobal={onNavigateGlobal}
             onViewAllReflections={() => setCurrentView('journal_list')}
-            onViewGrowth={() => setCurrentView('growth')}
             onNewReflection={handleNewReflection}
             onLogPrayer={handleNewPrayer}
             onEditPrayer={handleEditPrayer}
@@ -521,13 +519,6 @@ const JourneyScreen: React.FC<JourneyScreenProps> = ({
           onNavigateToBible={onNavigateToBible}
         />
       )}
-
-      {currentView === 'growth' && (
-        <GrowthTracker onBack={() => setCurrentView('home')} />
-      )}
-
-
-
       {currentView === 'prayer_log' && (
         <PrayerLog
           onClose={() => setCurrentView('home')}

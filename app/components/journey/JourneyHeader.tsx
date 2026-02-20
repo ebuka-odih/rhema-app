@@ -1,22 +1,18 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
-interface JourneyHeaderProps {
-    onViewGrowth: () => void;
-}
-
-export const JourneyHeader: React.FC<JourneyHeaderProps> = ({ onViewGrowth }) => {
+export const JourneyHeader: React.FC = () => {
     return (
         <View style={styles.header}>
             <View>
                 <Text style={styles.welcomeText}>Grace & Peace,</Text>
                 <Text style={styles.headerTitle}>Your Journey</Text>
             </View>
-            <TouchableOpacity style={styles.profileButton} onPress={onViewGrowth}>
+            <View style={styles.profileButton}>
                 <View style={styles.profileCircle}>
                     <Text style={styles.profileInitial}>J</Text>
                 </View>
-            </TouchableOpacity>
+            </View>
         </View>
     );
 };

@@ -303,12 +303,6 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
                     </TouchableOpacity>
                 </View>
             )}
-
-            <View style={[styles.infoCard, { opacity: 0.5 }]}>
-                <Text style={styles.infoTitle}>Admin Settings</Text>
-                <Text style={styles.infoText}>Manage member roles, group privacy, and community guidelines (Coming Soon).</Text>
-            </View>
-
             {group.is_admin ? (
                 <TouchableOpacity
                     style={[styles.leaveButton, { borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
@@ -339,14 +333,6 @@ export const Fasting: React.FC<FastingProps> = ({ onBack }) => {
 
     const renderFeedContent = () => (
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.feedContent}>
-            <TouchableOpacity
-                style={styles.postInput}
-                onPress={() => Alert.alert("Coming Soon", "The community feed for sharing encouragement will be available soon!")}
-            >
-                <View style={styles.avatarMini} />
-                <Text style={styles.postInputText}>Share encouragement...</Text>
-            </TouchableOpacity>
-
             {groupFeed.map(item => (
                 <View key={item.id} style={styles.postCard}>
                     <View style={styles.postHeader}>
@@ -785,9 +771,6 @@ const styles = StyleSheet.create({
     leaveButton: { borderColor: '#ef4444', borderWidth: 1, padding: 15, borderRadius: 12, alignItems: 'center' },
     leaveButtonText: { color: '#ef4444', fontWeight: 'bold' },
     feedContent: { padding: 20 },
-    postInput: { backgroundColor: '#111', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-    avatarMini: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#333' },
-    postInputText: { color: '#666' },
     postCard: { backgroundColor: '#111', borderRadius: 20, padding: 20, marginBottom: 20 },
     postHeader: { flexDirection: 'row', marginBottom: 15 },
     authorRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },

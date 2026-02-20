@@ -1,381 +1,513 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { IconArrowLeft, IconCheck, IconStar, IconFire, IconMic, IconBible } from '../../components/Icons';
-import { iapService, IAP_SUBSCRIPTION_ID } from '../../services/iap';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { IconArrowLeft, IconCheck, IconStar } from '../../components/Icons';
+import { useSubscription } from '../../context/SubscriptionContext';
+import { REVENUECAT_PACKAGE_IDS, type RevenueCatPackageId } from '../../services/revenuecat';
 
-const BenefitItem: React.FC<{ text: string }> = ({ text }) => (
-    <View style={styles.benefitItem}>
-        <View style={styles.checkBadge}>
-            <IconCheck size={14} color="#FFFFFF" />
-        </View>
-        <Text style={styles.benefitText}>{text}</Text>
-    </View>
-);
+const PLAN_ORDER: RevenueCatPackageId[] = [
+    REVENUECAT_PACKAGE_IDS.monthly,
+    REVENUECAT_PACKAGE_IDS.yearly,
+    REVENUECAT_PACKAGE_IDS.lifetime,
+];
+
+const PLAN_LABELS: Record<RevenueCatPackageId, string> = {
+    [REVENUECAT_PACKAGE_IDS.monthly]: 'Monthly',
+    [REVENUECAT_PACKAGE_IDS.yearly]: 'Yearly',
+    [REVENUECAT_PACKAGE_IDS.lifetime]: 'Lifetime',
+};
 
 const SubscriptionScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const [product, setProduct] = React.useState<any>(null);
-    const [loadingProduct, setLoadingProduct] = React.useState(true);
-    const [processingPurchase, setProcessingPurchase] = React.useState(false);
-    const [processingRestore, setProcessingRestore] = React.useState(false);
+    const {
+        entitlementId,
+        isPro,
+        isRevenueCatSupported,
+        isRevenueCatReady,
+        isLoadingCustomerInfo,
+        customerInfo,
+        offering,
+        refreshCustomerInfo,
+        refreshOffering,
+        purchasePackageById,
+        restorePurchases,
+        presentPaywall,
+        openCustomerCenter,
+        isPaywallPurchaseResult,
+        isUserCancelled,
+        getErrorMessage,
+    } = useSubscription();
+
+    const [selectedPackageId, setSelectedPackageId] = React.useState<RevenueCatPackageId | null>(null);
+    const [loadingAction, setLoadingAction] = React.useState<'purchase' | 'restore' | 'paywall' | 'customer-center' | null>(null);
 
     React.useEffect(() => {
-        let cleanup: (() => void) | null = null;
-
-        const init = async () => {
+        const load = async () => {
             try {
-                await iapService.initConnection();
-                const loadedProduct = await iapService.getSubscription();
-                setProduct(loadedProduct);
+                await Promise.all([refreshCustomerInfo(), refreshOffering()]);
             } catch (err) {
-                console.error('Failed to init IAP', err);
-            } finally {
-                setLoadingProduct(false);
+                console.error('Failed to load RevenueCat subscription state', err);
             }
         };
+        void load();
+    }, [refreshCustomerInfo, refreshOffering]);
 
-        init();
-        cleanup = iapService.addListeners(
-            () => {
-                setProcessingPurchase(false);
-                Alert.alert('Success', 'Your subscription is now active.');
-            },
-            (error) => {
-                setProcessingPurchase(false);
-                setProcessingRestore(false);
-                if (error?.code === 'SYNC_FAILED') {
-                    Alert.alert('Purchase Complete', 'Your purchase was successful. Subscription status will update shortly.');
-                    return;
-                }
-                if (error?.code === 'E_USER_CANCELLED') return;
-                Alert.alert('Purchase Error', error?.message || 'Unable to complete purchase.');
+    const availablePackages = offering?.availablePackages || [];
+
+    React.useEffect(() => {
+        if (!availablePackages.length) {
+            setSelectedPackageId(null);
+            return;
+        }
+        const packageIds = availablePackages.map((item: any) => item.identifier);
+        const firstPreferred = PLAN_ORDER.find((id) => packageIds.includes(id));
+        setSelectedPackageId((firstPreferred || packageIds[0] || null) as RevenueCatPackageId | null);
+    }, [offering?.identifier, availablePackages.length]);
+
+    const selectedPackage = availablePackages.find((item: any) => item.identifier === selectedPackageId) || null;
+    const hasPurchases = (customerInfo?.allPurchasedProductIdentifiers?.length || 0) > 0;
+    const activeProEntitlement = customerInfo?.entitlements?.active?.[entitlementId];
+
+    const purchase = async () => {
+        if (!selectedPackageId) {
+            Alert.alert('Not Ready', 'No package available right now. Please try again.');
+            return;
+        }
+        if (!isRevenueCatReady) {
+            Alert.alert('Not Ready', 'RevenueCat is still initializing. Please try again in a moment.');
+            return;
+        }
+
+        setLoadingAction('purchase');
+        try {
+            const info = await purchasePackageById(selectedPackageId);
+            const hasEntitlement = Boolean(info?.entitlements?.active?.[entitlementId]);
+            if (hasEntitlement) {
+                Alert.alert('Success', 'Rhema Daily Pro is now active.');
+            } else {
+                Alert.alert('Purchase Complete', 'Purchase finished, but the Pro entitlement is not active yet.');
             }
-        );
-
-        return () => {
-            cleanup?.();
-            iapService.endConnection().catch(() => null);
-        };
-    }, []);
-
-    const handleSubscribe = async () => {
-        if (!IAP_SUBSCRIPTION_ID) {
-            Alert.alert('Not Configured', 'Subscription product ID is missing.');
-            return;
-        }
-        setProcessingPurchase(true);
-        try {
-            await iapService.purchaseSubscription();
-        } catch (err: any) {
-            setProcessingPurchase(false);
-            Alert.alert('Purchase Error', err?.message || 'Unable to start purchase.');
-        }
-    };
-
-    const handleRestore = async () => {
-        if (!IAP_SUBSCRIPTION_ID) {
-            Alert.alert('Not Configured', 'Subscription product ID is missing.');
-            return;
-        }
-        setProcessingRestore(true);
-        try {
-            await iapService.restorePurchases();
-            Alert.alert('Restore Complete', 'Your purchases have been restored.');
-        } catch (err: any) {
-            Alert.alert('Restore Failed', err?.message || 'Unable to restore purchases.');
+        } catch (err) {
+            if (!isUserCancelled(err)) {
+                Alert.alert('Purchase Failed', getErrorMessage(err));
+            }
         } finally {
-            setProcessingRestore(false);
+            setLoadingAction(null);
         }
     };
 
-    const priceLabel = product?.localizedPrice
-        || product?.priceString
-        || '$9.99';
-    const periodLabel = product?.subscriptionPeriodNumberIOS && product?.subscriptionPeriodUnitIOS
-        ? ` / ${product.subscriptionPeriodNumberIOS} ${product.subscriptionPeriodUnitIOS.toLowerCase()}`
-        : ' / month';
+    const restore = async () => {
+        if (!isRevenueCatReady) {
+            Alert.alert('Not Ready', 'RevenueCat is still initializing. Please try again in a moment.');
+            return;
+        }
+        setLoadingAction('restore');
+        try {
+            const info = await restorePurchases();
+            const hasEntitlement = Boolean(info?.entitlements?.active?.[entitlementId]);
+            Alert.alert(
+                hasEntitlement ? 'Restored' : 'No Active Pro Found',
+                hasEntitlement
+                    ? 'Rhema Daily Pro entitlement is active.'
+                    : 'No active Pro purchases were found for this account.'
+            );
+        } catch (err) {
+            Alert.alert('Restore Failed', getErrorMessage(err));
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const showPaywall = async () => {
+        if (!isRevenueCatReady) {
+            Alert.alert('Not Ready', 'RevenueCat is still initializing. Please try again in a moment.');
+            return;
+        }
+        setLoadingAction('paywall');
+        try {
+            const result = await presentPaywall();
+            if (isPaywallPurchaseResult(result)) {
+                Alert.alert('Success', 'Rhema Daily Pro is now active.');
+            }
+        } catch (err) {
+            if (!isUserCancelled(err)) {
+                Alert.alert('Paywall Error', getErrorMessage(err));
+            }
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    const launchCustomerCenter = async () => {
+        if (!isRevenueCatReady) {
+            Alert.alert('Not Ready', 'RevenueCat is still initializing. Please try again in a moment.');
+            return;
+        }
+        setLoadingAction('customer-center');
+        try {
+            await openCustomerCenter();
+        } catch (err) {
+            Alert.alert('Customer Center Error', getErrorMessage(err));
+        } finally {
+            setLoadingAction(null);
+        }
+    };
+
+    if (!isRevenueCatSupported) {
+        return (
+            <SafeAreaView style={styles.safeArea}>
+                <View style={styles.screen}>
+                    <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                        <IconArrowLeft size={20} color="#FFFFFF" />
+                        <Text style={styles.backText}>Back</Text>
+                    </TouchableOpacity>
+                    <View style={styles.unsupportedWrap}>
+                        <Text style={styles.unsupportedTitle}>Subscriptions are only available on iOS and Android.</Text>
+                        <Text style={styles.unsupportedSubtitle}>Use a mobile build to access RevenueCat purchases and Customer Center.</Text>
+                    </View>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <IconArrowLeft size={24} color="#FFFFFF" />
+        <SafeAreaView style={styles.safeArea}>
+            <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                    <IconArrowLeft size={20} color="#FFFFFF" />
+                    <Text style={styles.backText}>Back</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Subscription</Text>
-                <View style={{ width: 40 }} />
-            </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Hero Section */}
-                <View style={styles.heroSection}>
+                <View style={styles.hero}>
                     <View style={styles.heroBadge}>
-                        <IconStar size={16} color="#E8503A" />
-                        <Text style={styles.heroBadgeText}>GO PRO</Text>
+                        <IconStar size={14} color="#F8C948" />
+                        <Text style={styles.heroBadgeText}>RHEMA DAILY PRO</Text>
                     </View>
-                    <Text style={styles.heroTitle}>Level Up Your{'\n'}Spiritual Journey</Text>
+                    <Text style={styles.heroTitle}>Upgrade Your Subscription</Text>
                     <Text style={styles.heroSubtitle}>
-                        Unlock full access to advanced spiritual tools and exclusive content.
+                        Access longer recordings, AI insights, and premium Bible study tools.
                     </Text>
                 </View>
 
-                {/* Pro Card */}
-                <View style={styles.proCard}>
-                    <View style={styles.cardHeader}>
-                        <View>
-                            <Text style={styles.planName}>Rhema Daily Pro</Text>
-                            <Text style={styles.planPrice}>
-                                {priceLabel}
-                                <Text style={styles.planPeriod}>{periodLabel}</Text>
-                            </Text>
-                        </View>
-                        <View style={styles.proLabel}>
-                            <Text style={styles.proLabelText}>MOST POPULAR</Text>
-                        </View>
-                    </View>
+                <View style={styles.statusCard}>
+                    <Text style={styles.statusTitle}>{isPro ? 'Pro Active' : 'Free Plan'}</Text>
+                    <Text style={styles.statusSubtitle}>
+                        Entitlement: {entitlementId}
+                    </Text>
+                    {activeProEntitlement ? (
+                        <Text style={styles.statusMeta}>
+                            Product: {activeProEntitlement.productIdentifier}
+                        </Text>
+                    ) : (
+                        <Text style={styles.statusMeta}>No active entitlement found yet.</Text>
+                    )}
+                </View>
 
-                    <View style={styles.benefitsList}>
-                        <BenefitItem text="AI-Powered Sermon Transcriptions" />
-                        <BenefitItem text="Unlimited Prayer Groups & Logs" />
-                        <BenefitItem text="Exclusive Guided Audio Meditations" />
-                        <BenefitItem text="Advanced Growth Analytics" />
-                        <BenefitItem text="Cloud Sync Across All Devices" />
-                        <BenefitItem text="Priority Email Support" />
-                    </View>
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Plans</Text>
+                    {!isRevenueCatReady || isLoadingCustomerInfo ? (
+                        <View style={styles.loadingRow}>
+                            <ActivityIndicator color="#F8C948" />
+                            <Text style={styles.loadingText}>Loading offerings...</Text>
+                        </View>
+                    ) : availablePackages.length === 0 ? (
+                        <Text style={styles.emptyText}>
+                            No packages are available in your current offering. Verify RevenueCat offering setup.
+                        </Text>
+                    ) : (
+                        <View style={styles.planList}>
+                            {PLAN_ORDER.map((id) => {
+                                const pkg = availablePackages.find((item: any) => item.identifier === id);
+                                if (!pkg) return null;
+                                const selected = selectedPackageId === id;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={id}
+                                        style={[styles.planCard, selected && styles.planCardSelected]}
+                                        onPress={() => setSelectedPackageId(id)}
+                                        activeOpacity={0.85}
+                                    >
+                                        <View>
+                                            <Text style={styles.planTitle}>{PLAN_LABELS[id]}</Text>
+                                            <Text style={styles.planSubtitle}>{pkg.product.title || pkg.product.identifier}</Text>
+                                        </View>
+                                        <View style={styles.planRight}>
+                                            <Text style={styles.planPrice}>{pkg.product.priceString}</Text>
+                                            {selected && (
+                                                <View style={styles.selectedPill}>
+                                                    <IconCheck size={12} color="#0D0D0D" />
+                                                </View>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
 
                     <TouchableOpacity
-                        style={[styles.subscribeButton, (processingPurchase || loadingProduct) && styles.buttonDisabled]}
-                        activeOpacity={0.8}
-                        onPress={handleSubscribe}
-                        disabled={processingPurchase || loadingProduct}
+                        style={[styles.primaryButton, (!selectedPackage || loadingAction !== null) && styles.buttonDisabled]}
+                        onPress={purchase}
+                        disabled={!selectedPackage || loadingAction !== null || !isRevenueCatReady}
                     >
-                        {processingPurchase || loadingProduct ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                        {loadingAction === 'purchase' ? (
+                            <ActivityIndicator color="#0D0D0D" />
                         ) : (
-                            <Text style={styles.subscribeButtonText}>Start 7-Day Free Trial</Text>
+                            <Text style={styles.primaryButtonText}>
+                                Continue with {selectedPackageId ? PLAN_LABELS[selectedPackageId] : 'Plan'}
+                            </Text>
                         )}
                     </TouchableOpacity>
-                    <Text style={styles.cancelAnytime}>Cancel anytime. No commitment.</Text>
                 </View>
 
-                {/* Free Card */}
-                <View style={styles.freeCard}>
-                    <Text style={styles.freeTitle}>Current Plan: Free</Text>
-                    <Text style={styles.freeDesc}>You are currently on the basic plan with limited features.</Text>
-                </View>
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Tools</Text>
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, (loadingAction !== null || !isRevenueCatReady) && styles.buttonDisabled]}
+                        onPress={restore}
+                        disabled={loadingAction !== null || !isRevenueCatReady}
+                    >
+                        {loadingAction === 'restore'
+                            ? <ActivityIndicator color="#FFFFFF" />
+                            : <Text style={styles.secondaryButtonText}>Restore Purchases</Text>
+                        }
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.restoreButton}
-                    onPress={handleRestore}
-                    disabled={processingRestore}
-                >
-                    {processingRestore ? (
-                        <ActivityIndicator color="#666666" />
-                    ) : (
-                        <Text style={styles.restoreButtonText}>Restore Purchase</Text>
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, (loadingAction !== null || !isRevenueCatReady) && styles.buttonDisabled]}
+                        onPress={showPaywall}
+                        disabled={loadingAction !== null || !isRevenueCatReady}
+                    >
+                        {loadingAction === 'paywall'
+                            ? <ActivityIndicator color="#FFFFFF" />
+                            : <Text style={styles.secondaryButtonText}>Show RevenueCat Paywall</Text>
+                        }
+                    </TouchableOpacity>
+
+                    {(hasPurchases || isPro) && (
+                        <TouchableOpacity
+                            style={[styles.secondaryButton, (loadingAction !== null || !isRevenueCatReady) && styles.buttonDisabled]}
+                            onPress={launchCustomerCenter}
+                            disabled={loadingAction !== null || !isRevenueCatReady}
+                        >
+                            {loadingAction === 'customer-center'
+                                ? <ActivityIndicator color="#FFFFFF" />
+                                : <Text style={styles.secondaryButtonText}>Open Customer Center</Text>
+                            }
+                        </TouchableOpacity>
                     )}
-                </TouchableOpacity>
-
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                        {loadingProduct ? 'Loading subscription details...' : 'Recurring billing. Terms and Privacy apply.'}
-                    </Text>
                 </View>
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    safeArea: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: '#0A0A0A',
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 20,
-        paddingBottom: 16,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#111111',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#FFFFFF',
+    screen: {
+        flex: 1,
     },
     content: {
-        padding: 24,
+        padding: 20,
+        paddingBottom: 36,
     },
-    heroSection: {
+    backButton: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 32,
-        textAlign: 'center',
+        alignSelf: 'flex-start',
+        gap: 8,
+        marginBottom: 16,
+    },
+    backText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    hero: {
+        backgroundColor: 'rgba(17, 17, 17, 0.96)',
+        borderRadius: 20,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        marginBottom: 14,
     },
     heroBadge: {
+        alignSelf: 'flex-start',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: 'rgba(232, 80, 58, 0.1)',
-        paddingHorizontal: 12,
+        borderRadius: 999,
+        backgroundColor: 'rgba(248, 201, 72, 0.14)',
+        paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 20,
-        marginBottom: 16,
-    },
-    heroBadgeText: {
-        color: '#E8503A',
-        fontSize: 12,
-        fontWeight: '800',
-        letterSpacing: 1,
-    },
-    heroTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        letterSpacing: -1,
-        lineHeight: 38,
         marginBottom: 12,
     },
-    heroSubtitle: {
-        fontSize: 15,
-        color: '#999999',
-        textAlign: 'center',
-        lineHeight: 22,
-        paddingHorizontal: 10,
-    },
-    proCard: {
-        backgroundColor: '#111111',
-        borderRadius: 28,
-        padding: 32,
-        borderWidth: 1,
-        borderColor: '#E8503A',
-        shadowColor: '#E8503A',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        marginBottom: 24,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 32,
-    },
-    planName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#999999',
-        marginBottom: 4,
-    },
-    planPrice: {
-        fontSize: 36,
+    heroBadgeText: {
+        color: '#F8C948',
+        fontSize: 11,
         fontWeight: '800',
+        letterSpacing: 0.8,
+    },
+    heroTitle: {
         color: '#FFFFFF',
-    },
-    planPeriod: {
-        fontSize: 16,
-        fontWeight: '400',
-        color: '#666666',
-    },
-    proLabel: {
-        backgroundColor: '#E8503A',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    proLabelText: {
-        color: '#FFFFFF',
-        fontSize: 10,
+        fontSize: 28,
+        lineHeight: 32,
         fontWeight: '900',
+        marginBottom: 8,
     },
-    benefitsList: {
-        gap: 16,
-        marginBottom: 32,
-    },
-    benefitItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    checkBadge: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        backgroundColor: '#E8503A',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    benefitText: {
+    heroSubtitle: {
+        color: '#C5C5C5',
         fontSize: 15,
-        color: '#FFFFFF',
-        fontWeight: '500',
+        lineHeight: 22,
     },
-    subscribeButton: {
-        backgroundColor: '#E8503A',
-        height: 60,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
+    statusCard: {
+        backgroundColor: 'rgba(17, 17, 17, 0.92)',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        marginBottom: 14,
     },
-    subscribeButtonText: {
+    statusTitle: {
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: '700',
-    },
-    buttonDisabled: {
-        opacity: 0.7,
-    },
-    cancelAnytime: {
-        fontSize: 13,
-        color: '#666666',
-        textAlign: 'center',
-    },
-    freeCard: {
-        backgroundColor: '#111111',
-        borderRadius: 20,
-        padding: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-        marginBottom: 24,
-        opacity: 0.8,
-    },
-    freeTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFFFFF',
         marginBottom: 4,
     },
-    freeDesc: {
+    statusSubtitle: {
+        color: '#C7C7C7',
+        fontSize: 13,
+        marginBottom: 2,
+    },
+    statusMeta: {
+        color: '#AFAFAF',
+        fontSize: 13,
+    },
+    card: {
+        backgroundColor: 'rgba(17, 17, 17, 0.92)',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        marginBottom: 14,
+    },
+    cardTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 12,
+    },
+    loadingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 12,
+    },
+    loadingText: {
+        color: '#D1D1D1',
         fontSize: 14,
-        color: '#999999',
+    },
+    emptyText: {
+        color: '#C5C5C5',
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    planList: {
+        gap: 10,
+        marginBottom: 14,
+    },
+    planCard: {
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    planCardSelected: {
+        borderColor: '#F8C948',
+        backgroundColor: 'rgba(248, 201, 72, 0.1)',
+    },
+    planTitle: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    planSubtitle: {
+        color: '#B8B8B8',
+        fontSize: 12,
+    },
+    planRight: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    planPrice: {
+        color: '#F8C948',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    selectedPill: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#F8C948',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    primaryButton: {
+        height: 52,
+        borderRadius: 14,
+        backgroundColor: '#F8C948',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    primaryButtonText: {
+        color: '#0D0D0D',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    secondaryButton: {
+        height: 50,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.24)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    secondaryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    unsupportedWrap: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    unsupportedTitle: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 10,
+    },
+    unsupportedSubtitle: {
+        color: '#BDBDBD',
+        fontSize: 14,
+        textAlign: 'center',
         lineHeight: 20,
     },
-    restoreButton: {
-        alignSelf: 'center',
-        padding: 12,
-        marginBottom: 40,
-    },
-    restoreButtonText: {
-        color: '#666666',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    footer: {
-        alignItems: 'center',
-        paddingBottom: 40,
-    },
-    footerText: {
-        fontSize: 12,
-        color: '#333333',
-        textAlign: 'center',
+    buttonDisabled: {
+        opacity: 0.65,
     },
 });
 

@@ -17,7 +17,6 @@ const QRCodeScreen: React.FC<QRCodeScreenProps> = ({ onBack }) => {
     const [loading, setLoading] = useState(false);
 
     // The URL that leads to the Welcome Page
-    // TODO: Replace with the actual production URL
     const APP_URL = "https://rhema.daily";
 
     const handleShare = async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import { Sermon } from '../../types/sermon';
 import { IconSearch } from '../Icons';
 import { SermonCard } from './SermonCard';
@@ -11,42 +11,81 @@ interface SermonListProps {
     isLoading?: boolean;
 }
 
-export const SermonList: React.FC<SermonListProps> = ({ sermons, onSelectSermon, isLoading }) => (
-    <View style={styles.viewContainer}>
-        <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Sermons</Text>
-            <TouchableOpacity
-                style={styles.searchButton}
-                onPress={() => Alert.alert("Coming Soon", "Search functionality for sermons will be available soon.")}
-            >
-                <IconSearch size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-        </View>
+export const SermonList: React.FC<SermonListProps> = ({ sermons, onSelectSermon, isLoading }) => {
+    const [searchEnabled, setSearchEnabled] = React.useState(false);
+    const [query, setQuery] = React.useState('');
 
-        <ScrollView style={styles.sermonsList} contentContainerStyle={styles.sermonsListContent} showsVerticalScrollIndicator={false}>
-            {isLoading ? (
-                <>
-                    <SermonSkeleton />
-                    <SermonSkeleton />
-                    <SermonSkeleton />
-                </>
-            ) : sermons.length === 0 ? (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>No sermons recorded yet.</Text>
-                    <Text style={styles.emptySubtext}>Tap the microphone to start!</Text>
-                </View>
-            ) : (
-                sermons.map(sermon => (
-                    <SermonCard
-                        key={sermon.id}
-                        sermon={sermon}
-                        onPress={() => onSelectSermon(sermon)}
+    const filteredSermons = React.useMemo(() => {
+        const normalized = query.trim().toLowerCase();
+        if (!normalized) return sermons;
+        return sermons.filter((sermon) => {
+            const haystack = `${sermon.title} ${sermon.summary || ''} ${sermon.transcription || ''}`.toLowerCase();
+            return haystack.includes(normalized);
+        });
+    }, [sermons, query]);
+
+    const toggleSearch = () => {
+        if (searchEnabled) {
+            setQuery('');
+        }
+        setSearchEnabled(!searchEnabled);
+    };
+
+    return (
+        <View style={styles.viewContainer}>
+            <View style={styles.listHeader}>
+                <Text style={styles.listTitle}>Sermons</Text>
+                <TouchableOpacity
+                    style={styles.searchButton}
+                    onPress={toggleSearch}
+                >
+                    <IconSearch size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+            </View>
+
+            {searchEnabled && (
+                <View style={styles.searchInputWrap}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search sermons..."
+                        placeholderTextColor="#666666"
+                        value={query}
+                        onChangeText={setQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
                     />
-                ))
+                </View>
             )}
-        </ScrollView>
-    </View>
-);
+
+            <ScrollView style={styles.sermonsList} contentContainerStyle={styles.sermonsListContent} showsVerticalScrollIndicator={false}>
+                {isLoading ? (
+                    <>
+                        <SermonSkeleton />
+                        <SermonSkeleton />
+                        <SermonSkeleton />
+                    </>
+                ) : filteredSermons.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyText}>
+                            {query ? 'No sermons matched your search.' : 'No sermons recorded yet.'}
+                        </Text>
+                        <Text style={styles.emptySubtext}>
+                            {query ? 'Try a different title or keyword.' : 'Tap the microphone to start!'}
+                        </Text>
+                    </View>
+                ) : (
+                    filteredSermons.map(sermon => (
+                        <SermonCard
+                            key={sermon.id}
+                            sermon={sermon}
+                            onPress={() => onSelectSermon(sermon)}
+                        />
+                    ))
+                )}
+            </ScrollView>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     viewContainer: {
@@ -74,6 +113,19 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    searchInputWrap: {
+        marginBottom: 16,
+    },
+    searchInput: {
+        backgroundColor: '#1A1A1A',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderRadius: 12,
+        color: '#FFFFFF',
+        paddingHorizontal: 14,
+        height: 46,
+        fontSize: 14,
     },
     sermonsList: {
         flex: 1,

@@ -2,6 +2,7 @@ export interface Sermon {
     id: string;
     title: string;
     date: string;
+    createdAt?: string;
     duration: string;
     transcription?: string;
     summary?: string;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { IconFormat, IconBold, IconItalic, IconListBullet, IconMic } from '../../Icons';
+import { IconFormat, IconBold, IconItalic, IconListBullet } from '../../Icons';
 import { styles } from '../JournalEditor.styles';
 import { FormatType } from '../../../hooks/journey/useTextFormatting';
 
@@ -11,9 +11,6 @@ interface EditorToolbarProps {
     showFormatMenu: boolean;
     setShowFormatMenu: (show: boolean) => void;
     applyFormat: (type: FormatType) => void;
-    toggleVoiceTyping: () => void;
-    isListening: boolean;
-    voiceLevel: number;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -22,10 +19,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     setActiveCategory,
     showFormatMenu,
     setShowFormatMenu,
-    applyFormat,
-    toggleVoiceTyping,
-    isListening,
-    voiceLevel
+    applyFormat
 }) => {
     return (
         <View style={styles.toolbarContainer}>
@@ -75,29 +69,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                         <IconListBullet size={18} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
-
-                <View style={{ flex: 1 }} />
-                <View style={styles.verticalDivider} />
-
-                <TouchableOpacity
-                    style={[
-                        styles.micBtn,
-                        isListening && styles.micBtnActive,
-                        isListening && { transform: [{ scale: 1 + (voiceLevel * 0.2) }] }
-                    ]}
-                    onPress={toggleVoiceTyping}
-                >
-                    <IconMic size={22} color={isListening ? '#FF4444' : '#FFFFFF'} />
-                    {isListening && (
-                        <View style={[
-                            styles.micPulse,
-                            {
-                                transform: [{ scale: 1 + (voiceLevel * 1.5) }],
-                                opacity: 0.5 - (voiceLevel * 0.3)
-                            }
-                        ]} />
-                    )}
-                </TouchableOpacity>
             </View>
         </View>
     );

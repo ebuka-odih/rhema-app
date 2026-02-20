@@ -5,7 +5,6 @@ import { ScrollView, StyleSheet, TouchableOpacity, Text, View, ActivityIndicator
 import { HomeHeader } from '../components/home/HomeHeader';
 import { DailyVerse } from '../components/home/DailyVerse';
 import { QuickActions } from '../components/home/QuickActions';
-import { DevotionalList } from '../components/home/DevotionalList';
 import { RecentNotes } from '../components/home/RecentNotes';
 import { RecentPrayers } from '../components/home/RecentPrayers';
 import { useSession, authService } from '../services/auth';
@@ -268,12 +267,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     fetchData();
   }, [session]);
 
-  const suggestedDevotionals = [
-    { id: '1', title: 'David & Goliath', plan: 'Coming Soon' },
-    { id: '2', title: 'The Good Samaritan', plan: 'Coming Soon' },
-    { id: '3', title: 'Daniel in the Lions\' Den', plan: 'Coming Soon' },
-  ];
-
   const formattedDate = time.toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -335,8 +328,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         }))}
         onViewAll={() => onNavigate(Tab.JOURNEY)}
       />
-
-      <DevotionalList devotionals={suggestedDevotionals} />
     </ScrollView>
   );
 };

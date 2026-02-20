@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
 import { setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
-import { authService, useSession } from '../services/auth';
+import { authService } from '../services/auth';
 import { API_BASE_URL } from '../services/apiConfig';
-import { notificationService } from '../services/notificationService';
 import { useRecording } from '../context/RecordingContext';
-import { IconMic, IconPlus } from '../components/Icons';
+import { IconPlus } from '../components/Icons';
+import { useSubscription } from '../context/SubscriptionContext';
 
 // Types
 import { ViewState, Sermon } from '../types/sermon';
@@ -14,14 +14,23 @@ import { ViewState, Sermon } from '../types/sermon';
 import { SermonList } from '../components/sermons/SermonList';
 import { SermonDetail } from '../components/sermons/SermonDetail';
 import { SermonRecorder } from '../components/sermons/SermonRecorder';
+import { RecordingPaywall } from '../components/sermons/RecordingPaywall';
 
 interface RecordScreenProps {
   onNavigateToBible?: (book: string, chapter: number, verse?: number) => void;
+  onNavigateToSubscription?: () => void;
 }
 
-const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
-  const { data: session } = useSession();
-  const isPro = session?.user?.is_pro || false;
+const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible, onNavigateToSubscription }) => {
+  const {
+    isPro,
+    isRevenueCatSupported,
+    isRevenueCatReady,
+    presentPaywallIfNeeded,
+    isPaywallPurchaseResult,
+    isUserCancelled,
+    getErrorMessage,
+  } = useSubscription();
 
   const {
     recorder,
@@ -32,7 +41,6 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     stopRecording,
     resetRecorder,
     isNewRecording,
-    setIsNewRecording
   } = useRecording();
 
   const [view, setView] = useState<ViewState>(isRecording ? 'RECORD' : 'LIST');
@@ -41,6 +49,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
   // Limits
   const MAX_DURATION = isPro ? 3000 : 600; // 50 mins vs 10 mins
   const DAILY_LIMIT = isPro ? 5 : 3;
+  const FREE_DAILY_LIMIT = 3;
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcription, setTranscription] = useState<string | null>(null);
@@ -52,6 +61,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
 
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [isLoadingSermons, setIsLoadingSermons] = useState(false);
+  const [paywallMode, setPaywallMode] = useState<'LAST_FREE' | 'LIMIT_REACHED' | null>(null);
 
   // Sync view with global recording state
   useEffect(() => {
@@ -84,6 +94,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
           id: s.id.toString(),
           title: s.title,
           date: new Date(s.created_at).toLocaleDateString(),
+          createdAt: s.created_at,
           duration: s.duration_seconds ? formatTime(s.duration_seconds) : '0:00',
           transcription: s.transcription,
           summary: s.summary,
@@ -102,6 +113,74 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getNextFreeRecordingResetAt = () => {
+    const now = new Date();
+    const nextReset = new Date(now);
+    nextReset.setHours(24, 0, 0, 0);
+    return nextReset.getTime();
+  };
+
+  const isSermonFromToday = (sermon: Sermon) => {
+    if (sermon.createdAt) {
+      return new Date(sermon.createdAt).toDateString() === new Date().toDateString();
+    }
+    return sermon.date === new Date().toLocaleDateString();
+  };
+
+  const getTodayRecordingCount = () => sermons.filter(isSermonFromToday).length;
+
+  const startNewRecording = () => {
+    reset();
+    setView('RECORD');
+  };
+
+  const navigateToSubscription = async () => {
+    if (isRevenueCatSupported && isRevenueCatReady) {
+      try {
+        const paywallResult = await presentPaywallIfNeeded();
+        if (isPaywallPurchaseResult(paywallResult)) {
+          Alert.alert('Success', 'Rhema Daily Pro is now active.');
+          return;
+        }
+      } catch (err) {
+        if (!isUserCancelled(err)) {
+          Alert.alert('Upgrade Error', getErrorMessage(err));
+        }
+      }
+    }
+
+    if (onNavigateToSubscription) {
+      onNavigateToSubscription();
+      return;
+    }
+    Alert.alert('Upgrade to Pro', 'Open Profile > Subscription Plan to upgrade and unlock more recording time.');
+  };
+
+  const showThirdRecordingPaywall = () => setPaywallMode('LAST_FREE');
+  const showDailyLimitPaywall = () => setPaywallMode('LIMIT_REACHED');
+
+  const handleCreateRecordingPress = () => {
+    const todayCount = getTodayRecordingCount();
+
+    if (!isPro) {
+      if (todayCount >= FREE_DAILY_LIMIT) {
+        showDailyLimitPaywall();
+        return;
+      }
+      if (todayCount === FREE_DAILY_LIMIT - 1) {
+        showThirdRecordingPaywall();
+        return;
+      }
+    }
+
+    if (todayCount >= DAILY_LIMIT) {
+      Alert.alert('Daily Limit Reached', `You have reached your daily limit of ${DAILY_LIMIT} recordings.`);
+      return;
+    }
+
+    startNewRecording();
   };
 
   const handleStartRecording = async () => {
@@ -159,6 +238,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
         id: result.id.toString(),
         title: result.title,
         date: new Date(result.created_at).toLocaleDateString(),
+        createdAt: result.created_at,
         duration: formatTime(duration),
         transcription: result.transcription,
         summary: result.summary,
@@ -178,7 +258,11 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
 
       if (!response.ok) {
         if (response.status === 403) {
-          Alert.alert(result.error || 'Limit Reached', result.details);
+          if ((result?.error || '').toLowerCase().includes('daily limit')) {
+            showDailyLimitPaywall();
+          } else {
+            Alert.alert(result.error || 'Limit Reached', result.details);
+          }
         }
         throw new Error(result.details || result.error || 'Failed to process sermon');
       }
@@ -364,13 +448,7 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
             onSelectSermon={(sermon) => { setSelectedSermon(sermon); setView('DETAIL'); }}
           />
           <TouchableOpacity style={styles.fab} onPress={() => {
-            const todayCount = sermons.filter(s => s.date === new Date().toLocaleDateString()).length;
-            if (todayCount >= DAILY_LIMIT) {
-              Alert.alert('Daily Limit Reached', `You have reached your daily limit of ${DAILY_LIMIT} recordings. Upgrade to Pro for more!`);
-              return;
-            }
-            reset();
-            setView('RECORD');
+            handleCreateRecordingPress();
           }}>
             <IconPlus size={32} color="#FFFFFF" />
           </TouchableOpacity>
@@ -415,6 +493,26 @@ const RecordScreen: React.FC<RecordScreenProps> = ({ onNavigateToBible }) => {
           onNavigateToBible={onNavigateToBible}
         />
       )}
+
+      <RecordingPaywall
+        visible={!!paywallMode}
+        mode={paywallMode || 'LIMIT_REACHED'}
+        freeLimit={FREE_DAILY_LIMIT}
+        usedToday={getTodayRecordingCount()}
+        resetAt={getNextFreeRecordingResetAt()}
+        onClose={() => setPaywallMode(null)}
+        onUpgrade={() => {
+          setPaywallMode(null);
+          void navigateToSubscription();
+        }}
+        onContinueFree={paywallMode === 'LAST_FREE'
+          ? () => {
+            setPaywallMode(null);
+            startNewRecording();
+          }
+          : undefined
+        }
+      />
     </View>
   );
 };

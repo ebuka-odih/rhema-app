@@ -17,7 +17,7 @@ import { HighlightMenu } from '../components/bible/HighlightMenu';
 import { BibleSearchModal } from '../components/bible/BibleSearchModal';
 import { BibleShareModal } from '../components/bible/BibleShareModal';
 import { OfflineSetupProgress } from '../components/bible/OfflineSetupProgress';
-import { useSession } from '../services/auth';
+import { useSubscription } from '../context/SubscriptionContext';
 import { BibleHighlight, BibleBookmark } from '../types';
 
 interface BibleScreenProps {
@@ -29,8 +29,7 @@ interface BibleScreenProps {
 
 const BibleScreen: React.FC<BibleScreenProps> = ({ initialBook, initialChapter, initialVerse, onNavigateNote }) => {
   const isMountedRef = useRef(true);
-  const { data: session } = useSession();
-  const isPro = session?.user?.is_pro || false;
+  const { isPro } = useSubscription();
 
   const [fontSize, setFontSize] = useState(18);
   const [chapter, setChapter] = useState(initialChapter || 1);

@@ -17,6 +17,7 @@ import BibleScreen from './screens/BibleScreen';
 import MoreScreen from './screens/MoreScreen';
 import LegalScreen from './screens/LegalScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 const AppContent: React.FC = () => {
   // Navigation State
   const {
@@ -28,6 +29,7 @@ const AppContent: React.FC = () => {
     isPending,
   } = useAppFlow();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
+  const [moreEntryView, setMoreEntryView] = useState<'SUBSCRIPTION' | null>(null);
   const [bibleNavState, setBibleNavState] = useState<{ book?: string; chapter?: number }>({});
   const insets = useSafeAreaInsets();
 
@@ -42,10 +44,19 @@ const AppContent: React.FC = () => {
               setBibleNavState({ book, chapter });
               setActiveTab(Tab.BIBLE);
             }}
+            onNavigateToSubscription={() => {
+              setMoreEntryView('SUBSCRIPTION');
+              setActiveTab(Tab.MORE);
+            }}
           />
         );
         case Tab.JOURNEY: return <JourneyScreen onNavigateGlobal={(screen) => setActiveTab(screen as Tab)} />;
-        case Tab.MORE: return <MoreScreen />;
+        case Tab.MORE: return (
+          <MoreScreen
+            entryView={moreEntryView}
+            onEntryViewHandled={() => setMoreEntryView(null)}
+          />
+        );
         default: return <HomeScreen onNavigate={(screen) => setActiveTab(screen as Tab)} />;
       }
     };
@@ -104,7 +115,10 @@ const AppContent: React.FC = () => {
             active={activeTab === Tab.MORE}
             icon={<IconMore size={24} color={activeTab === Tab.MORE ? '#E8503A' : '#666666'} />}
             label="More"
-            onPress={() => setActiveTab(Tab.MORE)}
+            onPress={() => {
+              setMoreEntryView(null);
+              setActiveTab(Tab.MORE);
+            }}
           />
         </View>
       </View>
@@ -158,7 +172,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <SubscriptionProvider>
+        <AppContent />
+      </SubscriptionProvider>
     </SafeAreaProvider>
   );
 };

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { JournalEntry } from '../../types';
 import { IconChevronLeft, IconCheck, IconTrash } from '../Icons';
@@ -11,7 +11,6 @@ import { FormatMenuModal } from './editor/FormatMenuModal';
 import { EditorToolbar } from './editor/EditorToolbar';
 
 // Hooks
-import { useVoiceTranscription } from '../../hooks/journey/useVoiceTranscription';
 import { useTextFormatting } from '../../hooks/journey/useTextFormatting';
 
 interface JournalEditorProps {
@@ -57,23 +56,7 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
         editorRef
     });
 
-    const {
-        interimText,
-        isListeningContinuous,
-        isTranscribing,
-        voiceLevel,
-        toggleVoiceTyping
-    } = useVoiceTranscription({
-        setContent,
-        editorRef
-    });
-
-    // Auto-scroll to end when content or transcribing changes
-    useEffect(() => {
-        if (isTranscribing || isListeningContinuous) {
-            scrollRef.current?.scrollToEnd({ animated: true });
-        }
-    }, [content, isTranscribing, isListeningContinuous]);
+    const interimText = '';
 
     return (
         <KeyboardAvoidingView
@@ -132,26 +115,10 @@ export const JournalEditor: React.FC<JournalEditorProps> = ({
                     showFormatMenu={showFormatMenu}
                     setShowFormatMenu={setShowFormatMenu}
                     applyFormat={applyFormat}
-                    toggleVoiceTyping={toggleVoiceTyping}
-                    isListening={isListeningContinuous}
-                    voiceLevel={voiceLevel}
                 />
 
                 <View style={styles.editorSection}>
-                    {isListeningContinuous && (
-                        <View style={styles.statusIndicator}>
-                            <View style={styles.recordingPulse} />
-                            <Text style={styles.statusText}>Continuous Listening Mode...</Text>
-                        </View>
-                    )}
-                    {isTranscribing && (
-                        <View style={styles.statusIndicator}>
-                            <ActivityIndicator size="small" color="#E8503A" />
-                            <Text style={styles.statusText}>Transcribing...</Text>
-                        </View>
-                    )}
-
-                    {!isEditing && !isListeningContinuous ? (
+                    {!isEditing ? (
                         <MarkdownPreview
                             content={content}
                             interimText={interimText}

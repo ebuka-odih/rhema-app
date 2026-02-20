@@ -3,7 +3,7 @@ import { Platform, Alert } from 'react-native';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync, AudioRecorder } from 'expo-audio';
 import { notificationService } from '../services/notificationService';
 import { useKeepAwake } from 'expo-keep-awake';
-import { useSession } from '../services/auth';
+import { useSubscription } from './SubscriptionContext';
 
 interface RecordingContextType {
     recorder: AudioRecorder;
@@ -20,8 +20,7 @@ interface RecordingContextType {
 const RecordingContext = createContext<RecordingContextType | undefined>(undefined);
 
 export const RecordingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { data: session } = useSession();
-    const isPro = session?.user?.is_pro || false;
+    const { isPro } = useSubscription();
     const MAX_DURATION = isPro ? 3000 : 600;
 
     const recorder = useAudioRecorder({
