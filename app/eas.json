@@ -15,6 +15,14 @@
       "env": {
         "EXPO_USE_POD_REPO_UPDATE": "1"
       },
+      "developmentClient": false,
+      "distribution": "internal"
+    },
+    "device": {
+      "env": {
+        "EXPO_USE_POD_REPO_UPDATE": "1"
+      },
+      "developmentClient": false,
       "distribution": "internal"
     },
     "production": {
